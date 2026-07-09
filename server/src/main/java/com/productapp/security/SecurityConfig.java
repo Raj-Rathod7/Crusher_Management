@@ -31,17 +31,19 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
+                                "/auth/login",
+                                "/auth/register",
+                                "/users",
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/api/truck-entries/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                
-                .authenticationProvider(authenticationProvider());
-               // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -72,7 +72,7 @@ public class TruckEntryService {
         existing.setQuantityBrass(request.getQuantityBrass());
         existing.setSupplierName(request.getSupplierName());
         existing.setRemarks(request.getRemarks());
-        existing.setCreatedBy(user);
+        
 
         return truckEntryRepository.save(existing);
     }

@@ -13,7 +13,7 @@ import com.productapp.entity.Role;
 import com.productapp.service.RoleService;
 
 @RestController
-@RequestMapping("/api/v1/roles")
+@RequestMapping("/roles")
 public class RoleController {
 
     private final RoleService roleService;

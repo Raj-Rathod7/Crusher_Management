@@ -13,7 +13,7 @@ import com.productapp.entity.User;
 import com.productapp.service.UserService;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/users")
 public class UserController {
 
     private final UserService service;
@@ -27,7 +27,7 @@ public class UserController {
         return service.save(user);
     }
 
-    @GetMapping("/user")
+    @GetMapping
    
 	  public List<User> getAll() { 
     	

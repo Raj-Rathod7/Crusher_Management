@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/truck-entries")
+@RequestMapping("/truck-entries")
 public class TruckEntryController {
 
     private final TruckEntryService truckEntryService;
@@ -26,7 +26,7 @@ public class TruckEntryController {
             @Valid @RequestBody TruckEntryRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         TruckEntry created = truckEntryService.createTruckEntry(request, userDetails.getUsername());
-        return ResponseEntity.ok(created);
+        return ResponseEntity.status(201).body(created);
     }
 
     @GetMapping
