@@ -27,15 +27,6 @@ type ApiClientConfig = {
   onUnauthorized?: () => void
 }
 
-type QueryOptions<TData> = {
-  queryKey: QueryKey
-  queryFn: () => Promise<TData>
-  staleTime?: number
-  gcTime?: number
-  retry?: boolean | number | ((failureCount: number, error: unknown) => boolean)
-  enabled?: boolean
-}
-
 export class ApiError extends Error {
   status: number
   statusText: string
@@ -198,7 +189,11 @@ export function createApiClient(config: ApiClientConfig = {}) {
       }
 
       if (response.status === 401 || response.status === 403) {
-        config.onUnauthorized?.()
+        throw new ApiError('Unauthorized', {
+          status: response.status,
+          statusText: response.statusText,
+          body: data,
+        })
       }
 
       return data as T
@@ -230,18 +225,6 @@ export function createApiClient(config: ApiClientConfig = {}) {
   }
 }
 
-export function createQueryOptions<TData>(
-  queryKey: QueryKey,
-  path: string,
-  options: Omit<ApiRequestOptions, 'method' | 'body'> = {},
-  queryConfig: Partial<QueryOptions<TData>> = {},
-): QueryOptions<TData> {
-  return {
-    queryKey,
-    queryFn: () => apiClient.get<TData>(path, options),
-    ...queryConfig,
-  }
-}
 
 export function setAuthToken(token: string | null): void {
   if (typeof window === 'undefined') {

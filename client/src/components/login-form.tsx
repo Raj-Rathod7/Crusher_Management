@@ -6,6 +6,10 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
+import { useMutation } from "@tanstack/react-query"
+import { login } from "#/lib/mutation"
+import type { AuthResponse } from "#/lib/models"
+import { Loader } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -17,22 +21,21 @@ export function LoginForm({
     password: ""
   })
 
+  const { mutate, isPending, error } = useMutation<AuthResponse, Error, {username: string, password: string}>({
+    mutationFn: ({username, password}) => login(username, password),
+    onSuccess: (data) => {
+      console.log(data);
+    },
+    onError: (error) => {
+      console.log(error);
+    }
+  });
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    console.log(loginInfo.username, loginInfo.password);
-    const response = await fetch("http://localhost:8081/auth/login",{
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        username: loginInfo.username,
-        password: loginInfo.password
-      })
-    })
-
-    const data = await response.json();
-    console.log(data);
+    if(loginInfo.username && loginInfo.password){
+      mutate({username: loginInfo.username, password: loginInfo.password});
+    }
   }
   
   return (
@@ -55,7 +58,9 @@ export function LoginForm({
           <Input id="password" type="password" value={loginInfo.password} onChange={(e) => setLoginInfo({...loginInfo, password: e.target.value})} required />
         </Field>
         <Field>
-          <Button type="submit">Login</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader className="animate-spin" />} {isPending ? "Logging in..." : "Login"}
+          </Button>
         </Field>
       </FieldGroup>
     </form>
