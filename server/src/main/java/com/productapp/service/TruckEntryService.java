@@ -34,16 +34,22 @@ public class TruckEntryService {
         MaterialType materialType = materialRepository.findById(request.getMaterialTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Material type not found: " + request.getMaterialTypeId()));
 
-        TruckEntry truckEntry = TruckEntry.builder()
-                .entryDate(request.getEntryDate())
-                .truckNumber(request.getTruckNumber())
-                .materialType(materialType)
-                .quantityBrass(request.getQuantityBrass())
-                .supplierName(request.getSupplierName())
-                .remarks(request.getRemarks())
-                .createdBy(user)
-                .build();
-
+		/*
+		 * TruckEntry truckEntry = TruckEntry.builder()
+		 * .entryDate(request.getEntryDate()) .truckNumber(request.getTruckNumber())
+		 * .materialType(materialType) .quantityBrass(request.getQuantityBrass())
+		 * .supplierName(request.getSupplierName()) .remarks(request.getRemarks())
+		 * .createdBy(user) .build();
+		 */
+        
+        TruckEntry truckEntry = new TruckEntry();
+        truckEntry.setEntryDate(request.getEntryDate());
+        truckEntry.setTruckNumber(request.getTruckNumber());
+        truckEntry.setMaterialType(materialType);
+        truckEntry.setQuantityBrass(request.getQuantityBrass());
+        truckEntry.setSupplierName(request.getSupplierName());
+        truckEntry.setRemarks(request.getRemarks());
+        truckEntry.setCreatedBy(user);
         return truckEntryRepository.save(truckEntry);
     }
 

@@ -23,7 +23,87 @@ public class TruckEntry {
     @Column(nullable = false)
     private LocalDate entryDate;
 
-    @Column(nullable = false, length = 20)
+    public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public LocalDate getEntryDate() {
+		return entryDate;
+	}
+
+	public void setEntryDate(LocalDate entryDate) {
+		this.entryDate = entryDate;
+	}
+
+	public String getTruckNumber() {
+		return truckNumber;
+	}
+
+	public void setTruckNumber(String truckNumber) {
+		this.truckNumber = truckNumber;
+	}
+
+	public MaterialType getMaterialType() {
+		return materialType;
+	}
+
+	public void setMaterialType(MaterialType materialType) {
+		this.materialType = materialType;
+	}
+
+	public BigDecimal getQuantityBrass() {
+		return quantityBrass;
+	}
+
+	public void setQuantityBrass(BigDecimal quantityBrass) {
+		this.quantityBrass = quantityBrass;
+	}
+
+	public String getSupplierName() {
+		return supplierName;
+	}
+
+	public void setSupplierName(String supplierName) {
+		this.supplierName = supplierName;
+	}
+
+	public String getRemarks() {
+		return remarks;
+	}
+
+	public void setRemarks(String remarks) {
+		this.remarks = remarks;
+	}
+
+	public User getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(User createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
+	}
+
+	@Column(nullable = false, length = 20)
     private String truckNumber;
 
     @ManyToOne
