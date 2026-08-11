@@ -1,6 +1,7 @@
 package com.productapp.service;
 
 import com.productapp.dto.TruckEntryRequest;
+import com.productapp.dto.TruckEntryResponse;
 import com.productapp.entity.MaterialType;
 import com.productapp.entity.TruckEntry;
 import com.productapp.entity.User;
@@ -11,6 +12,7 @@ import com.productapp.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class TruckEntryService {
@@ -27,7 +29,7 @@ public class TruckEntryService {
         this.userRepository = userRepository;
     }
 
-    public TruckEntry createTruckEntry(TruckEntryRequest request, String username) {
+    public TruckEntryResponse createTruckEntry(TruckEntryRequest request, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
@@ -50,19 +52,22 @@ public class TruckEntryService {
         truckEntry.setSupplierName(request.getSupplierName());
         truckEntry.setRemarks(request.getRemarks());
         truckEntry.setCreatedBy(user);
-        return truckEntryRepository.save(truckEntry);
+        return TruckEntryResponse.fromEntity(truckEntryRepository.save(truckEntry));
     }
 
-    public List<TruckEntry> getAllTruckEntries() {
-        return truckEntryRepository.findAll();
+    public List<TruckEntryResponse> getAllTruckEntries() {
+        return truckEntryRepository.findAll().stream()
+                .map(TruckEntryResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 
-    public TruckEntry getTruckEntryById(Long id) {
-        return truckEntryRepository.findById(id)
+    public TruckEntryResponse getTruckEntryById(Long id) {
+        TruckEntry truckEntry = truckEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
+        return TruckEntryResponse.fromEntity(truckEntry);
     }
 
-    public TruckEntry updateTruckEntry(Long id, TruckEntryRequest request, String username) {
+    public TruckEntryResponse updateTruckEntry(Long id, TruckEntryRequest request, String username) {
         TruckEntry existing = truckEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
 
@@ -78,9 +83,8 @@ public class TruckEntryService {
         existing.setQuantityBrass(request.getQuantityBrass());
         existing.setSupplierName(request.getSupplierName());
         existing.setRemarks(request.getRemarks());
-        
 
-        return truckEntryRepository.save(existing);
+        return TruckEntryResponse.fromEntity(truckEntryRepository.save(existing));
     }
 
     public void deleteTruckEntry(Long id) {

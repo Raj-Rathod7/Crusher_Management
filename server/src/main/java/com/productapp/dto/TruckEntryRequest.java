@@ -23,7 +23,7 @@ public class TruckEntryRequest {
 
     private String supplierName;
     private String remarks;
-
+ 
     public LocalDate getEntryDate() {
         return entryDate;
     }

@@ -1,9 +1,11 @@
 package com.productapp.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.productapp.dto.RoleResponse;
 import com.productapp.entity.Role;
 import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.RoleRepository;
@@ -17,36 +19,36 @@ public class RoleService {
         this.roleRepository = roleRepository;
     }
 
-    public Role save(Role role) {
-        return roleRepository.save(role);
+    public RoleResponse save(Role role) {
+        return RoleResponse.fromEntity(roleRepository.save(role));
     }
 
-    public List<Role> getAll() {
-        return roleRepository.findAll();
+    public List<RoleResponse> getAll() {
+        return roleRepository.findAll().stream()
+                .map(RoleResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 
-    public Role getById(Long id) {
-
-        return roleRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Role not found with id : " + id));
+    public RoleResponse getById(Long id) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
+        return RoleResponse.fromEntity(role);
     }
-    public Role update(Long id, Role role) {
 
-        Role existing = getById(id);
+    public RoleResponse update(Long id, Role role) {
+        Role existing = roleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
 
         existing.setRoleName(role.getRoleName());
         existing.setDescription(role.getDescription());
         existing.setIsActive(role.getIsActive());
 
-        return roleRepository.save(existing);
+        return RoleResponse.fromEntity(roleRepository.save(existing));
     }
 
     public void delete(Long id) {
-
-        Role existing = getById(id);
-
+        Role existing = roleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
         roleRepository.delete(existing);
     }
 }

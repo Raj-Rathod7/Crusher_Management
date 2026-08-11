@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.productapp.dto.UserResponse;
 import com.productapp.entity.User;
 import com.productapp.service.UserService;
 
@@ -23,20 +24,17 @@ public class UserController {
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
+    public UserResponse create(@RequestBody User user) {
         return service.save(user);
     }
 
     @GetMapping
-   
-	  public List<User> getAll() { 
-    	
-    	return service.getAll();
-	 }
-    
+    public List<UserResponse> getAll() {
+        return service.getAll();
+    }
 
     @GetMapping("/{id}")
-    public User getById(@PathVariable Long id) {
+    public UserResponse getById(@PathVariable Long id) {
         return service.getById(id);
     }
 }

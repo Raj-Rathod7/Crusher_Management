@@ -1,7 +1,7 @@
 package com.productapp.controller;
 
 import com.productapp.dto.TruckEntryRequest;
-import com.productapp.entity.TruckEntry;
+import com.productapp.dto.TruckEntryResponse;
 import com.productapp.service.TruckEntryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,29 +22,29 @@ public class TruckEntryController {
     }
 
     @PostMapping
-    public ResponseEntity<TruckEntry> createTruckEntry(
+    public ResponseEntity<TruckEntryResponse> createTruckEntry(
             @Valid @RequestBody TruckEntryRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        TruckEntry created = truckEntryService.createTruckEntry(request, userDetails.getUsername());
+        TruckEntryResponse created = truckEntryService.createTruckEntry(request, userDetails.getUsername());
         return ResponseEntity.status(201).body(created);
     }
 
     @GetMapping
-    public ResponseEntity<List<TruckEntry>> getAllTruckEntries() {
+    public ResponseEntity<List<TruckEntryResponse>> getAllTruckEntries() {
         return ResponseEntity.ok(truckEntryService.getAllTruckEntries());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TruckEntry> getTruckEntry(@PathVariable Long id) {
+    public ResponseEntity<TruckEntryResponse> getTruckEntry(@PathVariable Long id) {
         return ResponseEntity.ok(truckEntryService.getTruckEntryById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TruckEntry> updateTruckEntry(
+    public ResponseEntity<TruckEntryResponse> updateTruckEntry(
             @PathVariable Long id,
             @Valid @RequestBody TruckEntryRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        TruckEntry updated = truckEntryService.updateTruckEntry(id, request, userDetails.getUsername());
+        TruckEntryResponse updated = truckEntryService.updateTruckEntry(id, request, userDetails.getUsername());
         return ResponseEntity.ok(updated);
     }
 

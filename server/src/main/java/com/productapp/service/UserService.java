@@ -1,9 +1,11 @@
 package com.productapp.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.productapp.dto.UserResponse;
 import com.productapp.entity.Role;
 import com.productapp.entity.User;
 import com.productapp.exceptions.ResourceNotFoundException;
@@ -23,7 +25,7 @@ public class UserService {
         this.roleRepository = roleRepository;
     }
 
-    public User save(User user) {
+    public UserResponse save(User user) {
 
         Role role = roleRepository.findById(
                         user.getRole().getId())
@@ -33,24 +35,24 @@ public class UserService {
 
         user.setRole(role);
 
-        return userRepository.save(user);
+        return UserResponse.fromEntity(userRepository.save(user));
     }
 
-    public List<User> getAll() {
-        return userRepository.findAll();
+    public List<UserResponse> getAll() {
+        return userRepository.findAll().stream()
+                .map(UserResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 
-    public User getById(Long id) {
-
-        return userRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found with id : " + id));
+    public UserResponse getById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + id));
+        return UserResponse.fromEntity(user);
     }
 
-    public User update(Long id, User user) {
-
-        User existing = getById(id);
+    public UserResponse update(Long id, User user) {
+        User existing = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + id));
 
         existing.setUsername(user.getUsername());
         existing.setPassword(user.getPassword());
@@ -64,13 +66,12 @@ public class UserService {
 
         existing.setRole(role);
 
-        return userRepository.save(existing);
+        return UserResponse.fromEntity(userRepository.save(existing));
     }
 
     public void delete(Long id) {
-
-        User existing = getById(id);
-
+        User existing = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + id));
         userRepository.delete(existing);
     }
 }
