@@ -25,14 +25,9 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronsLeft,
-  IconChevronsRight,
-  IconCircleCheckFilled,
-  IconDotsVertical,
-  IconGripVertical,
+  IconChevronsRight, IconGripVertical,
   IconLayoutColumns,
-  IconLoader,
-  IconPlus,
-  IconTrendingUp,
+  IconLoader
 } from "@tabler/icons-react"
 import {
   flexRender,
@@ -49,37 +44,14 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
 import { z } from "zod"
 
-import { useIsMobile } from "@/hooks/use-mobile"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuContent, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -90,7 +62,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import {
   Table,
   TableBody,
@@ -133,6 +104,8 @@ type DataTableColumnDef<TData> = ColumnDef<TData, unknown> & {
 type DataTableProps<TData> = {
   data: TData[]
   columns: DataTableColumnDef<TData>[]
+  isLoading?: boolean
+  loadingMessage?: React.ReactNode
   getRowId?: (row: TData, index: number) => string
   enableSelection?: boolean
   enableColumnVisibility?: boolean
@@ -301,6 +274,8 @@ function DraggableRow<TData>({ row }: { row: Row<TData> }) {
 export function ConfigurableDataTable<TData>({
   data: initialData,
   columns,
+  isLoading = false,
+  loadingMessage = 'Loading...',
   getRowId = (row: TData, index: number) =>
     typeof row === "object" && row !== null && "id" in row
       ? String((row as Record<string, unknown>).id ?? index)
@@ -550,7 +525,16 @@ export function ConfigurableDataTable<TData>({
                 ))}
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                {table.getRowModel().rows?.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={tableColumns.length} className="h-24 text-center">
+                      <div className="inline-flex items-center gap-2 text-muted-foreground">
+                        <IconLoader className="size-4 animate-spin" />
+                        <span>{loadingMessage}</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   <SortableContext
                     items={dataIds}
                     strategy={verticalListSortingStrategy}
@@ -616,7 +600,16 @@ export function ConfigurableDataTable<TData>({
               ))}
             </TableHeader>
             <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={tableColumns.length} className="h-24 text-center">
+                    <div className="inline-flex items-center gap-2 text-muted-foreground">
+                      <IconLoader className="size-4 animate-spin" />
+                      <span>{loadingMessage}</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                     {row.getVisibleCells().map((cell) => (

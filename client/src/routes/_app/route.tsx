@@ -3,12 +3,19 @@ import { SiteHeader } from "#/components/site-header";
 import {
   SidebarInset, SidebarProvider
 } from "#/components/ui/sidebar";
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app")({
+  beforeLoad: ({context}) => {
+    console.log(context, 'this is context');
+    if (typeof window !== 'undefined' && !context.auth.isAuthenticated) {
+      throw redirect({ to: '/login' })
+    }
+  },
   component: RouteComponent,
 });
 function RouteComponent() {
+
   return (
     <SidebarProvider
       style={

@@ -10,11 +10,17 @@ import { useMutation } from "@tanstack/react-query"
 import { login } from "#/lib/mutation"
 import type { AuthResponse } from "#/lib/models"
 import { Loader } from "lucide-react"
+import { setAuthToken } from "#/lib/common/api"
+import { useAuth } from "#/lib/auth-context"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const navigate = useNavigate()
+  const router = useRouter()
+  const { setAuthenticated } = useAuth()
 
   const [loginInfo, setLoginInfo] = useState({
     username: "",
@@ -24,7 +30,17 @@ export function LoginForm({
   const { mutate, isPending, error } = useMutation<AuthResponse, Error, {username: string, password: string}>({
     mutationFn: ({username, password}) => login(username, password),
     onSuccess: (data) => {
-      console.log(data);
+      setAuthToken(data.token)
+      setAuthenticated(true)
+      router.update({
+        context: {
+          ...router.options.context,
+          auth: {
+            isAuthenticated: true,
+          },
+        },
+      })
+      navigate({ to: '/' })
     },
     onError: (error) => {
       console.log(error);

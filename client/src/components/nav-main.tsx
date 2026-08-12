@@ -55,7 +55,7 @@ export function NavMain({
         {/* Animated Background */}
         <div
           ref={indicatorRef}
-          className={cn("absolute left-0 w-full rounded-md bg-primary transition-all duration-300 ease-in-out", animate ? "opacity-100" : "opacity-0")}
+          className={cn("absolute left-0 w-full rounded-md dark:bg-primary bg-neutral-300 transition-all duration-300 ease-in-out", animate ? "opacity-100" : "opacity-0")}
         />
 
         <SidebarMenu>
@@ -69,7 +69,7 @@ export function NavMain({
               <Link to={item.url} replace>
                 <SidebarMenuButton
                   tooltip={item.title}
-                  className="relative z-10 hover:bg-transparent"
+                  className="relative z-10 hover:bg-transparent hover:font-semibold"
                 >
                   {item.icon}
                   <span>{item.title}</span>

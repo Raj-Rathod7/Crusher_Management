@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-
+import { useQuery } from '@tanstack/react-query'
 import { ConfigurableDataTable } from '@/components/data-table'
+import { getAllTruckEntries, truckEntryKeys } from '#/lib/query'
+import { useEffect } from 'react'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_app/truck-entry')({
   component: RouteComponent,
@@ -9,46 +12,48 @@ export const Route = createFileRoute('/_app/truck-entry')({
 type TruckRow = {
   id: number
   truckNo: string
-  driverName: string
+  entryDate: string
   material: string
-  status: string
-  weight: string
+  supplierName: string
+  quantityBrass: string
 }
 
-const truckRows: TruckRow[] = [
-  {
-    id: 1,
-    truckNo: 'TRK-101',
-    driverName: 'Aman Verma',
-    material: 'Stone Dust',
-    status: 'In Queue',
-    weight: '12.4 ton',
-  },
-  {
-    id: 2,
-    truckNo: 'TRK-102',
-    driverName: 'Ravi Singh',
-    material: 'Crusher Run',
-    status: 'Loaded',
-    weight: '14.8 ton',
-  },
-  {
-    id: 3,
-    truckNo: 'TRK-103',
-    driverName: 'Kiran Patel',
-    material: 'Aggregate',
-    status: 'Weighed',
-    weight: '11.9 ton',
-  },
-]
-
 function RouteComponent() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: truckEntryKeys.all,
+    queryFn: getAllTruckEntries,
+    retry: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false
+  })
+
+  const truckRows: TruckRow[] = (data ?? []).map((entry) => ({
+    id: entry.id,
+    truckNo: entry.truckNumber,
+    entryDate: entry.entryDate,
+    material: entry.materialName ?? '-',
+    supplierName: entry.supplierName ?? '-',
+    quantityBrass: String(entry.quantityBrass),
+  }));
+
+  useEffect(() => {
+    if (isError) {
+      console.error('Error loading truck entries:', error);
+      toast.error('Failed to load truck entries. Please try again later.', {
+        style: {
+          color: 'red'
+        }
+      });
+    }
+  }, [isError, error]);
+
   return (
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
       <div className="mb-6 shrink-0">
         <h1 className="text-2xl font-semibold">Truck Entry</h1>
         <p className="text-sm text-muted-foreground">
-          Example view for the reusable table component.
+          All truck entries from server.
         </p>
       </div>
 
@@ -60,29 +65,30 @@ function RouteComponent() {
             header: 'Truck No',
           },
           {
-            accessorKey: 'driverName',
-            header: 'Driver',
+            accessorKey: 'entryDate',
+            header: 'Entry Date',
           },
           {
             accessorKey: 'material',
             header: 'Material',
           },
           {
-            accessorKey: 'status',
-            header: 'Status',
+            accessorKey: 'supplierName',
+            header: 'Supplier',
           },
           {
-            accessorKey: 'weight',
-            header: 'Weight',
+            accessorKey: 'quantityBrass',
+            header: 'Quantity (Brass)',
           },
         ]}
         getRowId={(row) => row.id.toString()}
-        enableSelection
         enableColumnVisibility
         enablePagination
         enableSorting
         enableDragAndDrop={false}
-        emptyMessage="No trucks found."
+        isLoading={isLoading}
+        loadingMessage="Loading truck entries"
+        emptyMessage="No truck entries found."
         className="w-full flex-1"
         tableClassName="flex-1"
       />

@@ -67,21 +67,17 @@ function combineSignals(...signals: Array<AbortSignal | undefined>): AbortSignal
   return controller.signal
 }
 
-function getDefaultToken(): string | null {
+export function getDefaultToken(): string | null {
   if (typeof window === 'undefined') {
     return null
   }
-
   return (
-    window.localStorage.getItem('access_token') ??
-    window.localStorage.getItem('token') ??
-    window.sessionStorage.getItem('access_token') ??
-    window.sessionStorage.getItem('token')
+    window.localStorage.getItem('access_token')
   )
 }
 
 function getDefaultBaseUrl(): string {
-  return (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8081/api'
+  return (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8081'
 }
 
 function buildUrl(baseUrl: string, path: string, params?: ApiRequestOptions['params']): URL {
@@ -235,9 +231,6 @@ export function setAuthToken(token: string | null): void {
     window.localStorage.setItem('access_token', token)
     return
   }
-
-  window.localStorage.removeItem('access_token')
-  window.localStorage.removeItem('token')
 }
 
 export const apiClient = createApiClient()

@@ -13,9 +13,13 @@ import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 import { TooltipProvider } from '#/components/ui/tooltip'
 import { ThemeProvider } from '#/components/theme-provider'
-
+import { Toaster } from '#/components/ui/sonner'
+import { AuthProvider } from '#/lib/auth-context'
 interface MyRouterContext {
   queryClient: QueryClient
+  auth: {
+    isAuthenticated: boolean
+  }
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
@@ -44,15 +48,18 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
         <ThemeProvider defaultTheme="dark">
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
+            <TooltipProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </TooltipProvider>
+          <Toaster />
         </ThemeProvider>
         <TanStackDevtools
           config={{

@@ -1,5 +1,6 @@
+import { useAuth } from '#/lib/auth-context';
 import { LoginForm } from '@/components/login-form'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { GalleryVerticalEnd } from "lucide-react"
 
 export const Route = createFileRoute('/login')({
@@ -7,6 +8,13 @@ export const Route = createFileRoute('/login')({
 })
 
 function RouteComponent() {
+  const {isAuthenticated} = useAuth();
+  const navigate = useNavigate();
+
+  if(isAuthenticated) {
+    navigate({ to: '/'});
+  }
+  
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
