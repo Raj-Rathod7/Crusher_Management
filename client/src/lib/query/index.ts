@@ -3,6 +3,7 @@ import type { Customer, Invoice, Material, TruckEntry } from "../models"
 
 export const truckEntryKeys = {
   all: ['truck-entries'] as const,
+  detail: (id: number | string) => ['truck-entries', String(id)] as const,
 }
 
 export const materialKeys = {
@@ -19,6 +20,10 @@ export const customerKeys = {
 
 export const getAllTruckEntries = async () => {
   return apiClient.get<TruckEntry[]>('/truck-entries')
+}
+
+export const getTruckEntryById = async (id: number | string) => {
+  return apiClient.get<TruckEntry>(`/truck-entries/${id}`)
 }
 
 export const getAllMaterials = async () => {

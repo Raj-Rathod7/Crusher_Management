@@ -1,12 +1,24 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfigurableDataTable } from "@/components/data-table";
 import { StatsCard } from "@/components/stats-card";
+import { Button } from "#/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "#/components/ui/dialog";
+import { deleteTruckEntry } from "#/lib/mutation";
 import { getAllTruckEntries, truckEntryKeys } from "#/lib/query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   IconCube,
+  IconPencil,
+  IconTrash,
   IconTruck,
 } from "@tabler/icons-react";
 
@@ -24,6 +36,8 @@ type TruckRow = {
 };
 
 function RouteComponent() {
+  const queryClient = useQueryClient()
+  const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: truckEntryKeys.all,
     queryFn: getAllTruckEntries,
@@ -41,6 +55,18 @@ function RouteComponent() {
     supplierName: entry.supplierName ?? "-",
     quantityBrass: String(entry.quantityBrass),
   }));
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteTruckEntry,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: truckEntryKeys.all })
+      setEntryToDelete(null)
+      toast.success("Truck entry deleted.")
+    },
+    onError: () => {
+      toast.error("Failed to delete truck entry.")
+    },
+  })
 
   const stats = useMemo(() => {
     const entries = data ?? [];
@@ -127,6 +153,31 @@ function RouteComponent() {
             accessorKey: "quantityBrass",
             header: "Quantity (Brass)",
           },
+          {
+            id: "actions",
+            header: "Actions",
+            cell: ({ row }) => (
+              <div className="flex items-center gap-2">
+                <Button asChild size="icon-sm" variant="outline">
+                  <Link
+                    to="/truck-entry/$entryId/edit"
+                    params={{ entryId: String(row.original.id) }}
+                  >
+                    <IconPencil />
+                    <span className="sr-only">Edit truck entry</span>
+                  </Link>
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="destructive"
+                  onClick={() => setEntryToDelete(row.original)}
+                >
+                  <IconTrash />
+                  <span className="sr-only">Delete truck entry</span>
+                </Button>
+              </div>
+            ),
+          },
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility
@@ -141,6 +192,35 @@ function RouteComponent() {
         addButtonLink="/truck-entry/new"
         addButtonText="Add Truck Entry"
       />
+
+      <Dialog open={Boolean(entryToDelete)} onOpenChange={(open) => !open && setEntryToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete truck entry</DialogTitle>
+            <DialogDescription>
+              {entryToDelete
+                ? `Delete ${entryToDelete.truckNo} from ${entryToDelete.entryDate}? This action cannot be undone.`
+                : 'Delete this truck entry? This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEntryToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!entryToDelete) {
+                  return
+                }
+                deleteMutation.mutate(entryToDelete.id)
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

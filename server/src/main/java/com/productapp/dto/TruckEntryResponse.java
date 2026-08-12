@@ -10,6 +10,7 @@ public class TruckEntryResponse {
     private Long id;
     private LocalDate entryDate;
     private String truckNumber;
+    private Long materialTypeId;
     private String materialName;
     private BigDecimal quantityBrass;
     private String supplierName;
@@ -21,12 +22,13 @@ public class TruckEntryResponse {
     public TruckEntryResponse() {
     }
 
-    public TruckEntryResponse(Long id, LocalDate entryDate, String truckNumber, String materialName,
+    public TruckEntryResponse(Long id, LocalDate entryDate, String truckNumber, Long materialTypeId, String materialName,
                               BigDecimal quantityBrass, String supplierName, String remarks,
                               String createdByUsername, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.entryDate = entryDate;
         this.truckNumber = truckNumber;
+        this.materialTypeId = materialTypeId;
         this.materialName = materialName;
         this.quantityBrass = quantityBrass;
         this.supplierName = supplierName;
@@ -45,6 +47,7 @@ public class TruckEntryResponse {
                 truckEntry.getId(),
                 truckEntry.getEntryDate(),
                 truckEntry.getTruckNumber(),
+            truckEntry.getMaterialType() != null ? truckEntry.getMaterialType().getId() : null,
                 truckEntry.getMaterialType() != null ? truckEntry.getMaterialType().getName() : null,
                 truckEntry.getQuantityBrass(),
                 truckEntry.getSupplierName(),
@@ -77,6 +80,14 @@ public class TruckEntryResponse {
 
     public void setTruckNumber(String truckNumber) {
         this.truckNumber = truckNumber;
+    }
+
+    public Long getMaterialTypeId() {
+        return materialTypeId;
+    }
+
+    public void setMaterialTypeId(Long materialTypeId) {
+        this.materialTypeId = materialTypeId;
     }
 
     public String getMaterialName() {

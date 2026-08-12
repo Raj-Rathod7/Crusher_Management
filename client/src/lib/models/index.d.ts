@@ -8,6 +8,7 @@ export type TruckEntry = {
   id: number;
   entryDate: string;
   truckNumber: string;
+  materialTypeId: number | null;
   materialName: string | null;
   quantityBrass: number;
   supplierName: string | null;

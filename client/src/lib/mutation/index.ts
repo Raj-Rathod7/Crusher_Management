@@ -9,6 +9,14 @@ export const createTruckEntry = async (payload: CreateTruckEntryPayload) => {
   return apiClient.post<TruckEntry>("/truck-entries", payload);
 }
 
+export const updateTruckEntry = async (id: number | string, payload: CreateTruckEntryPayload) => {
+  return apiClient.put<TruckEntry>(`/truck-entries/${id}`, payload);
+}
+
+export const deleteTruckEntry = async (id: number | string) => {
+  return apiClient.delete<void>(`/truck-entries/${id}`);
+}
+
 export const createSale = async (payload: CreateInvoicePayload) => {
   return apiClient.post<Invoice>("/invoices", payload);
 }
