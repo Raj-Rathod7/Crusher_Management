@@ -2,32 +2,14 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconChevronsLeft,
-  IconChevronsRight, IconGripVertical,
+  IconChevronsRight,
   IconLayoutColumns,
-  IconLoader
+  IconLoader,
+  IconPlus
 } from "@tabler/icons-react"
 import {
   flexRender,
@@ -40,14 +22,12 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
-  type Row,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
 import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -70,6 +50,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Link } from "@tanstack/react-router"
 
 export const schema = z.object({
   id: z.number(),
@@ -107,11 +88,9 @@ type DataTableProps<TData> = {
   isLoading?: boolean
   loadingMessage?: React.ReactNode
   getRowId?: (row: TData, index: number) => string
-  enableSelection?: boolean
   enableColumnVisibility?: boolean
   enablePagination?: boolean
   enableSorting?: boolean
-  enableDragAndDrop?: boolean
   enableGlobalSearch?: boolean
   globalSearchPlaceholder?: string
   toolbar?: React.ReactNode
@@ -120,6 +99,9 @@ type DataTableProps<TData> = {
   defaultPageSize?: number
   className?: string
   tableClassName?: string
+  enableAddButton?: boolean
+  addButtonLink?: string
+  addButtonText?: string
 }
 
 function getColumnValue<TData>(row: TData, column: DataTableColumnDef<TData>) {
@@ -227,52 +209,8 @@ function applyTableFilters<TData>(
   })
 }
 
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="size-7 text-muted-foreground hover:bg-transparent"
-    >
-      <IconGripVertical className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
-    </Button>
-  )
-}
-
-function DraggableRow<TData>({ row }: { row: Row<TData> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.id,
-  })
-
-  return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-    >
-      {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </TableCell>
-      ))}
-    </TableRow>
-  )
-}
-
 export function ConfigurableDataTable<TData>({
-  data: initialData,
+  data,
   columns,
   isLoading = false,
   loadingMessage = 'Loading...',
@@ -280,11 +218,9 @@ export function ConfigurableDataTable<TData>({
     typeof row === "object" && row !== null && "id" in row
       ? String((row as Record<string, unknown>).id ?? index)
       : String(index),
-  enableSelection = true,
   enableColumnVisibility = true,
   enablePagination = true,
   enableSorting = true,
-  enableDragAndDrop = false,
   enableGlobalSearch = true,
   globalSearchPlaceholder = "Search all columns",
   toolbar,
@@ -293,9 +229,10 @@ export function ConfigurableDataTable<TData>({
   defaultPageSize = 10,
   className,
   tableClassName,
+  addButtonLink,
+  addButtonText = "Add Entry",
+  enableAddButton = false,
 }: DataTableProps<TData>) {
-  const [data, setData] = React.useState(initialData)
-  const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -305,72 +242,13 @@ export function ConfigurableDataTable<TData>({
     pageIndex: 0,
     pageSize: defaultPageSize,
   })
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data.map((row, index) => getRowId(row, index)),
-    [data, getRowId]
-  )
 
   const tableColumns = React.useMemo(() => {
-    const builtInColumns: ColumnDef<TData, unknown>[] = []
-
-    if (enableDragAndDrop) {
-      builtInColumns.push({
-        id: "drag",
-        header: () => null,
-        cell: ({ row }) => <DragHandle id={row.id} />,
-        enableSorting: false,
-        enableHiding: false,
-      })
-    }
-
-    if (enableSelection) {
-      builtInColumns.push({
-        id: "select",
-        header: ({ table }) => (
-          <div className="flex items-center justify-center">
-            <Checkbox
-              checked={
-                table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() && "indeterminate")
-              }
-              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label="Select all"
-            />
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex items-center justify-center">
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-            />
-          </div>
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      })
-    }
-
-    return [
-      ...builtInColumns,
-      ...columns.map((column) => ({
+    return columns.map((column) => ({
         ...column,
         enableSorting: column.meta?.sortable ?? true,
-      })),
-    ]
-  }, [columns, enableDragAndDrop, enableSelection])
+      }))
+  }, [columns])
 
   const filteredData = React.useMemo(
     () => applyTableFilters(data, tableColumns, columnFilters, globalSearch),
@@ -383,13 +261,10 @@ export function ConfigurableDataTable<TData>({
     state: {
       sorting,
       columnVisibility,
-      rowSelection,
       columnFilters,
       pagination,
     },
     getRowId: (row, index) => getRowId(row, index),
-    enableRowSelection: enableSelection,
-    onRowSelectionChange: setRowSelection,
     onSortingChange: enableSorting ? setSorting : undefined,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -401,27 +276,6 @@ export function ConfigurableDataTable<TData>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-
-    if (active && over && active.id !== over.id) {
-      setData((currentData) => {
-        const oldIndex = currentData.findIndex(
-          (item, index) => getRowId(item, index) === String(active.id)
-        )
-        const newIndex = currentData.findIndex(
-          (item, index) => getRowId(item, index) === String(over.id)
-        )
-
-        if (oldIndex === -1 || newIndex === -1) {
-          return currentData
-        }
-
-        return arrayMove(currentData, oldIndex, newIndex)
-      })
-    }
-  }
 
   return (
     <div className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
@@ -436,6 +290,7 @@ export function ConfigurableDataTable<TData>({
               />
           ) : null}
         </div>
+        {toolbar ? <div className="mr-2 flex items-center gap-2">{toolbar}</div> : null}
         {enableColumnVisibility ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -466,177 +321,97 @@ export function ConfigurableDataTable<TData>({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
+        {enableAddButton && (
+          <Button asChild className="ml-2">
+            <Link to={addButtonLink}>
+              <IconPlus />
+              {addButtonText}
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className={['mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border', tableClassName ?? ''].filter(Boolean).join(' ')}>
-        {enableDragAndDrop ? (
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
-            <div className="flex-1 overflow-auto">
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-muted">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : (() => {
-                              const columnMeta = header.column.columnDef.meta as ColumnMetaConfig | undefined
-                              const canSort = (columnMeta?.sortable ?? true) && enableSorting
+        <div className="flex-1 overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-muted">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan}>
+                    {header.isPlaceholder
+                      ? null
+                      : (() => {
+                          const columnMeta = header.column.columnDef.meta as ColumnMetaConfig | undefined
+                          const canSort = (columnMeta?.sortable ?? true) && enableSorting
 
-                              return (
-                                <div className="flex flex-col gap-2">
-                                  <div className="flex items-center gap-2">
-                                    {flexRender(
-                                      header.column.columnDef.header,
-                                      header.getContext()
-                                    )}
-                                    {header.column.getCanSort() && canSort ? (
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-7 shrink-0"
-                                        onClick={header.column.getToggleSortingHandler()}
-                                      >
-                                        {header.column.getIsSorted() === "desc" ? "↓" : header.column.getIsSorted() === "asc" ? "↑" : "↕"}
-                                      </Button>
-                                    ) : null}
-                                  </div>
-                                  {columnMeta?.filterable ? (
-                                    <ColumnFilterInput
-                                      column={header.column}
-                                      columnFilters={columnFilters}
-                                      setColumnFilters={setColumnFilters}
-                                    />
-                                  ) : null}
-                                </div>
-                              )
-                            })()}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={tableColumns.length} className="h-24 text-center">
-                      <div className="inline-flex items-center gap-2 text-muted-foreground">
-                        <IconLoader className="size-4 animate-spin" />
-                        <span>{loadingMessage}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {table.getRowModel().rows.map((row) => (
-                      <DraggableRow key={row.id} row={row} />
-                    ))}
-                  </SortableContext>
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={tableColumns.length} className="h-24 text-center">
-                      {emptyMessage}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-              </Table>
-            </div>
-          </DndContext>
-        ) : (
-          <div className="flex-1 overflow-auto">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : (() => {
-                            const columnMeta = header.column.columnDef.meta as ColumnMetaConfig | undefined
-                            const canSort = (columnMeta?.sortable ?? true) && enableSorting
-
-                            return (
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2">
-                                  {flexRender(header.column.columnDef.header, header.getContext())}
-                                  {header.column.getCanSort() && canSort ? (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="size-7 shrink-0"
-                                      onClick={header.column.getToggleSortingHandler()}
-                                    >
-                                      {header.column.getIsSorted() === "desc" ? "↓" : header.column.getIsSorted() === "asc" ? "↑" : "↕"}
-                                    </Button>
-                                  ) : null}
-                                </div>
-                                {columnMeta?.filterable ? (
-                                  <ColumnFilterInput
-                                    column={header.column}
-                                    columnFilters={columnFilters}
-                                    setColumnFilters={setColumnFilters}
-                                  />
+                          return (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                {header.column.getCanSort() && canSort ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 shrink-0"
+                                    onClick={header.column.getToggleSortingHandler()}
+                                  >
+                                    {header.column.getIsSorted() === "desc" ? "↓" : header.column.getIsSorted() === "asc" ? "↑" : "↕"}
+                                  </Button>
                                 ) : null}
                               </div>
-                            )
-                          })()}
-                    </TableHead>
+                              {columnMeta?.filterable ? (
+                                <ColumnFilterInput
+                                  column={header.column}
+                                  columnFilters={columnFilters}
+                                  setColumnFilters={setColumnFilters}
+                                />
+                              ) : null}
+                            </div>
+                          )
+                        })()}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={tableColumns.length} className="h-24 text-center">
+                  <div className="inline-flex items-center gap-2 text-muted-foreground">
+                    <IconLoader className="size-4 animate-spin" />
+                    <span>{loadingMessage}</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={tableColumns.length} className="h-24 text-center">
-                    <div className="inline-flex items-center gap-2 text-muted-foreground">
-                      <IconLoader className="size-4 animate-spin" />
-                      <span>{loadingMessage}</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={tableColumns.length} className="h-24 text-center">
-                    {emptyMessage}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-            </Table>
-          </div>
-        )}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={tableColumns.length} className="h-24 text-center">
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+          </Table>
+        </div>
       </div>
 
       {enablePagination ? (
         <div className="flex items-center justify-between px-4 py-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            {table.getFilteredRowModel().rows.length} row(s) total.
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">

@@ -69,7 +69,7 @@ export function NavMain({
               <Link to={item.url} replace>
                 <SidebarMenuButton
                   tooltip={item.title}
-                  className="relative z-10 hover:bg-transparent hover:font-semibold"
+                  className="relative z-10 hover:bg-transparent"
                 >
                   {item.icon}
                   <span>{item.title}</span>

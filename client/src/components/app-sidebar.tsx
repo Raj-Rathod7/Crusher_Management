@@ -47,7 +47,7 @@ const data = {
     },
     {
       title: "Sales",
-      url: "#",
+      url: "/sales",
       icon: (
         <IconFolder
         />

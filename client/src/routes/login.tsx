@@ -1,7 +1,7 @@
 import { useAuth } from '#/lib/auth-context';
-import { LoginForm } from '@/components/login-form'
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
-import { GalleryVerticalEnd } from "lucide-react"
+import { LoginForm } from '@/components/login-form';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { GalleryVerticalEnd } from "lucide-react";
 
 export const Route = createFileRoute('/login')({
   component: RouteComponent,

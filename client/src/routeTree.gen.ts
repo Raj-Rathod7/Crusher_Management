@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppTruckEntryRouteImport } from './routes/_app/truck-entry'
+import { Route as AppTruckEntryIndexRouteImport } from './routes/_app/truck-entry/index'
+import { Route as AppSalesIndexRouteImport } from './routes/_app/sales/index'
+import { Route as AppTruckEntryNewRouteImport } from './routes/_app/truck-entry/new'
+import { Route as AppSalesNewRouteImport } from './routes/_app/sales/new'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -28,35 +31,79 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppTruckEntryRoute = AppTruckEntryRouteImport.update({
-  id: '/truck-entry',
-  path: '/truck-entry',
+const AppTruckEntryIndexRoute = AppTruckEntryIndexRouteImport.update({
+  id: '/truck-entry/',
+  path: '/truck-entry/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
+  id: '/sales/',
+  path: '/sales/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppTruckEntryNewRoute = AppTruckEntryNewRouteImport.update({
+  id: '/truck-entry/new',
+  path: '/truck-entry/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSalesNewRoute = AppSalesNewRouteImport.update({
+  id: '/sales/new',
+  path: '/sales/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
-  '/truck-entry': typeof AppTruckEntryRoute
+  '/sales/new': typeof AppSalesNewRoute
+  '/truck-entry/new': typeof AppTruckEntryNewRoute
+  '/sales/': typeof AppSalesIndexRoute
+  '/truck-entry/': typeof AppTruckEntryIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/truck-entry': typeof AppTruckEntryRoute
   '/': typeof AppIndexRoute
+  '/sales/new': typeof AppSalesNewRoute
+  '/truck-entry/new': typeof AppTruckEntryNewRoute
+  '/sales': typeof AppSalesIndexRoute
+  '/truck-entry': typeof AppTruckEntryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
-  '/_app/truck-entry': typeof AppTruckEntryRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/sales/new': typeof AppSalesNewRoute
+  '/_app/truck-entry/new': typeof AppTruckEntryNewRoute
+  '/_app/sales/': typeof AppSalesIndexRoute
+  '/_app/truck-entry/': typeof AppTruckEntryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/truck-entry'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/sales/new'
+    | '/truck-entry/new'
+    | '/sales/'
+    | '/truck-entry/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/truck-entry' | '/'
-  id: '__root__' | '/_app' | '/login' | '/_app/truck-entry' | '/_app/'
+  to:
+    | '/login'
+    | '/'
+    | '/sales/new'
+    | '/truck-entry/new'
+    | '/sales'
+    | '/truck-entry'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/'
+    | '/_app/sales/new'
+    | '/_app/truck-entry/new'
+    | '/_app/sales/'
+    | '/_app/truck-entry/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -87,24 +134,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/truck-entry': {
-      id: '/_app/truck-entry'
+    '/_app/truck-entry/': {
+      id: '/_app/truck-entry/'
       path: '/truck-entry'
-      fullPath: '/truck-entry'
-      preLoaderRoute: typeof AppTruckEntryRouteImport
+      fullPath: '/truck-entry/'
+      preLoaderRoute: typeof AppTruckEntryIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/sales/': {
+      id: '/_app/sales/'
+      path: '/sales'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof AppSalesIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/truck-entry/new': {
+      id: '/_app/truck-entry/new'
+      path: '/truck-entry/new'
+      fullPath: '/truck-entry/new'
+      preLoaderRoute: typeof AppTruckEntryNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/sales/new': {
+      id: '/_app/sales/new'
+      path: '/sales/new'
+      fullPath: '/sales/new'
+      preLoaderRoute: typeof AppSalesNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
   }
 }
 
 interface AppRouteRouteChildren {
-  AppTruckEntryRoute: typeof AppTruckEntryRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppSalesNewRoute: typeof AppSalesNewRoute
+  AppTruckEntryNewRoute: typeof AppTruckEntryNewRoute
+  AppSalesIndexRoute: typeof AppSalesIndexRoute
+  AppTruckEntryIndexRoute: typeof AppTruckEntryIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppTruckEntryRoute: AppTruckEntryRoute,
   AppIndexRoute: AppIndexRoute,
+  AppSalesNewRoute: AppSalesNewRoute,
+  AppTruckEntryNewRoute: AppTruckEntryNewRoute,
+  AppSalesIndexRoute: AppSalesIndexRoute,
+  AppTruckEntryIndexRoute: AppTruckEntryIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
