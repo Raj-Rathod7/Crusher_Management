@@ -3,7 +3,7 @@ import { createTruckEntry } from '#/lib/mutation'
 import type { CreateTruckEntryPayload } from '#/lib/models'
 import { truckEntryKeys } from '#/lib/query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_app/truck-entry/new')({
@@ -12,12 +12,17 @@ export const Route = createFileRoute('/_app/truck-entry/new')({
 
 function RouteComponent() {
   const navigate = useNavigate()
+  const router = useRouter()
   const queryClient = useQueryClient()
 
   const createMutation = useMutation({
     mutationFn: createTruckEntry,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: truckEntryKeys.all })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: truckEntryKeys.all }),
+        queryClient.refetchQueries({ queryKey: truckEntryKeys.all, type: 'all' }),
+        router.invalidate(),
+      ])
       toast.success('Truck entry created.')
       navigate({ to: '/truck-entry' })
     },

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfigurableDataTable } from "@/components/data-table";
 import { StatsCard } from "@/components/stats-card";
@@ -37,6 +38,7 @@ type TruckRow = {
 
 function RouteComponent() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: truckEntryKeys.all,
@@ -59,7 +61,11 @@ function RouteComponent() {
   const deleteMutation = useMutation({
     mutationFn: deleteTruckEntry,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: truckEntryKeys.all })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: truckEntryKeys.all }),
+        queryClient.refetchQueries({ queryKey: truckEntryKeys.all, type: 'all' }),
+        router.invalidate(),
+      ])
       setEntryToDelete(null)
       toast.success("Truck entry deleted.")
     },

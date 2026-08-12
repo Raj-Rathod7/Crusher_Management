@@ -39,6 +39,7 @@ type TruckEntryFormProps = {
   submitLabel: string
   isSubmitting?: boolean
   initialValues?: Partial<TruckEntryFormValues>
+  initialMaterialName?: string
   onSubmit: (payload: CreateTruckEntryPayload) => void
 }
 
@@ -104,6 +105,7 @@ export function TruckEntryForm({
   submitLabel,
   isSubmitting = false,
   initialValues,
+  initialMaterialName,
   onSubmit,
 }: TruckEntryFormProps) {
   const [form, setForm] = React.useState<TruckEntryFormValues>({
@@ -128,6 +130,27 @@ export function TruckEntryForm({
     })
   }, [initialValues])
 
+  const activeMaterials = materials.filter((material) => material.isActive !== false)
+
+  React.useEffect(() => {
+    if (form.materialTypeId || !initialMaterialName || activeMaterials.length === 0) {
+      return
+    }
+
+    const matchedMaterial = activeMaterials.find(
+      (material) => material.name.trim().toLowerCase() === initialMaterialName.trim().toLowerCase()
+    )
+
+    if (!matchedMaterial) {
+      return
+    }
+
+    setForm((current) => ({
+      ...current,
+      materialTypeId: String(matchedMaterial.id),
+    }))
+  }, [activeMaterials, form.materialTypeId, initialMaterialName])
+
   const handleChange = (field: keyof TruckEntryFormValues, value: string) => {
     setForm((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
@@ -145,7 +168,6 @@ export function TruckEntryForm({
     onSubmit(toPayload(form))
   }
 
-  const activeMaterials = materials.filter((material) => material.isActive !== false)
   const selectedMaterial = activeMaterials.find(
     (material) => String(material.id) === form.materialTypeId
   )

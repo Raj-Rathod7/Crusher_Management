@@ -3,7 +3,7 @@ import type { CreateTruckEntryPayload } from '#/lib/models'
 import { updateTruckEntry } from '#/lib/mutation'
 import { getTruckEntryById, truckEntryKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_app/truck-entry/$entryId/edit')({
@@ -14,6 +14,7 @@ function RouteComponent() {
   const { entryId } = Route.useParams()
   const numericEntryId = Number(entryId)
   const navigate = useNavigate()
+  const router = useRouter()
   const queryClient = useQueryClient()
 
   const { data: entry } = useQuery({
@@ -32,6 +33,9 @@ function RouteComponent() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: truckEntryKeys.all }),
         queryClient.invalidateQueries({ queryKey: truckEntryKeys.detail(entryId) }),
+        queryClient.refetchQueries({ queryKey: truckEntryKeys.all, type: 'all' }),
+        queryClient.refetchQueries({ queryKey: truckEntryKeys.detail(entryId), type: 'all' }),
+        router.invalidate(),
       ])
       toast.success('Truck entry updated.')
       navigate({ to: '/truck-entry' })
@@ -52,6 +56,7 @@ function RouteComponent() {
       backLabel="Back to entries"
       submitLabel="Update truck entry"
       isSubmitting={updateMutation.isPending}
+      initialMaterialName={entry.materialName ?? undefined}
       initialValues={{
         entryDate: entry.entryDate,
         truckNumber: entry.truckNumber,
