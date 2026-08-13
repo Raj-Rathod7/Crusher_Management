@@ -1,3 +1,4 @@
+import { SummaryRow } from '#/components/summary-row'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -85,17 +86,6 @@ function toPayload(form: TruckEntryFormValues): CreateTruckEntryPayload {
     supplierName: form.supplierName.trim() || undefined,
     remarks: form.remarks.trim() || undefined,
   }
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-sm font-medium leading-5 wrap-break-word">{value}</span>
-    </div>
-  )
 }
 
 export function TruckEntryForm({

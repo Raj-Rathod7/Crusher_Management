@@ -1,3 +1,4 @@
+import { SummaryRow } from '#/components/summary-row'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -252,22 +253,10 @@ export function CustomerForm({
             </div>
 
             <div className="rounded-lg border px-4 py-3">
-              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</span>
-                <span className="text-sm font-medium leading-5 wrap-break-word">{form.state.values.name.trim() || 'Not set'}</span>
-              </div>
-              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Phone</span>
-                <span className="text-sm font-medium leading-5 wrap-break-word">{form.state.values.phone.trim() || 'Not set'}</span>
-              </div>
-              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Address</span>
-                <span className="text-sm font-medium leading-5 wrap-break-word">{form.state.values.address.trim() || 'Not set'}</span>
-              </div>
-              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</span>
-                <span className="text-sm font-medium leading-5 wrap-break-word">{form.state.values.notes.trim() || 'None'}</span>
-              </div>
+              <SummaryRow label="Name" value={form.state.values.name.trim() || 'Not set'} />
+              <SummaryRow label="Phone" value={form.state.values.phone.trim() || 'Not set'} />
+              <SummaryRow label="Address" value={form.state.values.address.trim() || 'Not set'} />
+              <SummaryRow label="Notes" value={form.state.values.notes.trim() || 'None'} />
             </div>
           </aside>
         )}

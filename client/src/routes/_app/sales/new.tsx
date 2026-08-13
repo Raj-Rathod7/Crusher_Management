@@ -1,5 +1,5 @@
 import { CustomerForm } from '#/components/customer-form'
-import { Badge } from '#/components/ui/badge'
+import { SummaryRow } from '#/components/summary-row'
 import { Button } from '#/components/ui/button'
 import {
   Dialog,
@@ -109,21 +109,6 @@ function validateForm(form: FormState) {
   }
 
   return errors
-}
-
-function SummaryRow({ label, value, isBadge = false }: { label: string; value: string, isBadge?: boolean }) {
-  return (
-    <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-      {isBadge ? 
-      <Badge variant='outline' className="bg-primary/20 text-primary p-3">
-        {value}
-      </Badge>
-      :
-        <span className="text-sm font-medium leading-5 wrap-break-word">{value}</span>
-      }
-    </div>
-  )
 }
 
 function deriveInvoiceStatus(totalAmount: number, amountPaid: number) {
