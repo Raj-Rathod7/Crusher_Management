@@ -1,8 +1,12 @@
 import { apiClient } from "../common/api";
-import type { AuthResponse, CreateInvoicePayload, CreateTruckEntryPayload, Invoice, TruckEntry } from "../models";
+import type { AuthResponse, CreateCustomerPayload, CreateInvoicePayload, CreateTruckEntryPayload, Customer, Invoice, TruckEntry } from "../models";
 
 export const login = async (username: string, password: string) => {
   return apiClient.post<AuthResponse>("/auth/login", {username, password}, {auth: false});
+}
+
+export const createCustomer = async (payload: CreateCustomerPayload) => {
+  return apiClient.post<Customer>("/customers", payload);
 }
 
 export const createTruckEntry = async (payload: CreateTruckEntryPayload) => {

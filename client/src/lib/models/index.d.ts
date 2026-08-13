@@ -71,3 +71,10 @@ export type CreateInvoicePayload = {
   status: string;
   remarks?: string;
 }
+
+export type CreateCustomerPayload = {
+  name: string;
+  phone?: string;
+  address?: string;
+  notes?: string;
+}

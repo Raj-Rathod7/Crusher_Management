@@ -14,8 +14,10 @@ import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppTruckEntryIndexRouteImport } from './routes/_app/truck-entry/index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app/sales/index'
+import { Route as AppCustomerIndexRouteImport } from './routes/_app/customer/index'
 import { Route as AppTruckEntryNewRouteImport } from './routes/_app/truck-entry/new'
 import { Route as AppSalesNewRouteImport } from './routes/_app/sales/new'
+import { Route as AppCustomerNewRouteImport } from './routes/_app/customer/new'
 import { Route as AppTruckEntryEntryIdEditRouteImport } from './routes/_app/truck-entry/$entryId/edit'
 
 const LoginRoute = LoginRouteImport.update({
@@ -42,6 +44,11 @@ const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
   path: '/sales/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppCustomerIndexRoute = AppCustomerIndexRouteImport.update({
+  id: '/customer/',
+  path: '/customer/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppTruckEntryNewRoute = AppTruckEntryNewRouteImport.update({
   id: '/truck-entry/new',
   path: '/truck-entry/new',
@@ -50,6 +57,11 @@ const AppTruckEntryNewRoute = AppTruckEntryNewRouteImport.update({
 const AppSalesNewRoute = AppSalesNewRouteImport.update({
   id: '/sales/new',
   path: '/sales/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCustomerNewRoute = AppCustomerNewRouteImport.update({
+  id: '/customer/new',
+  path: '/customer/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppTruckEntryEntryIdEditRoute =
@@ -62,8 +74,10 @@ const AppTruckEntryEntryIdEditRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/customer/new': typeof AppCustomerNewRoute
   '/sales/new': typeof AppSalesNewRoute
   '/truck-entry/new': typeof AppTruckEntryNewRoute
+  '/customer/': typeof AppCustomerIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/truck-entry/': typeof AppTruckEntryIndexRoute
   '/truck-entry/$entryId/edit': typeof AppTruckEntryEntryIdEditRoute
@@ -71,8 +85,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/': typeof AppIndexRoute
+  '/customer/new': typeof AppCustomerNewRoute
   '/sales/new': typeof AppSalesNewRoute
   '/truck-entry/new': typeof AppTruckEntryNewRoute
+  '/customer': typeof AppCustomerIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/truck-entry': typeof AppTruckEntryIndexRoute
   '/truck-entry/$entryId/edit': typeof AppTruckEntryEntryIdEditRoute
@@ -82,8 +98,10 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/customer/new': typeof AppCustomerNewRoute
   '/_app/sales/new': typeof AppSalesNewRoute
   '/_app/truck-entry/new': typeof AppTruckEntryNewRoute
+  '/_app/customer/': typeof AppCustomerIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/truck-entry/': typeof AppTruckEntryIndexRoute
   '/_app/truck-entry/$entryId/edit': typeof AppTruckEntryEntryIdEditRoute
@@ -93,8 +111,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/customer/new'
     | '/sales/new'
     | '/truck-entry/new'
+    | '/customer/'
     | '/sales/'
     | '/truck-entry/'
     | '/truck-entry/$entryId/edit'
@@ -102,8 +122,10 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/'
+    | '/customer/new'
     | '/sales/new'
     | '/truck-entry/new'
+    | '/customer'
     | '/sales'
     | '/truck-entry'
     | '/truck-entry/$entryId/edit'
@@ -112,8 +134,10 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/'
+    | '/_app/customer/new'
     | '/_app/sales/new'
     | '/_app/truck-entry/new'
+    | '/_app/customer/'
     | '/_app/sales/'
     | '/_app/truck-entry/'
     | '/_app/truck-entry/$entryId/edit'
@@ -161,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/customer/': {
+      id: '/_app/customer/'
+      path: '/customer'
+      fullPath: '/customer/'
+      preLoaderRoute: typeof AppCustomerIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/truck-entry/new': {
       id: '/_app/truck-entry/new'
       path: '/truck-entry/new'
@@ -175,6 +206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/customer/new': {
+      id: '/_app/customer/new'
+      path: '/customer/new'
+      fullPath: '/customer/new'
+      preLoaderRoute: typeof AppCustomerNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/truck-entry/$entryId/edit': {
       id: '/_app/truck-entry/$entryId/edit'
       path: '/truck-entry/$entryId/edit'
@@ -187,8 +225,10 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppCustomerNewRoute: typeof AppCustomerNewRoute
   AppSalesNewRoute: typeof AppSalesNewRoute
   AppTruckEntryNewRoute: typeof AppTruckEntryNewRoute
+  AppCustomerIndexRoute: typeof AppCustomerIndexRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
   AppTruckEntryIndexRoute: typeof AppTruckEntryIndexRoute
   AppTruckEntryEntryIdEditRoute: typeof AppTruckEntryEntryIdEditRoute
@@ -196,8 +236,10 @@ interface AppRouteRouteChildren {
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppCustomerNewRoute: AppCustomerNewRoute,
   AppSalesNewRoute: AppSalesNewRoute,
   AppTruckEntryNewRoute: AppTruckEntryNewRoute,
+  AppCustomerIndexRoute: AppCustomerIndexRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
   AppTruckEntryIndexRoute: AppTruckEntryIndexRoute,
   AppTruckEntryEntryIdEditRoute: AppTruckEntryEntryIdEditRoute,

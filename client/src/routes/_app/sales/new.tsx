@@ -1,5 +1,13 @@
+import { CustomerForm } from '#/components/customer-form'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '#/components/ui/dialog'
 import {
   Field,
   FieldContent,
@@ -15,14 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select'
-import { createSale } from '#/lib/mutation'
-import type { CreateInvoicePayload } from '#/lib/models'
+import { createCustomer, createSale } from '#/lib/mutation'
+import type { CreateInvoicePayload, Customer } from '#/lib/models'
 import { customerKeys, getAllCustomers, salesKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { IconArrowLeft, IconPlus, IconReceipt } from '@tabler/icons-react'
 import * as React from 'react'
 import { toast } from 'sonner'
+import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '#/components/ui/combobox'
 
 export const Route = createFileRoute('/_app/sales/new')({
   component: RouteComponent,
@@ -94,6 +103,7 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const [form, setForm] = React.useState<FormState>(initialFormState)
   const [errors, setErrors] = React.useState<FormErrors>({})
+  const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
 
   const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
     queryKey: customerKeys.all,
@@ -113,6 +123,19 @@ function RouteComponent() {
     },
     onError: () => {
       toast.error('Failed to create sale.')
+    },
+  })
+
+  const createCustomerMutation = useMutation({
+    mutationFn: createCustomer,
+    onSuccess: async (customer) => {
+      await queryClient.invalidateQueries({ queryKey: customerKeys.all })
+      setForm((current) => ({ ...current, customerId: String(customer.id) }))
+      setCustomerDialogOpen(false)
+      toast.success('Customer created.')
+    },
+    onError: () => {
+      toast.error('Failed to create customer.')
     },
   })
 
@@ -203,22 +226,47 @@ function RouteComponent() {
               <Field>
                 <FieldLabel htmlFor="customerId">Customer</FieldLabel>
                 <FieldContent>
-                  <Select
-                    value={form.customerId}
-                    onValueChange={(value) => handleChange('customerId', value)}
-                    disabled={isLoadingCustomers || activeCustomers.length === 0}
-                  >
-                    <SelectTrigger id="customerId" className="w-full">
-                      <SelectValue placeholder={isLoadingCustomers ? 'Loading customers' : 'Select customer'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeCustomers.map((customer) => (
-                        <SelectItem key={customer.id} value={String(customer.id)}>
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                     <Combobox
+                        items={customers}
+                        itemToStringValue={(customer: Customer) => customer.name}
+                      >
+                        <ComboboxInput placeholder="Select a customer" />
+                        <ComboboxContent>
+                          <ComboboxEmpty>No items found.</ComboboxEmpty>
+                          <ComboboxList>
+                            {(customer) => (
+                              <ComboboxItem key={customer.value} value={customer}>
+                                {customer.name}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox> 
+                    </div>
+
+                    <Dialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button type="button" variant="outline" className="shrink-0">
+                          New customer
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl p-6">
+                        <DialogHeader className="mb-4 p-0">
+                          <DialogTitle>New customer</DialogTitle>
+                        </DialogHeader>
+                        <CustomerForm
+                          submitLabel="Add customer"
+                          isSubmitting={createCustomerMutation.isPending}
+                          showSummary={false}
+                          variant="dialog"
+                          onCancel={() => setCustomerDialogOpen(false)}
+                          onSubmit={(payload) => createCustomerMutation.mutate(payload)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                   <FieldError>{errors.customerId}</FieldError>
                 </FieldContent>
               </Field>

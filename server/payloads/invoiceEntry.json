@@ -1,0 +1,28 @@
+{
+  "invoiceItems": [
+    {
+      "id": 1,
+      "materialTypeId": 1,
+      "quantity": 100,
+      "rate": 100,
+      "amount": 10000,
+      "truckNumber": ""
+    },
+    {
+      "materialTypeId": 2,
+      "quantity": 100,
+      "rate": 100,
+      "amount": 10000,
+      "truckNumber": ""
+    }
+  ],
+  "invoiceNumber": "",
+  "invoiceDate": "",
+  "customerId": 1,
+  "totalAmount": 20000,
+  "paidAmount": 20000,
+  "balanceAmount": 0,
+  "status": "PAID | UNPAID | PARTIAL",
+  "remarks": "",
+  "id": 1
+}

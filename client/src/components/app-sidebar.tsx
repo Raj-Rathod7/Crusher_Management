@@ -38,14 +38,6 @@ const data = {
       ),
     },
     {
-      title: "Analytics",
-      url: "#",
-      icon: (
-        <IconChartBar
-        />
-      ),
-    },
-    {
       title: "Sales",
       url: "/sales",
       icon: (
@@ -53,6 +45,22 @@ const data = {
         />
       ),
     },
+    {
+      title: "Customers",
+      url: "/customer",
+      icon: (
+        <IconUsers />
+      )
+    },
+    {
+      title: "Analytics",
+      url: "#",
+      icon: (
+        <IconChartBar
+        />
+      ),
+    },
+    
     {
       title: "Workers",
       url: "#",
