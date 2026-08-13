@@ -16,6 +16,7 @@ export const salesKeys = {
 
 export const customerKeys = {
   all: ['customers'] as const,
+  detail: (id: number | string) => ['customers', String(id)] as const,
 }
 
 export const getAllTruckEntries = async () => {
@@ -36,4 +37,8 @@ export const getAllSales = async () => {
 
 export const getAllCustomers = async () => {
   return apiClient.get<Customer[]>('/customers')
+}
+
+export const getCustomerById = async (id: number | string) => {
+  return apiClient.get<Customer>(`/customers/${id}`)
 }

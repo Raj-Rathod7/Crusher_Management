@@ -25,6 +25,7 @@ type CustomerFormProps = {
   backLabel?: string
   submitLabel: string
   isSubmitting?: boolean
+  initialValues?: Partial<CustomerFormValues>
   onSubmit: (payload: CreateCustomerPayload) => void
   onCancel?: () => void
   showSummary?: boolean
@@ -55,13 +56,17 @@ export function CustomerForm({
   backLabel,
   submitLabel,
   isSubmitting = false,
+  initialValues,
   onSubmit,
   onCancel,
   showSummary = true,
   variant = 'page',
 }: CustomerFormProps) {
   const form = useForm({
-    defaultValues: defaultFormValues,
+    defaultValues: {
+      ...defaultFormValues,
+      ...initialValues,
+    },
     onSubmit: async ({ value }) => {
       onSubmit(toPayload(value))
     },

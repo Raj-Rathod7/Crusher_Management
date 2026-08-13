@@ -9,6 +9,10 @@ export const createCustomer = async (payload: CreateCustomerPayload) => {
   return apiClient.post<Customer>("/customers", payload);
 }
 
+export const updateCustomer = async (id: number | string, payload: CreateCustomerPayload) => {
+  return apiClient.put<Customer>(`/customers/${id}`, payload);
+}
+
 export const createTruckEntry = async (payload: CreateTruckEntryPayload) => {
   return apiClient.post<TruckEntry>("/truck-entries", payload);
 }

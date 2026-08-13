@@ -29,9 +29,10 @@ function RouteComponent() {
     }
   })
 
-  const setEntryToDelete = (entry: CustomerRow | null) => {}
+  const setEntryToDelete = (entry: CustomerRow | null) => {
+    void entry
+  }
 
-  console.log(data, isLoading, isError, error);
   return (
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
       <div className="mb-6 flex shrink-0 items-start justify-between gap-4">
@@ -70,11 +71,11 @@ function RouteComponent() {
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">
                   <Link
-                    to="/truck-entry/$entryId/edit"
-                    params={{ entryId: String(row.original.id) }}
+                    to="/customer/$customerId/edit"
+                    params={{ customerId: String(row.original.id) }}
                   >
                     <IconPencil />
-                    <span className="sr-only">Edit truck entry</span>
+                    <span className="sr-only">Edit customer</span>
                   </Link>
                 </Button>
                 <Button
@@ -83,7 +84,7 @@ function RouteComponent() {
                   onClick={() => setEntryToDelete(row.original)}
                 >
                   <IconTrash />
-                  <span className="sr-only">Delete truck entry</span>
+                  <span className="sr-only">Delete customer</span>
                 </Button>
               </div>
             ),

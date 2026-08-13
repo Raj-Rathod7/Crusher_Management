@@ -19,6 +19,7 @@ import { Route as AppTruckEntryNewRouteImport } from './routes/_app/truck-entry/
 import { Route as AppSalesNewRouteImport } from './routes/_app/sales/new'
 import { Route as AppCustomerNewRouteImport } from './routes/_app/customer/new'
 import { Route as AppTruckEntryEntryIdEditRouteImport } from './routes/_app/truck-entry/$entryId/edit'
+import { Route as AppCustomerCustomerIdEditRouteImport } from './routes/_app/customer/$customerId/edit'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -70,6 +71,12 @@ const AppTruckEntryEntryIdEditRoute =
     path: '/truck-entry/$entryId/edit',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const AppCustomerCustomerIdEditRoute =
+  AppCustomerCustomerIdEditRouteImport.update({
+    id: '/customer/$customerId/edit',
+    path: '/customer/$customerId/edit',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/customer/': typeof AppCustomerIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/truck-entry/': typeof AppTruckEntryIndexRoute
+  '/customer/$customerId/edit': typeof AppCustomerCustomerIdEditRoute
   '/truck-entry/$entryId/edit': typeof AppTruckEntryEntryIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -91,6 +99,7 @@ export interface FileRoutesByTo {
   '/customer': typeof AppCustomerIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/truck-entry': typeof AppTruckEntryIndexRoute
+  '/customer/$customerId/edit': typeof AppCustomerCustomerIdEditRoute
   '/truck-entry/$entryId/edit': typeof AppTruckEntryEntryIdEditRoute
 }
 export interface FileRoutesById {
@@ -104,6 +113,7 @@ export interface FileRoutesById {
   '/_app/customer/': typeof AppCustomerIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/truck-entry/': typeof AppTruckEntryIndexRoute
+  '/_app/customer/$customerId/edit': typeof AppCustomerCustomerIdEditRoute
   '/_app/truck-entry/$entryId/edit': typeof AppTruckEntryEntryIdEditRoute
 }
 export interface FileRouteTypes {
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/customer/'
     | '/sales/'
     | '/truck-entry/'
+    | '/customer/$customerId/edit'
     | '/truck-entry/$entryId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/customer'
     | '/sales'
     | '/truck-entry'
+    | '/customer/$customerId/edit'
     | '/truck-entry/$entryId/edit'
   id:
     | '__root__'
@@ -140,6 +152,7 @@ export interface FileRouteTypes {
     | '/_app/customer/'
     | '/_app/sales/'
     | '/_app/truck-entry/'
+    | '/_app/customer/$customerId/edit'
     | '/_app/truck-entry/$entryId/edit'
   fileRoutesById: FileRoutesById
 }
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTruckEntryEntryIdEditRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/customer/$customerId/edit': {
+      id: '/_app/customer/$customerId/edit'
+      path: '/customer/$customerId/edit'
+      fullPath: '/customer/$customerId/edit'
+      preLoaderRoute: typeof AppCustomerCustomerIdEditRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
@@ -231,6 +251,7 @@ interface AppRouteRouteChildren {
   AppCustomerIndexRoute: typeof AppCustomerIndexRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
   AppTruckEntryIndexRoute: typeof AppTruckEntryIndexRoute
+  AppCustomerCustomerIdEditRoute: typeof AppCustomerCustomerIdEditRoute
   AppTruckEntryEntryIdEditRoute: typeof AppTruckEntryEntryIdEditRoute
 }
 
@@ -242,6 +263,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppCustomerIndexRoute: AppCustomerIndexRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
   AppTruckEntryIndexRoute: AppTruckEntryIndexRoute,
+  AppCustomerCustomerIdEditRoute: AppCustomerCustomerIdEditRoute,
   AppTruckEntryEntryIdEditRoute: AppTruckEntryEntryIdEditRoute,
 }
 
