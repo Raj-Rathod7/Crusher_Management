@@ -91,6 +91,7 @@ function RouteComponent() {
       console.error('Error loading sales:', error)
       toast.error('Failed to load sales. Please try again later.', {
         style: {
+          border: '1px solid red',
           color: 'red',
         },
       })

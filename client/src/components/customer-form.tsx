@@ -92,6 +92,7 @@ export function CustomerForm({
             className="flex flex-col gap-6"
             onSubmit={(event) => {
               event.preventDefault()
+              event.stopPropagation()
               void form.handleSubmit()
             }}
           >

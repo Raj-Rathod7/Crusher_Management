@@ -107,6 +107,7 @@ function RouteComponent() {
       toast.error("Failed to load truck entries. Please try again later.", {
         style: {
           color: "red",
+          border: '1px solid red'
         },
       });
     }
