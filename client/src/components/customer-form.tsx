@@ -1,6 +1,4 @@
-import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
-import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -10,16 +8,24 @@ import {
   FieldLabel,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
 import type { CreateCustomerPayload } from '#/lib/models'
 import { useForm } from '@tanstack/react-form'
 import { useNavigate } from '@tanstack/react-router'
+import { z } from 'zod'
 
-type CustomerFormValues = {
-  name: string
-  phone: string
-  address: string
-  notes: string
-}
+const customerFormSchema = z.object({
+  name: z.string().trim().min(1, 'Customer name is required.').min(2, 'Name must be at least 2 characters.'),
+  phone: z.string().trim().refine(
+    (value) => !value || /^[+()\d\s-]{7,20}$/.test(value),
+    'Phone must be 7-20 characters using digits, spaces, +, -, or parentheses.'
+  ),
+  address: z.string().trim().max(500, 'Address must be 500 characters or less.'),
+  notes: z.string().trim().max(1000, 'Notes must be 1000 characters or less.'),
+})
+
+type CustomerFormValues = z.infer<typeof customerFormSchema>
+type CustomerFieldName = keyof CustomerFormValues
 
 type CustomerFormProps = {
   title?: string
@@ -30,7 +36,6 @@ type CustomerFormProps = {
   initialValues?: Partial<CustomerFormValues>
   onSubmit: (payload: CreateCustomerPayload) => void
   onCancel?: () => void
-  showSummary?: boolean
   variant?: 'page' | 'dialog'
 }
 
@@ -40,8 +45,6 @@ const defaultFormValues: CustomerFormValues = {
   address: '',
   notes: '',
 }
-
-const phonePattern = /^[+()\d\s-]{7,20}$/
 
 function toPayload(form: CustomerFormValues): CreateCustomerPayload {
   return {
@@ -61,7 +64,6 @@ export function CustomerForm({
   initialValues,
   onSubmit,
   onCancel,
-  showSummary = true,
   variant = 'page',
 }: CustomerFormProps) {
   const navigate = useNavigate()
@@ -70,40 +72,19 @@ export function CustomerForm({
       ...defaultFormValues,
       ...initialValues,
     },
+    validators: {
+      onSubmit: customerFormSchema,
+    },
     onSubmit: async ({ value }) => {
       onSubmit(toPayload(value))
     },
   })
 
   const isPage = variant === 'page'
-  const customerName = form.state.values.name.trim()
-  const customerStatus = customerName ? 'Ready to review' : 'Name required'
-  const customerStatusClassName = customerName
-    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-    : 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-
-  const sidebarContent = isPage && showSummary ? (
-    <>
-      <div className="mb-5 border-b border-border/80 pb-4">
-        <h2 className="text-base font-semibold">Customer summary</h2>
-        <p className="text-sm text-muted-foreground">Live snapshot before save.</p>
-      </div>
-
-      <div className="rounded-lg border px-4 py-3">
-        <div className="mb-3 flex items-center justify-between gap-3 border-b pb-3">
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Profile status</p>
-            <p className="mt-1 text-sm font-semibold">{customerName || 'New customer'}</p>
-          </div>
-          <Badge variant="outline" className={customerStatusClassName}>{customerStatus}</Badge>
-        </div>
-        <SummaryRow label="Name" value={customerName || 'Not set'} />
-        <SummaryRow label="Phone" value={form.state.values.phone.trim() || 'Not set'} />
-        <SummaryRow label="Address" value={form.state.values.address.trim() || 'Not set'} />
-        <SummaryRow label="Notes" value={form.state.values.notes.trim() || 'None'} />
-      </div>
-    </>
-  ) : undefined
+  const getFieldError = (name: CustomerFieldName, value: string) => {
+    const result = customerFormSchema.shape[name].safeParse(value)
+    return result.success ? undefined : result.error.issues[0]?.message
+  }
 
   const formContent = (
           <form
@@ -118,11 +99,8 @@ export function CustomerForm({
               <form.Field
                 name="name"
                 validators={{
-                  onChange: ({ value }) => {
-                    if (!value.trim()) return 'Customer name is required.'
-                    if (value.trim().length < 2) return 'Name must be at least 2 characters.'
-                    return undefined
-                  },
+                  onBlur: ({ value }) => getFieldError('name', value),
+                  onChange: ({ value }) => getFieldError('name', value),
                 }}
               >
                 {(field) => (
@@ -135,8 +113,9 @@ export function CustomerForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         placeholder="Enter customer name"
+                        aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
-                      {field.state.meta.errors.length > 0 && (
+                      {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
                         <FieldError>{field.state.meta.errors[0]}</FieldError>
                       )}
                     </FieldContent>
@@ -147,13 +126,8 @@ export function CustomerForm({
               <form.Field
                 name="phone"
                 validators={{
-                  onChange: ({ value }) => {
-                    if (!value.trim()) return undefined
-                    if (!phonePattern.test(value.trim())) {
-                      return 'Phone must be 7-20 characters using digits, spaces, +, -, or parentheses.'
-                    }
-                    return undefined
-                  },
+                  onBlur: ({ value }) => getFieldError('phone', value),
+                  onChange: ({ value }) => getFieldError('phone', value),
                 }}
               >
                 {(field) => (
@@ -167,8 +141,9 @@ export function CustomerForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         placeholder="Optional phone"
+                        aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
-                      {field.state.meta.errors.length > 0 && (
+                      {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
                         <FieldError>{field.state.meta.errors[0]}</FieldError>
                       )}
                     </FieldContent>
@@ -179,26 +154,24 @@ export function CustomerForm({
               <form.Field
                 name="address"
                 validators={{
-                  onChange: ({ value }) => {
-                    if (!value.trim()) return undefined
-                    if (value.trim().length > 500) return 'Address must be 500 characters or less.'
-                    return undefined
-                  },
+                  onBlur: ({ value }) => getFieldError('address', value),
+                  onChange: ({ value }) => getFieldError('address', value),
                 }}
               >
                 {(field) => (
                   <Field className="md:col-span-2">
                     <FieldLabel htmlFor="address">Address</FieldLabel>
                     <FieldContent>
-                      <textarea
+                      <Textarea
                         id="address"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         placeholder="Optional customer address"
-                        className="min-h-24 rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        className="min-h-24"
+                        aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
-                      {field.state.meta.errors.length > 0 && (
+                      {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
                         <FieldError>{field.state.meta.errors[0]}</FieldError>
                       )}
                     </FieldContent>
@@ -209,26 +182,24 @@ export function CustomerForm({
               <form.Field
                 name="notes"
                 validators={{
-                  onChange: ({ value }) => {
-                    if (!value.trim()) return undefined
-                    if (value.trim().length > 1000) return 'Notes must be 1000 characters or less.'
-                    return undefined
-                  },
+                  onBlur: ({ value }) => getFieldError('notes', value),
+                  onChange: ({ value }) => getFieldError('notes', value),
                 }}
               >
                 {(field) => (
                   <Field className="md:col-span-2">
                     <FieldLabel htmlFor="notes">Notes</FieldLabel>
                     <FieldContent>
-                      <textarea
+                      <Textarea
                         id="notes"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         placeholder="Optional notes"
-                        className="min-h-28 rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        className="min-h-28"
+                        aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
-                      {field.state.meta.errors.length > 0 && (
+                      {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
                         <FieldError>{field.state.meta.errors[0]}</FieldError>
                       )}
                     </FieldContent>
@@ -244,7 +215,7 @@ export function CustomerForm({
                 </Button>
               ) : (
                 <Button type="button" variant="outline" onClick={onCancel}>
-                  Back
+                  Cancel
                 </Button>
               )}
               <Button type="submit" disabled={isSubmitting}>
@@ -265,7 +236,6 @@ export function CustomerForm({
       backLabel={backLabel}
       backTo="/customer"
       badge="Customer entry"
-      sidebar={sidebarContent}
     >
       {formContent}
     </FormPageLayout>

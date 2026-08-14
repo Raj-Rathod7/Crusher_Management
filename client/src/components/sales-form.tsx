@@ -539,7 +539,6 @@ export function SalesForm({
                         <CustomerForm
                           submitLabel="Add customer"
                           isSubmitting={createCustomerMutation.isPending}
-                          showSummary={false}
                           variant="dialog"
                           onCancel={() => setCustomerDialogOpen(false)}
                           onSubmit={(payload) => createCustomerMutation.mutate(payload)}
