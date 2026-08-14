@@ -1,4 +1,5 @@
 import { SummaryRow } from '#/components/summary-row'
+import { FormPageLayout } from '#/components/form-page-layout'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -10,8 +11,7 @@ import {
 import { Input } from '#/components/ui/input'
 import type { CreateCustomerPayload } from '#/lib/models'
 import { useForm } from '@tanstack/react-form'
-import { Link } from '@tanstack/react-router'
-import { IconArrowLeft } from '@tabler/icons-react'
+import { useNavigate } from '@tanstack/react-router'
 
 type CustomerFormValues = {
   name: string
@@ -63,6 +63,7 @@ export function CustomerForm({
   showSummary = true,
   variant = 'page',
 }: CustomerFormProps) {
+  const navigate = useNavigate()
   const form = useForm({
     defaultValues: {
       ...defaultFormValues,
@@ -75,25 +76,23 @@ export function CustomerForm({
 
   const isPage = variant === 'page'
 
-  return (
-    <div className={isPage ? 'min-h-[calc(100vh-5rem)] p-6' : 'w-full'}>
-      {isPage && (
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">{title}</h1>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
-          <Button asChild variant="outline">
-            <Link to="/customer">
-              <IconArrowLeft />
-              {backLabel}
-            </Link>
-          </Button>
-        </div>
-      )}
+  const sidebarContent = isPage && showSummary ? (
+    <>
+      <div className="mb-5 border-b border-border/80 pb-4">
+        <h2 className="text-base font-semibold">Customer summary</h2>
+        <p className="text-sm text-muted-foreground">Live snapshot before save.</p>
+      </div>
 
-      <div className={isPage ? 'grid min-h-[calc(100vh-10rem)] gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]' : 'w-full'}>
-        <div className={isPage ? 'rounded-xl border p-6 lg:p-8' : 'w-full'}>
+      <div className="rounded-lg border px-4 py-3">
+        <SummaryRow label="Name" value={form.state.values.name.trim() || 'Not set'} />
+        <SummaryRow label="Phone" value={form.state.values.phone.trim() || 'Not set'} />
+        <SummaryRow label="Address" value={form.state.values.address.trim() || 'Not set'} />
+        <SummaryRow label="Notes" value={form.state.values.notes.trim() || 'None'} />
+      </div>
+    </>
+  ) : undefined
+
+  const formContent = (
           <form
             className="flex flex-col gap-6"
             onSubmit={(event) => {
@@ -227,11 +226,8 @@ export function CustomerForm({
 
             <div className="flex items-center justify-end gap-3 border-t pt-4">
               {isPage ? (
-                <Button asChild type="button" variant="outline">
-                  <Link to="/customer">
-                    <IconArrowLeft />
-                    {backLabel}
-                  </Link>
+                <Button type="button" variant="outline">
+                  Cancel
                 </Button>
               ) : (
                 <Button type="button" variant="outline" onClick={onCancel}>
@@ -243,24 +239,22 @@ export function CustomerForm({
               </Button>
             </div>
           </form>
-        </div>
+  )
 
-        {isPage && showSummary && (
-          <aside className="h-fit rounded-xl border p-5 lg:sticky lg:top-6">
-            <div className="mb-5 border-b pb-4">
-              <h2 className="text-base font-semibold">Customer summary</h2>
-              <p className="text-sm text-muted-foreground">Live snapshot before save.</p>
-            </div>
+  if (!isPage) {
+    return formContent
+  }
 
-            <div className="rounded-lg border px-4 py-3">
-              <SummaryRow label="Name" value={form.state.values.name.trim() || 'Not set'} />
-              <SummaryRow label="Phone" value={form.state.values.phone.trim() || 'Not set'} />
-              <SummaryRow label="Address" value={form.state.values.address.trim() || 'Not set'} />
-              <SummaryRow label="Notes" value={form.state.values.notes.trim() || 'None'} />
-            </div>
-          </aside>
-        )}
-      </div>
-    </div>
+  return (
+    <FormPageLayout
+      title={title}
+      description={description}
+      backLabel={backLabel}
+      backTo="/customer"
+      badge="Customer entry"
+      sidebar={sidebarContent}
+    >
+      {formContent}
+    </FormPageLayout>
   )
 }

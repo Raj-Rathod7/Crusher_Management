@@ -1,4 +1,5 @@
 import { SummaryRow } from '#/components/summary-row'
+import { FormPageLayout } from '#/components/form-page-layout'
 import { Button } from '#/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger } from '#/components/ui/combobox'
 import {
@@ -350,34 +351,42 @@ export function SalesForm({
     handleChange('customerId', String(customer.id))
   }
 
-  return (
-    <div className={isPage ? 'min-h-[calc(100vh-5rem)] bg-linear-to-b from-background via-background to-muted/20 p-6' : 'w-full'}>
-      {isPage && (
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-primary">
-              Sales entry
+  const sidebarContent = isPage && showSummary ? (
+    <>
+      <div className="mb-5 border-b border-border/80 pb-4">
+        <h2 className="text-base font-semibold">Invoice summary</h2>
+        <p className="text-sm text-muted-foreground">Live snapshot from current form values.</p>
+      </div>
+
+      <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
+        <IconReceipt className="size-4" />
+        Review before save
+      </div>
+
+      <div className="rounded-xl border border-border/80 bg-muted/20 px-4 py-3">
+        <SummaryRow label="Invoice" value={form.invoiceNumber.trim() || 'Not set'} />
+        <SummaryRow label="Date" value={form.invoiceDate || 'Not set'} />
+        <SummaryRow label="Customer" value={selectedCustomer?.name ?? 'Not set'} />
+        <SummaryRow label="Paid" value={form.amountPaid.trim() || '0.00'} />
+        <SummaryRow label="Balance" value={balance.toFixed(2)} />
+        <SummaryRow isBadge label="Status" value={computedPaymentStatus} />
+        <div className="mt-2 p-1">
+          <div className="flex flex-col dark:bg-accent bg-primary/10 p-2 text-primary dark:text-white rounded border border-primary/10">
+            <div className="text-primary/80">
+              Total
             </div>
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{title || 'New Sale'}</h1>
-              <p className="text-sm text-muted-foreground">
-                {description || 'Create invoice with customer, amount, payment, and status.'}
-              </p>
+            <div className="text-2xl font-bold">
+              {inrConverter.format(Number(form.totalAmount.trim() || '0.00'))}
             </div>
           </div>
-          <Button asChild variant="outline" className="shadow-sm">
-            <Link to={backTo}>
-              <IconArrowLeft />
-              {backLabel || 'Back to sales'}
-            </Link>
-          </Button>
         </div>
-      )}
+      </div>
+    </>
+  ) : undefined
 
-      <div className={isPage ? 'grid min-h-[calc(100vh-10rem)] gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]' : 'w-full'}>
-        <div className={isPage ? 'rounded-2xl border border-border/80 bg-card/90 p-5 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] backdrop-blur-sm lg:p-7' : 'w-full'}>
-          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-            <FieldGroup className="grid gap-4 md:grid-cols-2">
+  const formContent = (
+    <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+      <FieldGroup className="grid gap-4 md:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="invoiceNumber">Invoice number</FieldLabel>
                 <FieldContent>
@@ -661,41 +670,22 @@ export function SalesForm({
               </Button>
             </div>
           </form>
-        </div>
+    )
 
-        {isPage && showSummary && (
-          <aside className="h-fit rounded-2xl border border-border/80 bg-card/90 p-5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.35)] lg:sticky lg:top-6">
-            <div className="mb-5 border-b border-border/80 pb-4">
-              <h2 className="text-base font-semibold">Invoice summary</h2>
-              <p className="text-sm text-muted-foreground">Live snapshot from current form values.</p>
-            </div>
+  if (!isPage) {
+    return formContent
+  }
 
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
-              <IconReceipt className="size-4" />
-              Review before save
-            </div>
-
-            <div className="rounded-xl border border-border/80 bg-muted/20 px-4 py-3">
-              <SummaryRow label="Invoice" value={form.invoiceNumber.trim() || 'Not set'} />
-              <SummaryRow label="Date" value={form.invoiceDate || 'Not set'} />
-              <SummaryRow label="Customer" value={selectedCustomer?.name ?? 'Not set'} />
-              <SummaryRow label="Paid" value={form.amountPaid.trim() || '0.00'} />
-              <SummaryRow label="Balance" value={balance.toFixed(2)} />
-              <SummaryRow isBadge label="Status" value={computedPaymentStatus} />
-              <div className="mt-2 p-1">
-                <div className="flex flex-col dark:bg-accent bg-primary/10 p-2 text-primary dark:text-white rounded border border-primary/10">
-                  <div className="text-primary/80">
-                    Total
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {inrConverter.format(Number(form.totalAmount.trim() || '0.00'))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-        )}
-      </div>
-    </div>
+  return (
+    <FormPageLayout
+      title={title || 'New Sale'}
+      description={description || 'Create invoice with customer, amount, payment, and status.'}
+      backLabel={backLabel || 'Back to sales'}
+      backTo={backTo}
+      badge="Sales entry"
+      sidebar={sidebarContent}
+    >
+      {formContent}
+    </FormPageLayout>
   )
 }

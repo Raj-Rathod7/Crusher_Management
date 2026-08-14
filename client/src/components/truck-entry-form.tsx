@@ -1,4 +1,5 @@
 import { SummaryRow } from '#/components/summary-row'
+import { FormPageLayout } from '#/components/form-page-layout'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -18,8 +19,7 @@ import {
 import type { CreateTruckEntryPayload } from '#/lib/models'
 import { getAllMaterials, materialKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
-import { IconArrowLeft, IconCheck } from '@tabler/icons-react'
+import { IconCheck } from '@tabler/icons-react'
 import * as React from 'react'
 
 type TruckEntryFormValues = {
@@ -162,23 +162,36 @@ export function TruckEntryForm({
     (material) => String(material.id) === form.materialTypeId
   )
 
-  return (
-    <div className="min-h-[calc(100vh-5rem)] p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-        <Button asChild variant="outline">
-          <Link to="/truck-entry">
-            <IconArrowLeft />
-            {backLabel}
-          </Link>
-        </Button>
+  const sidebarContent = (
+    <>
+      <div className="mb-5 border-b border-border/80 pb-4">
+        <h2 className="text-base font-semibold">Entry summary</h2>
+        <p className="text-sm text-muted-foreground">
+          Live snapshot from current form values.
+        </p>
       </div>
 
-      <div className="grid min-h-[calc(100vh-10rem)] gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="rounded-xl border p-6 lg:p-8">
+      <div className="mb-4 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium">
+        <IconCheck className="size-4 text-muted-foreground" />
+        Ready to review before save
+      </div>
+
+      <div className="rounded-lg border px-4 py-3">
+        <SummaryRow label="Truck" value={form.truckNumber.trim() || 'Not set'} />
+        <SummaryRow label="Date" value={form.entryDate || 'Not set'} />
+        <SummaryRow label="Material" value={selectedMaterial?.name ?? 'Not set'} />
+        <SummaryRow label="Quantity" value={form.quantityBrass.trim() ? `${form.quantityBrass} brass` : 'Not set'} />
+        <SummaryRow label="Supplier" value={form.supplierName.trim() || 'Not set'} />
+        <SummaryRow label="Remarks" value={form.remarks.trim() || 'None'} />
+      </div>
+
+      <p className="mt-4 text-xs leading-5 text-muted-foreground">
+        Amount not calculated here. Truck entry API only stores quantity and material.
+      </p>
+    </>
+  )
+
+  const formContent = (
           <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             <FieldGroup className="grid gap-4 md:grid-cols-2">
               <Field>
@@ -273,46 +286,26 @@ export function TruckEntryForm({
             </FieldGroup>
 
             <div className="flex items-center justify-end gap-3 border-t pt-4">
-              <Button asChild type="button" variant="outline">
-                <Link to="/truck-entry">
-                  <IconArrowLeft />
-                  Cancel
-                </Link>
+              <Button type="button" variant="outline">
+                Cancel
               </Button>
               <Button disabled={isSubmitting} type="submit">
                 {isSubmitting ? 'Saving...' : submitLabel}
               </Button>
             </div>
           </form>
-        </div>
+  )
 
-        <aside className="h-fit rounded-xl border p-5 lg:sticky lg:top-6">
-          <div className="mb-5 border-b pb-4">
-            <h2 className="text-base font-semibold">Entry summary</h2>
-            <p className="text-sm text-muted-foreground">
-              Live snapshot from current form values.
-            </p>
-          </div>
-
-          <div className="mb-4 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium">
-            <IconCheck className="size-4 text-muted-foreground" />
-            Ready to review before save
-          </div>
-
-          <div className="rounded-lg border px-4 py-3">
-            <SummaryRow label="Truck" value={form.truckNumber.trim() || 'Not set'} />
-            <SummaryRow label="Date" value={form.entryDate || 'Not set'} />
-            <SummaryRow label="Material" value={selectedMaterial?.name ?? 'Not set'} />
-            <SummaryRow label="Quantity" value={form.quantityBrass.trim() ? `${form.quantityBrass} brass` : 'Not set'} />
-            <SummaryRow label="Supplier" value={form.supplierName.trim() || 'Not set'} />
-            <SummaryRow label="Remarks" value={form.remarks.trim() || 'None'} />
-          </div>
-
-          <p className="mt-4 text-xs leading-5 text-muted-foreground">
-            Amount not calculated here. Truck entry API only stores quantity and material.
-          </p>
-        </aside>
-      </div>
-    </div>
+  return (
+    <FormPageLayout
+      title={title}
+      description={description}
+      backLabel={backLabel}
+      backTo="/truck-entry"
+      badge="Truck entry"
+      sidebar={sidebarContent}
+    >
+      {formContent}
+    </FormPageLayout>
   )
 }
