@@ -9,7 +9,11 @@ import {
   IconChevronsRight,
   IconLayoutColumns,
   IconLoader,
-  IconPlus
+  IconPlus,
+  IconSearch,
+  IconTable,
+  IconFilter,
+  IconX
 } from "@tabler/icons-react"
 import {
   flexRender,
@@ -31,7 +35,10 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent, DropdownMenuTrigger
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -279,68 +286,118 @@ export function ConfigurableDataTable<TData>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
+  const filterableColumns = table.getAllLeafColumns().filter(
+    (column) => (column.columnDef.meta as ColumnMetaConfig | undefined)?.filterable
+  )
+
   return (
     <div className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
-      <div className="flex mb-2">
-        <div className="flex flex-1 items-center">
+      <div className="mb-3 flex flex-col gap-3 border-b border-border/80 pb-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
           {enableGlobalSearch ? (
-            <Input
+            <>
+              <IconSearch className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
                 value={globalSearch}
                 onChange={(event) => setGlobalSearch(event.target.value)}
                 placeholder={globalSearchPlaceholder}
-                className="max-w-sm"
+                className="h-9 max-w-md pl-8 shadow-none"
               />
+            </>
           ) : null}
         </div>
-        {toolbar ? <div className="mr-2 flex items-center gap-2">{toolbar}</div> : null}
-        {enableColumnVisibility ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <IconLayoutColumns />
-                <span className="hidden lg:inline">Customize Columns</span>
-                <span className="lg:hidden">Columns</span>
-                <IconChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" >
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" && column.getCanHide()
-                )
-                .map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
-        {enableAddButton && (
-          <Button asChild className="ml-2">
-            <Link to={addButtonLink}>
-              <IconPlus />
-              {addButtonText}
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {toolbar ? <div className="flex items-center gap-2">{toolbar}</div> : null}
+          {filterableColumns.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <IconFilter />
+                  Filters
+                  {columnFilters.length > 0 && (
+                    <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                      {columnFilters.length}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <DropdownMenuLabel className="p-0 text-sm font-semibold text-foreground">Filter records</DropdownMenuLabel>
+                  {columnFilters.length > 0 && (
+                    <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5 text-muted-foreground" onClick={() => setColumnFilters([])}>
+                      <IconX />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <DropdownMenuSeparator className="mx-0" />
+                <div className="space-y-3 pt-3">
+                  {filterableColumns.map((column) => (
+                    <div key={column.id} className="grid gap-1.5">
+                      <Label htmlFor={`filter-${column.id}`} className="text-xs font-medium text-muted-foreground">
+                        {getFilterLabel(column)}
+                      </Label>
+                      <ColumnFilterInput
+                        column={column}
+                        columnFilters={columnFilters}
+                        setColumnFilters={setColumnFilters}
+                        inputId={`filter-${column.id}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          {enableColumnVisibility ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <IconLayoutColumns />
+                  <span className="hidden lg:inline">Columns</span>
+                  <IconChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" >
+                {table
+                  .getAllColumns()
+                  .filter(
+                    (column) =>
+                      typeof column.accessorFn !== "undefined" && column.getCanHide()
+                  )
+                  .map((column) => (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          {enableAddButton && (
+            <Button asChild size="sm">
+              <Link to={addButtonLink}>
+                <IconPlus />
+                {addButtonText}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className={['mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border', tableClassName ?? ''].filter(Boolean).join(' ')}>
+      <div className={['flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/80 border-t-2 border-t-primary/70 bg-card', tableClassName ?? ''].filter(Boolean).join(' ')}>
         <div className="flex-1 overflow-auto">
           <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted">
+            <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
+                  <TableHead key={header.id} colSpan={header.colSpan} className="h-11 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {header.isPlaceholder
                       ? null
                       : (() => {
@@ -348,27 +405,18 @@ export function ConfigurableDataTable<TData>({
                           const canSort = (columnMeta?.sortable ?? true) && enableSorting
 
                           return (
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-2">
-                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                {header.column.getCanSort() && canSort ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-7 shrink-0"
-                                    onClick={header.column.getToggleSortingHandler()}
-                                  >
-                                    {header.column.getIsSorted() === "desc" ? "↓" : header.column.getIsSorted() === "asc" ? "↑" : "↕"}
-                                  </Button>
-                                ) : null}
-                              </div>
-                              {columnMeta?.filterable ? (
-                                <ColumnFilterInput
-                                  column={header.column}
-                                  columnFilters={columnFilters}
-                                  setColumnFilters={setColumnFilters}
-                                />
+                            <div className="flex items-center gap-1.5">
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {header.column.getCanSort() && canSort ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-6 shrink-0 text-muted-foreground"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                >
+                                  {header.column.getIsSorted() === "desc" ? "↓" : header.column.getIsSorted() === "asc" ? "↑" : "↕"}
+                                </Button>
                               ) : null}
                             </div>
                           )
@@ -381,7 +429,7 @@ export function ConfigurableDataTable<TData>({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={tableColumns.length} className="h-24 text-center">
+                <TableCell colSpan={tableColumns.length} className="h-44 text-center">
                   <div className="inline-flex items-center gap-2 text-muted-foreground">
                     <IconLoader className="size-4 animate-spin" />
                     <span>{loadingMessage}</span>
@@ -392,7 +440,7 @@ export function ConfigurableDataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  className={onRowClick ? "cursor-pointer hover:bg-primary/4.5" : "hover:bg-muted/35"}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={() => onRowClick?.(row.original)}
                   onKeyDown={(event) => {
@@ -403,7 +451,7 @@ export function ConfigurableDataTable<TData>({
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="px-3 py-3">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -411,8 +459,11 @@ export function ConfigurableDataTable<TData>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={tableColumns.length} className="h-24 text-center">
-                  {emptyMessage}
+                <TableCell colSpan={tableColumns.length} className="h-44 text-center">
+                  <div className="inline-flex max-w-sm flex-col items-center gap-2 text-muted-foreground">
+                    <IconTable className="size-5" />
+                    <span>{emptyMessage}</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -422,9 +473,9 @@ export function ConfigurableDataTable<TData>({
       </div>
 
       {enablePagination ? (
-        <div className="flex items-center justify-between px-4 py-4">
-          <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-            {table.getFilteredRowModel().rows.length} row(s) total.
+        <div className="flex items-center justify-between gap-3 border-t border-border/80 bg-muted/20 px-3 py-3">
+          <div className="flex-1 text-sm text-muted-foreground">
+            {table.getFilteredRowModel().rows.length} record{table.getFilteredRowModel().rows.length === 1 ? '' : 's'}
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">
@@ -502,10 +553,12 @@ function ColumnFilterInput({
   column,
   columnFilters,
   setColumnFilters,
+  inputId,
 }: {
   column: any
   columnFilters: ColumnFiltersState
   setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>>
+  inputId: string
 }) {
   const meta = column.columnDef.meta as ColumnMetaConfig | undefined
   const filterType = meta?.filterType ?? "text"
@@ -526,7 +579,7 @@ function ColumnFilterInput({
   if (filterType === "select" && meta?.filterOptions?.length) {
     return (
       <Select value={String(currentFilter?.value ?? "")} onValueChange={updateFilter}>
-        <SelectTrigger className="h-8 w-full" size="sm">
+        <SelectTrigger id={inputId} className="h-8 w-full" size="sm">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
@@ -546,8 +599,13 @@ function ColumnFilterInput({
       onChange={(event) => updateFilter(event.target.value)}
       placeholder={placeholder}
       className="h-8"
+      id={inputId}
     />
   )
+}
+
+function getFilterLabel(column: { id: string; columnDef: { header?: unknown } }) {
+  return typeof column.columnDef.header === "string" ? column.columnDef.header : column.id
 }
 
 

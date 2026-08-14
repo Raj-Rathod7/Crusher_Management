@@ -143,10 +143,12 @@ function RouteComponent() {
           {
             accessorKey: 'expenseDate',
             header: 'Date',
+            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'categoryName',
             header: 'Category',
+            meta: { filterable: true, filterPlaceholder: 'Filter category' },
           },
           {
             accessorKey: 'amount',
@@ -159,6 +161,7 @@ function RouteComponent() {
           {
             id: 'actions',
             header: 'Actions',
+            meta: { sortable: false, searchable: false },
             cell: ({ row }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">

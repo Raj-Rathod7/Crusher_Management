@@ -143,18 +143,22 @@ function RouteComponent() {
           {
             accessorKey: "truckNo",
             header: "Truck No",
+            meta: { filterable: true, filterPlaceholder: "Filter truck" },
           },
           {
             accessorKey: "entryDate",
             header: "Entry Date",
+            meta: { filterable: true, filterType: "date" },
           },
           {
             accessorKey: "material",
             header: "Material",
+            meta: { filterable: true, filterPlaceholder: "Filter material" },
           },
           {
             accessorKey: "supplierName",
             header: "Supplier",
+            meta: { filterable: true, filterPlaceholder: "Filter supplier" },
           },
           {
             accessorKey: "quantityBrass",
@@ -163,6 +167,7 @@ function RouteComponent() {
           {
             id: "actions",
             header: "Actions",
+            meta: { sortable: false, searchable: false },
             cell: ({ row }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">

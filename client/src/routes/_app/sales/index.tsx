@@ -159,14 +159,17 @@ function RouteComponent() {
           {
             accessorKey: 'invoiceNumber',
             header: 'Invoice no',
+            meta: { filterable: true, filterPlaceholder: 'Filter invoice' },
           },
           {
             accessorKey: 'invoiceDate',
             header: 'Date',
+            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'customerName',
             header: 'Customer',
+            meta: { filterable: true, filterPlaceholder: 'Filter customer' },
           },
           {
             accessorKey: 'totalAmount',
@@ -183,6 +186,15 @@ function RouteComponent() {
           {
             accessorKey: 'status',
             header: 'Status',
+            meta: {
+              filterable: true,
+              filterType: 'select',
+              filterOptions: [
+                { label: 'Paid', value: 'PAID' },
+                { label: 'Partial', value: 'PARTIAL' },
+                { label: 'Pending', value: 'PENDING' },
+              ],
+            },
             cell: ({ row }) => (
               <Badge variant={getStatusVariant(row.original.status)}>{row.original.status}</Badge>
             ),

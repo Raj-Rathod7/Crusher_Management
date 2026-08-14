@@ -47,14 +47,17 @@ function RouteComponent() {
           {
             accessorKey: "id",
             header: "ID",
+            meta: { filterable: true, filterType: "number" },
           },
           {
             accessorKey: "name",
             header: "Name",
+            meta: { filterable: true, filterPlaceholder: "Filter name" },
           },
           {
             accessorKey: "phone",
             header: "Phone",
+            meta: { filterable: true, filterPlaceholder: "Filter phone" },
           },
           {
             accessorKey: "address",
@@ -67,6 +70,7 @@ function RouteComponent() {
           {
             id: "actions",
             header: "Actions",
+            meta: { sortable: false, searchable: false },
             cell: ({ row }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">

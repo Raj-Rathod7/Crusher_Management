@@ -18,6 +18,7 @@ import {
   FieldLabel,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -30,7 +31,7 @@ import type { CreateInvoicePayload, Customer } from '#/lib/models'
 import { customerKeys, getAllCustomers, getAllMaterials, materialKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { IconArrowLeft, IconPlus, IconReceipt } from '@tabler/icons-react'
+import { IconArrowLeft, IconCurrencyRupee, IconPlus, IconReceipt, IconUser } from '@tabler/icons-react'
 import { SaveIcon } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -401,51 +402,70 @@ export function SalesForm({
 
   const sidebarContent = isPage && showSummary ? (
     <>
-      <div className="mb-5 border-b border-border/80 pb-4">
-        <h2 className="text-base font-semibold">Invoice summary</h2>
-        <p className="text-sm text-muted-foreground">Live snapshot from current form values.</p>
+      <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-4">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Invoice review</p>
+          <h2 className="mt-1 text-lg font-semibold tracking-normal">Sales summary</h2>
+        </div>
+        <Badge variant="outline" className={paymentStatusBadge.className}>
+          {paymentStatusBadge.label}
+        </Badge>
       </div>
 
-      <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
-        <IconReceipt className="size-4" />
-        Review before save
+      <div className="mt-4 border-l-2 border-primary bg-primary/5 py-3 pr-3 pl-4">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-primary">
+          <IconCurrencyRupee className="size-4" />
+          Invoice total
+        </div>
+        <div className="mt-1 flex items-end justify-between gap-3">
+          <span className="text-3xl font-semibold tracking-normal tabular-nums text-foreground">
+            {inrConverter.format(totalAmount)}
+          </span>
+          <span className="mb-1 text-xs font-medium text-muted-foreground">
+            {invoiceItems.length} item{invoiceItems.length === 1 ? '' : 's'}
+          </span>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-muted/20 px-4 py-3">
-        <SummaryRow label="Invoice" value={form.invoiceNumber.trim() || 'Not set'} />
-        <SummaryRow label="Date" value={form.invoiceDate || 'Not set'} />
-        <SummaryRow label="Customer" value={selectedCustomer?.name ?? 'Not set'} />
-        <SummaryRow
-          isBadge
-          label="Status"
-          value={paymentStatusBadge.label}
-          badgeClassName={paymentStatusBadge.className}
-        />
-
-        <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4">
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
+      <div className="mt-5 grid grid-cols-2 divide-x divide-border/80 border-y border-border/80 py-3">
+          <div className="pr-3">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
               Paid
             </div>
-            <div className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+            <div className="mt-1 text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">
               {inrConverter.format(amountPaid)}
             </div>
           </div>
-          <div className={`rounded-lg border px-3 py-2.5 ${balanceTone.container}`}>
-            <div className={`text-[10px] font-medium uppercase tracking-wide ${balanceTone.label}`}>
+          <div className="pl-3">
+            <div className={`text-[11px] font-medium uppercase tracking-wide ${balanceTone.label}`}>
               Balance
             </div>
-            <div className={`mt-1 text-sm font-semibold ${balanceTone.value}`}>
+            <div className={`mt-1 text-sm font-semibold tabular-nums ${balanceTone.value}`}>
               {inrConverter.format(balance)}
             </div>
           </div>
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <IconReceipt className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Invoice</p>
+            <p className="mt-1 truncate text-sm font-semibold">{form.invoiceNumber.trim() || 'Not set'}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{form.invoiceDate || 'Date not set'}</p>
+          </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between border-t pt-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total</span>
-          <span className="text-lg font-semibold text-foreground">
-            {inrConverter.format(totalAmount)}
-          </span>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <IconUser className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Customer</p>
+            <p className="mt-1 truncate text-sm font-semibold">{selectedCustomer?.name ?? 'Not set'}</p>
+          </div>
         </div>
       </div>
     </>
@@ -453,7 +473,9 @@ export function SalesForm({
 
   const formContent = (
     <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-      <FieldGroup className="grid gap-4 md:grid-cols-2">
+      <FieldGroup className="gap-0">
+        <div className="border-b border-border/80 pb-6">
+          <div className="grid gap-4 md:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="invoiceNumber">Invoice number</FieldLabel>
                 <FieldContent>
@@ -549,7 +571,11 @@ export function SalesForm({
                   <FieldError>{errors.customerId}</FieldError>
                 </FieldContent>
               </Field>
+          </div>
+        </div>
 
+        <div className="border-b border-border/80 py-6">
+          <div className="grid gap-4 md:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="totalAmount">Total amount</FieldLabel>
                 <FieldContent>
@@ -562,6 +588,7 @@ export function SalesForm({
                     onChange={(event) => handleChange('totalAmount', event.target.value)}
                     placeholder="0.00"
                     disabled
+                    className="font-semibold tabular-nums"
                   />
                   <FieldError>{errors.totalAmount}</FieldError>
                 </FieldContent>
@@ -578,20 +605,21 @@ export function SalesForm({
                     value={form.amountPaid}
                     onChange={(event) => handleChange('amountPaid', event.target.value)}
                     placeholder="0.00"
+                    className="font-semibold tabular-nums"
                   />
                   <FieldError>{errors.amountPaid}</FieldError>
                 </FieldContent>
               </Field>
+          </div>
+        </div>
 
-              <Field className="md:col-span-2">
-                <FieldLabel>Invoice items</FieldLabel>
-                <FieldContent>
-                  <div className="rounded-2xl border border-dashed border-border bg-linear-to-br from-muted/40 via-muted/20 to-background p-4 shadow-inner shadow-muted/30">
-                    <div className="mb-3 flex items-center justify-end gap-3">
-                      <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">
-                        {invoiceItems.length} saved
-                      </span>
-                    </div>
+        <div className="py-6">
+          <div className="mb-4 flex justify-end">
+            <Badge variant="secondary" className="shrink-0 tabular-nums">
+              {invoiceItems.length} item{invoiceItems.length === 1 ? '' : 's'}
+            </Badge>
+          </div>
+          <div className="border border-border/80 bg-muted/20 p-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <Field>
                         <FieldLabel htmlFor="item-material">Material</FieldLabel>
@@ -651,34 +679,34 @@ export function SalesForm({
                       </Field>
                     </div>
 
-                    <div className="mt-4 flex justify-end">
-                      <Button type="button" onClick={handleSaveInvoiceItem} className="shadow-sm">
+                    <div className="mt-4 flex justify-end border-t border-border/70 pt-4">
+                      <Button type="button" onClick={handleSaveInvoiceItem}>
                         <SaveIcon />
                         {editingInvoiceItemId ? 'Update item' : 'Save item'}
                       </Button>
                     </div>
-                  </div>
+          </div>
 
-                  {invoiceItems.length > 0 && (
-                    <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          {invoiceItems.length > 0 && (
+                    <div className="mt-4 overflow-x-auto border border-border/80 bg-card">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-muted/40">
+                        <thead className="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
                           <tr>
-                            <th className="px-3 py-2 font-medium">Material</th>
-                            <th className="px-3 py-2 font-medium">Qty</th>
-                            <th className="px-3 py-2 font-medium">Rate</th>
-                            <th className="px-3 py-2 font-medium">Amount</th>
-                            <th className="px-3 py-2 font-medium text-right">Actions</th>
+                            <th className="px-3 py-2.5 font-semibold">Material</th>
+                            <th className="px-3 py-2.5 font-semibold">Qty</th>
+                            <th className="px-3 py-2.5 font-semibold">Rate</th>
+                            <th className="px-3 py-2.5 font-semibold">Amount</th>
+                            <th className="px-3 py-2.5 font-semibold text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {invoiceItems.map((item) => (
-                            <tr key={item.id} className="border-t">
-                              <td className="px-3 py-2">{item.materialName}</td>
-                              <td className="px-3 py-2">{item.quantityBrass}</td>
-                              <td className="px-3 py-2">{item.rate}</td>
-                              <td className="px-3 py-2">{item.amount}</td>
-                              <td className="px-3 py-2">
+                            <tr key={item.id} className="border-t hover:bg-muted/30">
+                              <td className="px-3 py-3 font-medium">{item.materialName}</td>
+                              <td className="px-3 py-3 tabular-nums">{item.quantityBrass}</td>
+                              <td className="px-3 py-3 tabular-nums">{item.rate}</td>
+                              <td className="px-3 py-3 font-medium tabular-nums">{item.amount}</td>
+                              <td className="px-3 py-3">
                                 <div className="flex justify-end gap-2">
                                   <Button type="button" variant="outline" size="sm" onClick={() => handleEditInvoiceItem(item)}>
                                     Edit
@@ -693,23 +721,24 @@ export function SalesForm({
                         </tbody>
                       </table>
                     </div>
-                  )}
-                </FieldContent>
-              </Field>
+          )}
+        </div>
 
-              <Field className="md:col-span-2">
+        <div className="border-t border-border/80 pt-6">
+              <Field>
                 <FieldLabel htmlFor="remarks">Remarks</FieldLabel>
                 <FieldContent>
-                  <textarea
+                  <Textarea
                     id="remarks"
                     value={form.remarks}
                     onChange={(event) => handleChange('remarks', event.target.value)}
-                    placeholder="Optional notes"
-                    className="min-h-32 rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    placeholder="Optional invoice notes"
+                    className="min-h-28"
                   />
                 </FieldContent>
               </Field>
-            </FieldGroup>
+        </div>
+      </FieldGroup>
 
             <div className="flex items-center justify-end gap-3 border-t border-border/80 pt-4">
               {isPage ? (
