@@ -102,6 +102,7 @@ type DataTableProps<TData> = {
   enableAddButton?: boolean
   addButtonLink?: string
   addButtonText?: string
+  onRowClick?: (row: TData) => void
 }
 
 function getColumnValue<TData>(row: TData, column: DataTableColumnDef<TData>) {
@@ -232,6 +233,7 @@ export function ConfigurableDataTable<TData>({
   addButtonLink,
   addButtonText = "Add Entry",
   enableAddButton = false,
+  onRowClick,
 }: DataTableProps<TData>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -388,7 +390,18 @@ export function ConfigurableDataTable<TData>({
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onClick={() => onRowClick?.(row.original)}
+                  onKeyDown={(event) => {
+                    if (onRowClick && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault()
+                      onRowClick(row.original)
+                    }
+                  }}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

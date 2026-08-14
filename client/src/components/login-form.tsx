@@ -6,20 +6,21 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { login } from "#/lib/mutation"
 import type { AuthResponse } from "#/lib/models"
 import { Loader } from "lucide-react"
 import { setAuthToken } from "#/lib/common/api"
 import { useAuth } from "#/lib/auth-context"
-import { useNavigate, useRouter } from "@tanstack/react-router"
+import { authQueryKey, authQueryStaleTime } from "#/lib/auth-context"
+import { useNavigate } from "@tanstack/react-router"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const navigate = useNavigate()
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const { setAuthenticated } = useAuth()
 
   const [loginInfo, setLoginInfo] = useState({
@@ -32,14 +33,8 @@ export function LoginForm({
     onSuccess: (data) => {
       setAuthToken(data.token)
       setAuthenticated(true)
-      router.update({
-        context: {
-          ...router.options.context,
-          auth: {
-            isAuthenticated: true,
-          },
-        },
-      })
+      queryClient.setQueryData(authQueryKey, true)
+      queryClient.setQueryDefaults(authQueryKey, { staleTime: authQueryStaleTime })
       navigate({ to: '/' })
     },
     onError: (error) => {

@@ -1,5 +1,6 @@
 import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
+import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -19,6 +20,7 @@ import {
 import type { CreateTruckEntryPayload } from '#/lib/models'
 import { getAllMaterials, materialKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { IconCheck } from '@tabler/icons-react'
 import * as React from 'react'
 
@@ -98,6 +100,7 @@ export function TruckEntryForm({
   initialMaterialName,
   onSubmit,
 }: TruckEntryFormProps) {
+  const navigate = useNavigate()
   const [form, setForm] = React.useState<TruckEntryFormValues>({
     ...defaultFormValues,
     ...initialValues,
@@ -161,6 +164,11 @@ export function TruckEntryForm({
   const selectedMaterial = activeMaterials.find(
     (material) => String(material.id) === form.materialTypeId
   )
+  const isReadyToSave = Boolean(form.entryDate && form.truckNumber.trim() && form.materialTypeId && form.quantityBrass.trim() && Number(form.quantityBrass) > 0)
+  const entryStatus = isReadyToSave ? 'Ready to save' : 'Needs details'
+  const entryStatusClassName = isReadyToSave
+    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    : 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'
 
   const sidebarContent = (
     <>
@@ -177,10 +185,22 @@ export function TruckEntryForm({
       </div>
 
       <div className="rounded-lg border px-4 py-3">
+        <div className="mb-3 flex items-center justify-between gap-3 border-b pb-3">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Entry status</p>
+            <p className="mt-1 text-sm font-semibold">{form.truckNumber.trim() || 'New truck entry'}</p>
+          </div>
+          <Badge variant="outline" className={entryStatusClassName}>{entryStatus}</Badge>
+        </div>
         <SummaryRow label="Truck" value={form.truckNumber.trim() || 'Not set'} />
         <SummaryRow label="Date" value={form.entryDate || 'Not set'} />
         <SummaryRow label="Material" value={selectedMaterial?.name ?? 'Not set'} />
-        <SummaryRow label="Quantity" value={form.quantityBrass.trim() ? `${form.quantityBrass} brass` : 'Not set'} />
+        <SummaryRow
+          label="Quantity"
+          value={form.quantityBrass.trim() ? `${form.quantityBrass} brass` : 'Not set'}
+          isBadge={Boolean(form.quantityBrass.trim())}
+          badgeVariant="secondary"
+        />
         <SummaryRow label="Supplier" value={form.supplierName.trim() || 'Not set'} />
         <SummaryRow label="Remarks" value={form.remarks.trim() || 'None'} />
       </div>
@@ -286,8 +306,8 @@ export function TruckEntryForm({
             </FieldGroup>
 
             <div className="flex items-center justify-end gap-3 border-t pt-4">
-              <Button type="button" variant="outline">
-                Cancel
+              <Button type="button" variant="outline" onClick={() => navigate({ to: '/truck-entry' })}>
+                Back
               </Button>
               <Button disabled={isSubmitting} type="submit">
                 {isSubmitting ? 'Saving...' : submitLabel}

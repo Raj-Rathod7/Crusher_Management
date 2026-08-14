@@ -2,6 +2,7 @@ package com.productapp.controller;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,11 @@ public class UserController {
     @GetMapping
     public List<UserResponse> getAll() {
         return service.getAll();
+    }
+
+    @GetMapping("/is-authenticated")
+    public boolean isAuthenticated(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated();
     }
 
     @GetMapping("/{id}")

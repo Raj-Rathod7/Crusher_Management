@@ -1,20 +1,35 @@
 import { useAuth } from '#/lib/auth-context';
 import { LoginForm } from '@/components/login-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { GalleryVerticalEnd } from "lucide-react";
+import { GalleryVerticalEnd, LoaderCircle } from "lucide-react";
+import { useEffect } from 'react';
 
 export const Route = createFileRoute('/login')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, isChecking} = useAuth();
   const navigate = useNavigate();
 
-  if(isAuthenticated) {
-    navigate({ to: '/'});
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate({ to: '/' });
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) {
+    return null;
   }
-  
+
+  if (isChecking) {
+    return (
+      <div className="flex min-h-svh items-center justify-center" aria-live="polite">
+        <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">

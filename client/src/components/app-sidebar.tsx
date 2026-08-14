@@ -11,7 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { IconDashboard, IconListDetails, IconChartBar, IconFolder, IconUsers, IconInnerShadowTop } from "@tabler/icons-react"
+import { IconDashboard, IconListDetails, IconChartBar, IconFolder, IconUsers, IconInnerShadowTop, IconMoneybagMinus } from "@tabler/icons-react"
 import { useLocation } from "@tanstack/react-router"
 
 const data = {
@@ -62,10 +62,10 @@ const data = {
     },
     
     {
-      title: "Workers",
-      url: "#",
+      title: "Expenses",
+      url: "/expenses",
       icon: (
-        <IconUsers
+        <IconMoneybagMinus
         />
       ),
     },

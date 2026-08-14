@@ -176,16 +176,12 @@ export function createApiClient(config: ApiClientConfig = {}) {
       const data = parseResponseBody(response, responseText, options.responseType ?? 'json')
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          config.onUnauthorized?.()
+        }
+
         const message = ((data as { message?: string } | undefined)?.message ?? response.statusText) || 'Request failed'
         throw new ApiError(message, {
-          status: response.status,
-          statusText: response.statusText,
-          body: data,
-        })
-      }
-
-      if (response.status === 401 || response.status === 403) {
-        throw new ApiError('Unauthorized', {
           status: response.status,
           statusText: response.statusText,
           body: data,
@@ -231,6 +227,16 @@ export function setAuthToken(token: string | null): void {
     window.localStorage.setItem('access_token', token)
     return
   }
+
+  window.localStorage.removeItem('access_token')
 }
 
-export const apiClient = createApiClient()
+export const apiClient = createApiClient({
+  onUnauthorized: () => {
+    setAuthToken(null)
+
+    if (window.location.pathname !== '/login') {
+      window.location.assign('/login')
+    }
+  },
+})

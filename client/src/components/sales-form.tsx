@@ -1,5 +1,6 @@
 import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
+import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger } from '#/components/ui/combobox'
 import {
@@ -137,6 +138,51 @@ function deriveInvoiceStatus(totalAmount: number, amountPaid: number) {
   return 'partial'
 }
 
+function getPaymentStatusBadge(status: string) {
+  if (status === 'paid') {
+    return {
+      label: 'Paid',
+      className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    }
+  }
+
+  if (status === 'partial') {
+    return {
+      label: 'Partial',
+      className: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+    }
+  }
+
+  return {
+    label: 'Pending',
+    className: 'border-border bg-muted text-muted-foreground',
+  }
+}
+
+function getBalanceTone(status: string) {
+  if (status === 'paid') {
+    return {
+      container: 'border-emerald-500/20 bg-emerald-500/5',
+      label: 'text-emerald-700/80 dark:text-emerald-300/80',
+      value: 'text-emerald-800 dark:text-emerald-200',
+    }
+  }
+
+  if (status === 'partial') {
+    return {
+      container: 'border-amber-500/20 bg-amber-500/5',
+      label: 'text-amber-700/80 dark:text-amber-300/80',
+      value: 'text-amber-800 dark:text-amber-200',
+    }
+  }
+
+  return {
+    container: 'border-border bg-muted/40',
+    label: 'text-muted-foreground',
+    value: 'text-foreground',
+  }
+}
+
 const inrConverter = new Intl.NumberFormat('en-IN', {
   style: 'currency',
   currency: 'INR',
@@ -233,6 +279,8 @@ export function SalesForm({
   const totalAmount = Number(form.totalAmount || 0)
   const amountPaid = Number(form.amountPaid || 0)
   const balance = Math.max(totalAmount - amountPaid, 0)
+  const paymentStatusBadge = getPaymentStatusBadge(computedPaymentStatus)
+  const balanceTone = getBalanceTone(computedPaymentStatus)
 
   const handleInvoiceItemFieldChange = (field: keyof InvoiceItemFormState, value: string) => {
     setInvoiceItemForm((current) => ({ ...current, [field]: value }))
@@ -367,18 +415,37 @@ export function SalesForm({
         <SummaryRow label="Invoice" value={form.invoiceNumber.trim() || 'Not set'} />
         <SummaryRow label="Date" value={form.invoiceDate || 'Not set'} />
         <SummaryRow label="Customer" value={selectedCustomer?.name ?? 'Not set'} />
-        <SummaryRow label="Paid" value={form.amountPaid.trim() || '0.00'} />
-        <SummaryRow label="Balance" value={balance.toFixed(2)} />
-        <SummaryRow isBadge label="Status" value={computedPaymentStatus} />
-        <div className="mt-2 p-1">
-          <div className="flex flex-col dark:bg-accent bg-primary/10 p-2 text-primary dark:text-white rounded border border-primary/10">
-            <div className="text-primary/80">
-              Total
+        <SummaryRow
+          isBadge
+          label="Status"
+          value={paymentStatusBadge.label}
+          badgeClassName={paymentStatusBadge.className}
+        />
+
+        <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
+              Paid
             </div>
-            <div className="text-2xl font-bold">
-              {inrConverter.format(Number(form.totalAmount.trim() || '0.00'))}
+            <div className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+              {inrConverter.format(amountPaid)}
             </div>
           </div>
+          <div className={`rounded-lg border px-3 py-2.5 ${balanceTone.container}`}>
+            <div className={`text-[10px] font-medium uppercase tracking-wide ${balanceTone.label}`}>
+              Balance
+            </div>
+            <div className={`mt-1 text-sm font-semibold ${balanceTone.value}`}>
+              {inrConverter.format(balance)}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between border-t pt-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total</span>
+          <span className="text-lg font-semibold text-foreground">
+            {inrConverter.format(totalAmount)}
+          </span>
         </div>
       </div>
     </>
@@ -650,12 +717,12 @@ export function SalesForm({
                 <Button asChild type="button" variant="outline" className="shadow-sm">
                   <Link to={backTo}>
                     <IconArrowLeft />
-                    {backLabel || 'Cancel'}
+                    {backLabel || 'Back'}
                   </Link>
                 </Button>
               ) : (
                 <Button type="button" variant="outline">
-                  Cancel
+                  Back
                 </Button>
               )}
               <Button disabled={isSubmitting} type="submit" className="shadow-[0_12px_24px_-18px_rgba(59,130,246,0.8)]">

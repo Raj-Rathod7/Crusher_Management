@@ -57,6 +57,17 @@ export type Invoice = {
   createdByUsername: string | null;
   createdAt: string;
   updatedAt: string;
+  invoiceItems: InvoiceItem[];
+}
+
+export type InvoiceItem = {
+  id: number;
+  materialTypeId: number | null;
+  materialName: string | null;
+  quantity: number;
+  rate: number;
+  amount: number;
+  truckNumber: string | null;
 }
 
 export type CreateInvoicePayload = {

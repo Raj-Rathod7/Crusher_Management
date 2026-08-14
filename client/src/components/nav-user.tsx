@@ -19,6 +19,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { IconDotsVertical, IconUserCircle, IconCreditCard, IconNotification, IconLogout } from "@tabler/icons-react"
+import { useAuth } from "#/lib/auth-context"
+import { useNavigate } from "@tanstack/react-router"
 
 export function NavUser({
   user,
@@ -30,6 +32,13 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const { setAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    setAuthenticated(false)
+    navigate({ to: "/login" })
+  }
 
   return (
     <SidebarMenu>
@@ -92,7 +101,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleLogout}>
               <IconLogout
               />
               Log out

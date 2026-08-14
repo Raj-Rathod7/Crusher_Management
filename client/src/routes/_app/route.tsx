@@ -4,12 +4,37 @@ import {
   SidebarInset, SidebarProvider
 } from "#/components/ui/sidebar";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { ApiError, apiClient, getDefaultToken, setAuthToken } from "#/lib/common/api";
+import { authQueryKey, authQueryStaleTime } from "#/lib/auth-context";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: ({context}) => {
-    console.log(context, 'this is context');
-    if (typeof window !== 'undefined' && !context.auth.isAuthenticated) {
-      throw redirect({ to: '/login' })
+  beforeLoad: async ({ context }) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!getDefaultToken()) {
+      throw redirect({ to: "/login" });
+    }
+
+    try {
+      const isAuthenticated = await context.queryClient.fetchQuery({
+        queryKey: authQueryKey,
+        queryFn: () => apiClient.get<boolean>("/users/is-authenticated"),
+        staleTime: authQueryStaleTime,
+      });
+
+      if (!isAuthenticated) {
+        setAuthToken(null);
+        throw redirect({ to: "/login" });
+      }
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        setAuthToken(null);
+        throw redirect({ to: "/login" });
+      }
+
+      throw error;
     }
   },
   component: RouteComponent,

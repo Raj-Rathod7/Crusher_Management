@@ -1,5 +1,6 @@
 import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
+import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import {
   Field,
@@ -75,6 +76,11 @@ export function CustomerForm({
   })
 
   const isPage = variant === 'page'
+  const customerName = form.state.values.name.trim()
+  const customerStatus = customerName ? 'Ready to review' : 'Name required'
+  const customerStatusClassName = customerName
+    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    : 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'
 
   const sidebarContent = isPage && showSummary ? (
     <>
@@ -84,7 +90,14 @@ export function CustomerForm({
       </div>
 
       <div className="rounded-lg border px-4 py-3">
-        <SummaryRow label="Name" value={form.state.values.name.trim() || 'Not set'} />
+        <div className="mb-3 flex items-center justify-between gap-3 border-b pb-3">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Profile status</p>
+            <p className="mt-1 text-sm font-semibold">{customerName || 'New customer'}</p>
+          </div>
+          <Badge variant="outline" className={customerStatusClassName}>{customerStatus}</Badge>
+        </div>
+        <SummaryRow label="Name" value={customerName || 'Not set'} />
         <SummaryRow label="Phone" value={form.state.values.phone.trim() || 'Not set'} />
         <SummaryRow label="Address" value={form.state.values.address.trim() || 'Not set'} />
         <SummaryRow label="Notes" value={form.state.values.notes.trim() || 'None'} />
@@ -226,12 +239,12 @@ export function CustomerForm({
 
             <div className="flex items-center justify-end gap-3 border-t pt-4">
               {isPage ? (
-                <Button type="button" variant="outline">
-                  Cancel
+                <Button type="button" variant="outline" onClick={() => navigate({ to: '/customer' })}>
+                  Back
                 </Button>
               ) : (
                 <Button type="button" variant="outline" onClick={onCancel}>
-                  Cancel
+                  Back
                 </Button>
               )}
               <Button type="submit" disabled={isSubmitting}>
