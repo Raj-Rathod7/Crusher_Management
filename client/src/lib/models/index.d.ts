@@ -78,3 +78,28 @@ export type CreateCustomerPayload = {
   address?: string;
   notes?: string;
 }
+
+export type ExpenseCategory = {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
+export type Expense = {
+  id: number;
+  expenseDate: string;
+  categoryId: number;
+  categoryName: string | null;
+  amount: number;
+  notes: string | null;
+  createdByUsername: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateExpensePayload = {
+  expenseDate: string;
+  categoryId: number;
+  amount: number;
+  notes?: string;
+}
