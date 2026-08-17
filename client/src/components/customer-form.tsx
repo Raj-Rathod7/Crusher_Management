@@ -10,6 +10,7 @@ import {
 import { Input } from '#/components/ui/input'
 import { Textarea } from '#/components/ui/textarea'
 import type { CreateCustomerPayload } from '#/lib/models'
+import { IconArrowLeft } from '@tabler/icons-react'
 import { useForm } from '@tanstack/react-form'
 import { useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -116,7 +117,7 @@ export function CustomerForm({
                         aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
                       {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
-                        <FieldError>{field.state.meta.errors[0]}</FieldError>
+                        <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
                       )}
                     </FieldContent>
                   </Field>
@@ -144,7 +145,7 @@ export function CustomerForm({
                         aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
                       {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
-                        <FieldError>{field.state.meta.errors[0]}</FieldError>
+                        <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
                       )}
                     </FieldContent>
                   </Field>
@@ -172,7 +173,8 @@ export function CustomerForm({
                         aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
                       {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
-                        <FieldError>{field.state.meta.errors[0]}</FieldError>
+                        <FieldError><span>
+                          {field.state.meta.errors[0]?.toString()}</span></FieldError>
                       )}
                     </FieldContent>
                   </Field>
@@ -200,7 +202,7 @@ export function CustomerForm({
                         aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0}
                       />
                       {(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0 && (
-                        <FieldError>{field.state.meta.errors[0]}</FieldError>
+                        <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
                       )}
                     </FieldContent>
                   </Field>
@@ -211,7 +213,8 @@ export function CustomerForm({
             <div className="flex items-center justify-end gap-3 border-t pt-4">
               {isPage ? (
                 <Button type="button" variant="outline" onClick={() => navigate({ to: '/customer' })}>
-                  Back
+                  <IconArrowLeft />
+                  Back to Customers
                 </Button>
               ) : (
                 <Button type="button" variant="outline" onClick={onCancel}>

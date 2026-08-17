@@ -73,14 +73,13 @@ export type InvoiceItem = {
 export type CreateInvoicePayload = {
   invoiceNumber: string;
   invoiceDate: string;
-  customer: {
-    id: number;
-  };
   totalAmount: number;
   amountPaid: number;
   balance: number;
   status: string;
   remarks?: string;
+  customerId: number;
+  invoiceItems: InvoiceItem[];
 }
 
 export type CreateCustomerPayload = {
