@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { createCustomer } from '#/lib/mutation'
-import type { CreateInvoicePayload, Customer } from '#/lib/models'
+import type { CreateInvoicePayload, Customer, InvoiceItem } from '#/lib/models'
 import { customerKeys, getAllCustomers, getAllMaterials, materialKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -53,12 +53,14 @@ type InvoiceItemEntry = {
   rate: string
   amount: string
   materialName: string
+  truckNumber: string
 }
 
 type InvoiceItemFormState = {
   materialTypeId: string
   quantityBrass: string
   rate: string
+  truckNumber: string
 }
 
 type InvoiceItemErrors = Partial<Record<keyof InvoiceItemFormState, string>>
@@ -91,6 +93,7 @@ const initialInvoiceItemForm: InvoiceItemFormState = {
   materialTypeId: '',
   quantityBrass: '',
   rate: '',
+  truckNumber: ''
 }
 
 function validateForm(form: FormState) {
@@ -307,6 +310,10 @@ export function SalesForm({
       nextErrors.rate = 'Rate must be greater than 0.'
     }
 
+    if(!invoiceItemForm.truckNumber.trim()){
+      nextErrors.truckNumber = 'Truck Number required.'
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setInvoiceItemErrors(nextErrors)
       return
@@ -324,6 +331,7 @@ export function SalesForm({
       rate: String(rate),
       amount: String(amount),
       materialName: material?.name ?? 'Unknown material',
+      truckNumber: invoiceItemForm.truckNumber
     }
 
     setInvoiceItems((current) => {
@@ -345,6 +353,7 @@ export function SalesForm({
       materialTypeId: item.materialTypeId,
       quantityBrass: item.quantityBrass,
       rate: item.rate,
+      truckNumber: item.truckNumber
     })
     setInvoiceItemErrors({})
   }
@@ -383,15 +392,25 @@ export function SalesForm({
     const payload: CreateInvoicePayload = {
       invoiceNumber: form.invoiceNumber.trim(),
       invoiceDate: form.invoiceDate,
-      customer: {
-        id: Number(form.customerId),
-      },
+      customerId: Number(form.customerId),
       totalAmount: computedTotalAmount,
       amountPaid,
       balance,
       status: invoiceStatus,
       remarks: form.remarks.trim() || undefined,
+      invoiceItems: invoiceItems.map(item => {
+        return {
+          ...item, 
+          quantity: Number(item.quantityBrass),
+          id: !isNaN(Number(item.id)) ? Number(item.id) : 0,
+          materialTypeId: Number(item.materialTypeId),
+          rate: Number(item.rate),
+          amount: Number(item.amount)
+        }
+      })
     }
+    console.log(invoiceItems);
+    console.log(payload);
 
     onSubmit(payload)
   }
@@ -677,6 +696,21 @@ export function SalesForm({
                           {invoiceItemErrors.rate && <FieldError>{invoiceItemErrors.rate}</FieldError>}
                         </FieldContent>
                       </Field>
+                    </div> 
+                    <div className="mt-2">
+                      <Field>
+                        <FieldLabel htmlFor="item-truck-number">Tuck Number</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            id="item-rate"
+                            type="text"
+                            value={invoiceItemForm.truckNumber}
+                            onChange={(event) => handleInvoiceItemFieldChange('truckNumber', event.target.value)}
+                            placeholder="Enter Truck Number"
+                          />
+                          {invoiceItemErrors.truckNumber && <FieldError>{invoiceItemErrors.truckNumber}</FieldError>}
+                        </FieldContent>
+                      </Field>
                     </div>
 
                     <div className="mt-4 flex justify-end border-t border-border/70 pt-4">
@@ -693,6 +727,7 @@ export function SalesForm({
                         <thead className="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
                           <tr>
                             <th className="px-3 py-2.5 font-semibold">Material</th>
+                            <th className="px-3 py-2.5 font-semibold">Truck Number</th>
                             <th className="px-3 py-2.5 font-semibold">Qty</th>
                             <th className="px-3 py-2.5 font-semibold">Rate</th>
                             <th className="px-3 py-2.5 font-semibold">Amount</th>
@@ -703,6 +738,7 @@ export function SalesForm({
                           {invoiceItems.map((item) => (
                             <tr key={item.id} className="border-t hover:bg-muted/30">
                               <td className="px-3 py-3 font-medium">{item.materialName}</td>
+                              <td className="px-3 py-3 font-medium">{item.truckNumber}</td>
                               <td className="px-3 py-3 tabular-nums">{item.quantityBrass}</td>
                               <td className="px-3 py-3 tabular-nums">{item.rate}</td>
                               <td className="px-3 py-3 font-medium tabular-nums">{item.amount}</td>

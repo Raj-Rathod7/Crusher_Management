@@ -23,7 +23,7 @@ import { getAllMaterials, materialKeys } from '#/lib/query'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { IconCheck, IconCube, IconTruck, IconWeight } from '@tabler/icons-react'
+import { IconArrowLeft, IconCheck, IconCube, IconTruck, IconWeight } from '@tabler/icons-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -326,7 +326,8 @@ export function TruckEntryForm({
 
             <div className="flex flex-col-reverse gap-3 border-t border-border/80 pt-5 sm:flex-row sm:items-center sm:justify-end">
               <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate({ to: '/truck-entry' })}>
-                Back
+                <IconArrowLeft />
+                Back to Truck Entry
               </Button>
               <Button disabled={isSubmitting} type="submit" className="w-full sm:w-auto">
                 {isSubmitting ? 'Saving...' : submitLabel}
