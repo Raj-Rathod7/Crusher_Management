@@ -1,11 +1,12 @@
 import { AppSidebar } from "#/components/app-sidebar";
-import { SiteHeader } from "#/components/site-header";
+import { quickLinks, SiteHeader } from "#/components/site-header";
 import {
   SidebarInset, SidebarProvider
 } from "#/components/ui/sidebar";
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
 import { ApiError, apiClient, getDefaultToken, setAuthToken } from "#/lib/common/api";
 import { authQueryKey, authQueryStaleTime } from "#/lib/auth-context";
+import { useShortcuts } from "#/hooks/use-shortcuts";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ context }) => {
@@ -33,13 +34,18 @@ export const Route = createFileRoute("/_app")({
         setAuthToken(null);
         throw redirect({ to: "/login" });
       }
-
-      throw error;
+      console.log(error);
+      // throw error;
     }
   },
   component: RouteComponent,
 });
+
+
 function RouteComponent() {
+  const navigate = useNavigate();
+  const keybinds = quickLinks.filter((x) => x.shortcut).map((f) => {return {keys: f.shortcut!, action: () => navigate({to: f.path})}})
+  useShortcuts({keybinds});
 
   return (
     <SidebarProvider

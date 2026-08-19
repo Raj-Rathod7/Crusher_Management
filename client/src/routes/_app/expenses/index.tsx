@@ -97,10 +97,7 @@ function RouteComponent() {
     if (isError) {
       console.error('Error loading expenses:', error)
       toast.error('Failed to load expenses. Please try again later.', {
-        style: {
-          border: '1px solid red',
-          color: 'red',
-        },
+        
       })
     }
   }, [isError, error])

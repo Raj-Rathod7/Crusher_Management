@@ -103,19 +103,15 @@ function RouteComponent() {
 
   useEffect(() => {
     if (isError) {
-      console.error("Error loading truck entries:", error);
-      toast.error("Failed to load truck entries. Please try again later.", {
-        style: {
-          color: "red",
-          border: '1px solid red'
-        },
+      toast.error("Failed to load truck entries. Please try again later.", { 
+        
       });
     }
   }, [isError, error]);
 
   return (
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
-      <div className="mb-6 flex shrink-0 items-start justify-between gap-4">
+      <div className=" mb-6 bg-red flex shrink-0 items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Truck Entry</h1>
           <p className="text-sm text-muted-foreground">All truck entries.</p>
