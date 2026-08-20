@@ -409,8 +409,6 @@ export function SalesForm({
         }
       })
     }
-    console.log(invoiceItems);
-    console.log(payload);
 
     onSubmit(payload)
   }

@@ -18,16 +18,13 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
+  CommandList, CommandShortcut
 } from "@/components/ui/command";
-import { Button } from "./ui/button";
 import React, { useEffect } from "react";
-import { Input } from "./ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { HomeIcon, Search, TruckIcon, UserSearch } from "lucide-react";
-import { IconChartBar, IconDashboard, IconFolder, IconInvoice, IconListDetails, IconMoneybagMinus, IconMoneybagPlus, IconUsers } from "@tabler/icons-react";
+import { Search } from "lucide-react";
+import { useCache } from "#/hooks/use-cache";
+import { quickLinks, type quickLink } from "#/lib/common";
 
 type AppPath = "/" | "/customer" | "/expenses" | "/sales" | "/truck-entry";
 
@@ -72,61 +69,21 @@ function getBreadcrumbs(pathname: string): BreadcrumbEntry[] {
   return crumbs;
 }
 
-export const quickLinks = [
-  {
-    path: "",
-    label: "Dashboard",
-    shortcut: "F2",
-    icon: <IconDashboard />
-  },
-
-  {
-    path: "/truck-entry",
-    label: "Truck Entries",
-    shortcut: "F3",
-    icon: <IconListDetails />
-  },
-
-  {
-    path: "/truck-entry/new",
-    label: "New Truck Entry",
-    shortcut: "F4",
-    icon: <TruckIcon />
-  },
-
-  {
-    path: "/sales",
-    label: "Sales",
-    shortcut: "F6",
-    icon: <IconFolder />
-  },
-
-  {
-    path: "/sales/new",
-    label: "New Sales Entry",
-    shortcut: "F7",
-    icon: <IconInvoice />
-  },
-
-  { path: "/customer", label: "Customers", icon: <IconUsers /> },
-  { path: "/customer/new", label: "New Customer", icon: <UserSearch /> },
-
-  { path: "/expenses", label: "Expenses", icon: <IconMoneybagMinus /> },
-  { path: "/expenses/new", label: "New Expenses", icon: <IconMoneybagPlus /> },
-
-  { path: "/analytics", label: "Analytics", icon: <IconChartBar /> },
-];
-
 export function SiteHeader() {
   const { pathname } = useLocation();
   const breadcrumbs = getBreadcrumbs(pathname);
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
 
-  const handleOnCommandClick = (link: any) => {
+  const cache = useCache<string, quickLink>(3, {persitent: true, key: 'links'});
+
+  const handleOnCommandClick = (link: quickLink) => {
+    cache?.set(link.path, link);
     setOpen(false);
     navigate({ to: link.path });
   };
+
+  const mostRecentLinks = cache?.getAll() ?? [];
 
   useEffect(() => {
     const handleCommand = (event: KeyboardEvent) => {
@@ -181,27 +138,49 @@ export function SiteHeader() {
         </Breadcrumb>
       </div>
       <div className="flex shrink-0 items-center gap-1 pr-4 lg:pr-6">
-        <InputGroup onClick={() => setOpen(true)} className="mr-4">
-          <InputGroupInput readOnly placeholder="Search through system" />
+        <InputGroup onClick={() => setOpen(true)} className="mr-5">
+          <InputGroupInput readOnly placeholder="Search system" />
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
-          <InputGroupAddon align="inline-end">Ctrl + K</InputGroupAddon>
+          <InputGroupAddon align="inline-end">Ctrl + /</InputGroupAddon>
         </InputGroup>
         <CommandDialog className="w-full" open={open} onOpenChange={setOpen}>
           <Command>
             <CommandInput placeholder="Type a command or search..." />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
+              {mostRecentLinks.length > 0 && 
+              (
+              <CommandGroup heading="Frequent Visits">
+                {mostRecentLinks.map((link) => {
+                  const Icon = quickLinks.find(l => l.path === link.path)?.icon;
+                  return (
+                    <CommandItem
+                      key={link.path}
+                      value={link.label}
+                      onSelect={() => handleOnCommandClick(link)}
+                    >
+                      {Icon && <Icon />} 
+                      <span className="flex-1">{link.label}</span>
+                      {link.shortcut && (
+                        <CommandShortcut>{link.shortcut}</CommandShortcut>
+                      )}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              )}
               <CommandGroup heading="Quick Links">
                 {quickLinks.map((link) => {
+                  const Icon = link.icon
                   return (
                     <CommandItem
                       key={link.label}
                       value={link.label}
                       onSelect={() => handleOnCommandClick(link)}
                     >
-                      {link.icon}
+                      {Icon && <Icon />}
                       <span className="flex-1">{link.label}</span>
                       {link.shortcut && (
                         <CommandShortcut>{link.shortcut}</CommandShortcut>

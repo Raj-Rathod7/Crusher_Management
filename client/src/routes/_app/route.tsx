@@ -1,5 +1,5 @@
 import { AppSidebar } from "#/components/app-sidebar";
-import { quickLinks, SiteHeader } from "#/components/site-header";
+import { SiteHeader } from "#/components/site-header";
 import {
   SidebarInset, SidebarProvider
 } from "#/components/ui/sidebar";
@@ -7,6 +7,7 @@ import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-
 import { ApiError, apiClient, getDefaultToken, setAuthToken } from "#/lib/common/api";
 import { authQueryKey, authQueryStaleTime } from "#/lib/auth-context";
 import { useShortcuts } from "#/hooks/use-shortcuts";
+import { quickLinks } from "#/lib/common";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ context }) => {

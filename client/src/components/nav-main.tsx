@@ -30,7 +30,6 @@ export function NavMain({
     if (!activeRoute) return;
 
     const activeIndex = items.findIndex((item) => item.url.replace('/', '') === activeRoute.split('/')[1]);
-    console.log(items, activeRoute, activeIndex);
     if (activeIndex === -1) return;
 
     const activeItem = itemRefs.current[activeIndex];
