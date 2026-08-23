@@ -57,6 +57,19 @@ function getStatusVariant(status: string) {
   return 'outline' as const
 }
 
+function getStatusClass(status: string){
+  const normalizedStatus = status.toUpperCase();
+  if (normalizedStatus === 'PAID') {
+    return 'bg-green-500/30 border-green-700 text-green-700' as const
+  }
+
+  if (normalizedStatus === 'PARTIAL') {
+    return 'bg-yellow-500/30 border-yellow-700 text-yellow-700' as const
+  }
+
+  return 'bg-orange-500/30 border-orange-700 text-orange-700' as const
+}
+
 function RouteComponent() {
   const [selectedSaleId, setSelectedSaleId] = useState<number | null>(null)
   const { data, isLoading, isError, error } = useQuery({
@@ -193,7 +206,11 @@ function RouteComponent() {
               ],
             },
             cell: ({ row }) => (
-              <Badge variant={getStatusVariant(row.original.status)}>{row.original.status}</Badge>
+              <Badge 
+                variant={getStatusVariant(row.original.status)}
+                className={`${getStatusClass(row.original.status)} capitalize border p-3`}>
+                  {row.original.status}
+              </Badge>
             ),
           },
         ]}
@@ -238,6 +255,8 @@ function SaleDetailsDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const invoiceItems = sale?.invoiceItems ?? []
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100vh-2rem)] max-w-4xl overflow-hidden">
@@ -270,13 +289,13 @@ function SaleDetailsDialog({
                 <h3 className="text-sm font-medium">Invoice items</h3>
                 <p className="text-sm text-muted-foreground">Materials billed on this invoice.</p>
               </div>
-              {sale.invoiceItems.length === 0 ? (
+              {invoiceItems.length === 0 ? (
                 <div className="rounded-md border px-4 py-8 text-center text-sm text-muted-foreground">
                   No invoice items recorded.
                 </div>
               ) : (
                 <ConfigurableDataTable
-                  data={sale.invoiceItems}
+                  data={invoiceItems}
                   columns={[
                     {
                       accessorKey: 'materialName',
@@ -285,7 +304,7 @@ function SaleDetailsDialog({
                     {
                       accessorKey: 'quantity',
                       header: 'Quantity',
-                      cell: ({ row }) => row.original.quantity,
+                      cell: ({ row }) => row.original.quantityBrass,
                     },
                     {
                       accessorKey: 'rate',

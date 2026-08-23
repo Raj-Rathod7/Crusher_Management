@@ -11,6 +11,7 @@ export type TruckEntry = {
   materialTypeId: number | null;
   materialName: string | null;
   quantityBrass: number;
+  quantity?: number;
   supplierName: string | null;
   remarks: string | null;
   createdByUsername: string | null;
@@ -64,7 +65,7 @@ export type InvoiceItem = {
   id: number;
   materialTypeId: number | null;
   materialName: string | null;
-  quantity: number;
+  quantityBrass: number;
   rate: number;
   amount: number;
   truckNumber: string | null;

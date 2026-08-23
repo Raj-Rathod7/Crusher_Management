@@ -12,4 +12,6 @@ public interface TruckEntryRepository extends JpaRepository<TruckEntry, Long> {
 	List<TruckEntry> findAllByIsActiveTrue();
 
 	Page<TruckEntry> findAllByIsActiveTrue(Pageable pageable);
+
+	long countByIsActiveTrue();
 }

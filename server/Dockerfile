@@ -8,7 +8,7 @@ COPY pom.xml .
 COPY src ./src
 
 # Build the application
-RUN mvn clean package -DskipTests
+RUN mvn -B clean package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
@@ -16,7 +16,7 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Copy the JAR from build stage
-COPY --from=builder /build/target/CrusherManagement-*.jar app.jar
+COPY --from=builder /build/target/crusher-management.jar app.jar
 
 # Create a non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -24,10 +24,6 @@ USER appuser
 
 # Expose port
 EXPOSE 8081
-
-# Health check (optional)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD java -cp app.jar org.springframework.boot.loader.launch.JarLauncher health || exit 1
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

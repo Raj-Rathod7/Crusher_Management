@@ -5,6 +5,7 @@ import com.productapp.entity.Customer;
 import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.CustomerRepository;
 import com.productapp.repository.InvoiceRepository;
+import com.productapp.dto.InvoiceResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -45,6 +46,15 @@ public class CustomerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
         return CustomerResponse.fromEntity(customer);
     }
+
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> getInvoices(Long customerId) {
+        customerRepository.findByIdAndIsActiveTrue(customerId)
+            .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + customerId));
+        return invoiceRepository.findAllByCustomerIdAndIsActiveTrueOrderByInvoiceDateDesc(customerId).stream()
+            .map(InvoiceResponse::fromEntity)
+            .toList();
+        }
 
     @Transactional
     public CustomerResponse update(Long id, Customer customer) {

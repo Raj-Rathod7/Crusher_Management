@@ -3,6 +3,7 @@ package com.productapp.controller;
 import com.productapp.dto.ExpenseRequest;
 import com.productapp.dto.ExpenseResponse;
 import com.productapp.entity.Expense;
+import com.productapp.entity.Categories;
 import com.productapp.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -26,6 +27,11 @@ public class ExpenseController {
         return expenseService.save(expenseRequest);
     }
 
+    @GetMapping("/categories")
+    public List<Categories> getCategories() {
+        return expenseService.getCategories();
+    }
+
     @GetMapping
     public List<ExpenseResponse> getAll() {
         return expenseService.getAll();
@@ -39,5 +45,15 @@ public class ExpenseController {
     @GetMapping("/{id}")
     public ExpenseResponse getById(@PathVariable Long id) {
         return expenseService.getById(id);
+    }
+
+    @PutMapping("/{id}")
+    public ExpenseResponse update(@PathVariable Long id, @Valid @RequestBody ExpenseRequest expenseRequest) {
+        return expenseService.update(id, expenseRequest);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        expenseService.delete(id);
     }
 }

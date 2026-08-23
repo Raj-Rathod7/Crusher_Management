@@ -29,6 +29,7 @@ services:
       SERVER_PORT: 8081
       JWT_SECRET: ChangeThisJwtSecretKeyForProductionMustBeLongEnough123456
       JWT_EXPIRATION: 86400000
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
     ports:
       - "8081:8081"
     depends_on:

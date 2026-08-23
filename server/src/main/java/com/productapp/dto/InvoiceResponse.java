@@ -1,6 +1,7 @@
 package com.productapp.dto;
 
 import com.productapp.entity.Invoice;
+import com.productapp.entity.InvoiceItem;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,20 +43,17 @@ public class InvoiceResponse {
         this.customerId = customerId;
         this.invoiceItems = invoiceItems;
 
-        this.createdByUsername = invoice.getCreatedBy() != null ? invoice.getCreatedBy().getUsername() : null;
-        this.createdAt = invoice.getCreatedAt();
-        this.updatedAt = invoice.getUpdatedAt();
     }
 
     public static InvoiceResponse fromEntity(Invoice invoice) {
-       List<InvoiceItemResponse> itemResponses =
-    invoice.getInvoiceItems()
+         List<InvoiceItemResponse> itemResponses =
+     (invoice.getInvoiceItems() == null ? List.<InvoiceItem>of() : invoice.getInvoiceItems())
            .stream()
            .map(InvoiceItemResponse::fromEntity)
            .toList();
 
 
-        return new InvoiceResponse(
+        InvoiceResponse response = new InvoiceResponse(
                 invoice.getId(),
                 invoice.getInvoiceNumber(),
                 invoice.getInvoiceDate(),
@@ -68,6 +66,10 @@ public class InvoiceResponse {
                 invoice.getCustomer() != null ? invoice.getCustomer().getId() : null,
                 itemResponses
         );
+            response.createdByUsername = invoice.getCreatedBy() != null ? invoice.getCreatedBy().getUsername() : null;
+            response.createdAt = invoice.getCreatedAt();
+            response.updatedAt = invoice.getUpdatedAt();
+            return response;
     }
 
     public Long getId() { return id; }
@@ -92,6 +94,8 @@ public class InvoiceResponse {
     public void setRemarks(String remarks) { this.remarks = remarks; }
     public String getCreatedByUsername() { return createdByUsername; }
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
+    public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }
+    public void setInvoiceItems(List<InvoiceItemResponse> invoiceItems) { this.invoiceItems = invoiceItems; }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     // public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -1,6 +1,7 @@
 package com.productapp.controller;
 
 import com.productapp.dto.CustomerResponse;
+import com.productapp.dto.InvoiceResponse;
 import com.productapp.entity.Customer;
 import com.productapp.service.CustomerService;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +33,11 @@ public class CustomerController {
     @GetMapping("/page")
     public Page<CustomerResponse> getPage(Pageable pageable) {
         return customerService.getPage(pageable);
+    }
+
+    @GetMapping("/{id}/invoices")
+    public List<InvoiceResponse> getInvoices(@PathVariable Long id) {
+        return customerService.getInvoices(id);
     }
 
     @GetMapping("/{id}")

@@ -110,6 +110,7 @@ type DataTableProps<TData> = {
   addButtonLink?: string
   addButtonText?: string
   onRowClick?: (row: TData) => void
+  renderExpandedRow?: (row: TData) => React.ReactNode
 }
 
 function getColumnValue<TData>(row: TData, column: DataTableColumnDef<TData>) {
@@ -241,6 +242,7 @@ export function ConfigurableDataTable<TData>({
   addButtonText = "Add Entry",
   enableAddButton = false,
   onRowClick,
+  renderExpandedRow,
 }: DataTableProps<TData>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -251,6 +253,7 @@ export function ConfigurableDataTable<TData>({
     pageIndex: 0,
     pageSize: defaultPageSize,
   })
+  const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null)
 
   const tableColumns = React.useMemo(() => {
     return columns.map((column) => ({
@@ -438,15 +441,24 @@ export function ConfigurableDataTable<TData>({
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
+                <React.Fragment key={row.id}>
                 <TableRow
                   key={row.id}
-                  className={onRowClick ? "cursor-pointer hover:bg-primary/4.5" : "hover:bg-muted/35"}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  onClick={() => onRowClick?.(row.original)}
+                  className={onRowClick || renderExpandedRow ? "cursor-pointer hover:bg-primary/4.5" : "hover:bg-muted/35"}
+                  tabIndex={onRowClick || renderExpandedRow ? 0 : undefined}
+                  onClick={() => {
+                    if (renderExpandedRow) {
+                      setExpandedRowId(expandedRowId === row.id ? null : row.id)
+                    }
+                    onRowClick?.(row.original)
+                  }}
                   onKeyDown={(event) => {
-                    if (onRowClick && (event.key === "Enter" || event.key === " ")) {
+                    if ((onRowClick || renderExpandedRow) && (event.key === "Enter" || event.key === " ")) {
                       event.preventDefault()
-                      onRowClick(row.original)
+                      if (renderExpandedRow) {
+                        setExpandedRowId(expandedRowId === row.id ? null : row.id)
+                      }
+                      onRowClick?.(row.original)
                     }
                   }}
                 >
@@ -456,6 +468,14 @@ export function ConfigurableDataTable<TData>({
                     </TableCell>
                   ))}
                 </TableRow>
+                {renderExpandedRow && expandedRowId === row.id ? (
+                  <TableRow>
+                    <TableCell colSpan={row.getVisibleCells().length} className="bg-muted/20 p-4">
+                      {renderExpandedRow(row.original)}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                </React.Fragment>
               ))
             ) : (
               <TableRow>

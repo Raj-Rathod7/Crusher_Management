@@ -118,6 +118,7 @@ public class InvoiceService {
         return invoiceRepository.findAllByIsActiveTrue(pageable).map(InvoiceResponse::fromEntity);
     }
 
+    @Transactional(readOnly = true)
     public InvoiceResponse getById(Long id) {
         Invoice invoice = invoiceRepository.findById(id)
             .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))

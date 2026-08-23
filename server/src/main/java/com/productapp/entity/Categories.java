@@ -8,6 +8,8 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "categories")
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE categories SET is_active = false WHERE id = ?")
