@@ -44,7 +44,7 @@ public class AuthService {
                     )
             );
 
-            User user = userRepository.findByUsername(request.getUsername())
+                User user = userRepository.findByUsernameAndIsActiveTrue(request.getUsername())
                     .orElseThrow(() -> new IllegalStateException("User not found after authentication"));
 
             String token = jwtService.generateToken(user);
@@ -62,6 +62,10 @@ public class AuthService {
         }
 
         Role role = roleRepository.findByRoleName("USER")
+            .map(existingRole -> {
+                existingRole.setIsActive(true);
+                return roleRepository.save(existingRole);
+            })
                 .orElseGet(() -> {
                     Role newRole = new Role();
                     newRole.setRoleName("USER");

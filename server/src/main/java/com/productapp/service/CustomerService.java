@@ -24,12 +24,14 @@ public class CustomerService {
 
     public List<CustomerResponse> getAll() {
         return customerRepository.findAll().stream()
+                .filter(customer -> Boolean.TRUE.equals(customer.getIsActive()))
                 .map(CustomerResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public CustomerResponse getById(Long id) {
         Customer customer = customerRepository.findById(id)
+            .filter(foundCustomer -> Boolean.TRUE.equals(foundCustomer.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
         return CustomerResponse.fromEntity(customer);
     }
@@ -41,7 +43,9 @@ public class CustomerService {
         existing.setPhone(customer.getPhone());
         existing.setAddress(customer.getAddress());
         existing.setNotes(customer.getNotes());
-        existing.setIsActive(customer.getIsActive());
+        if (customer.getIsActive() != null) {
+            existing.setIsActive(customer.getIsActive());
+        }
         return CustomerResponse.fromEntity(customerRepository.save(existing));
     }
 

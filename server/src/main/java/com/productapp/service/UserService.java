@@ -40,12 +40,14 @@ public class UserService {
 
     public List<UserResponse> getAll() {
         return userRepository.findAll().stream()
+                                .filter(user -> Boolean.TRUE.equals(user.getIsActive()))
                 .map(UserResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public UserResponse getById(Long id) {
         User user = userRepository.findById(id)
+                .filter(foundUser -> Boolean.TRUE.equals(foundUser.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + id));
         return UserResponse.fromEntity(user);
     }
@@ -56,7 +58,9 @@ public class UserService {
 
         existing.setUsername(user.getUsername());
         existing.setPassword(user.getPassword());
-        existing.setIsActive(user.getIsActive());
+                if (user.getIsActive() != null) {
+                        existing.setIsActive(user.getIsActive());
+                }
 
         Role role = roleRepository.findById(
                         user.getRole().getId())

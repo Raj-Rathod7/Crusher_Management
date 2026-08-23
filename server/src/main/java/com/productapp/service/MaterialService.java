@@ -24,12 +24,14 @@ public class MaterialService {
 
     public List<MaterialResponse> getAll() {
         return materialRepository.findAll().stream()
+                .filter(material -> Boolean.TRUE.equals(material.getIsActive()))
                 .map(MaterialResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public MaterialResponse getById(Long id) {
         MaterialType materialType = materialRepository.findById(id)
+            .filter(foundMaterial -> Boolean.TRUE.equals(foundMaterial.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Material not found with id : " + id));
         return MaterialResponse.fromEntity(materialType);
     }
@@ -37,6 +39,7 @@ public class MaterialService {
     public void delete(Long id) {
         MaterialType materialType = materialRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Material not found with id : " + id));
-        materialRepository.delete(materialType);
+        materialType.setIsActive(false);
+        materialRepository.save(materialType);
     }
 }

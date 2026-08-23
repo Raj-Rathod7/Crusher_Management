@@ -25,12 +25,14 @@ public class RoleService {
 
     public List<RoleResponse> getAll() {
         return roleRepository.findAll().stream()
+                .filter(role -> Boolean.TRUE.equals(role.getIsActive()))
                 .map(RoleResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public RoleResponse getById(Long id) {
         Role role = roleRepository.findById(id)
+            .filter(foundRole -> Boolean.TRUE.equals(foundRole.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
         return RoleResponse.fromEntity(role);
     }
@@ -41,7 +43,9 @@ public class RoleService {
 
         existing.setRoleName(role.getRoleName());
         existing.setDescription(role.getDescription());
-        existing.setIsActive(role.getIsActive());
+        if (role.getIsActive() != null) {
+            existing.setIsActive(role.getIsActive());
+        }
 
         return RoleResponse.fromEntity(roleRepository.save(existing));
     }
@@ -49,6 +53,7 @@ public class RoleService {
     public void delete(Long id) {
         Role existing = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
-        roleRepository.delete(existing);
+        existing.setIsActive(false);
+        roleRepository.save(existing);
     }
 }

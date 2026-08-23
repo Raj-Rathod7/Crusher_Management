@@ -30,10 +30,10 @@ public class TruckEntryService {
     }
 
     public TruckEntryResponse createTruckEntry(TruckEntryRequest request, String username) {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
-        MaterialType materialType = materialRepository.findById(request.getMaterialTypeId())
+        MaterialType materialType = materialRepository.findByIdAndIsActiveTrue(request.getMaterialTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Material type not found: " + request.getMaterialTypeId()));
 
 		/*
@@ -57,24 +57,27 @@ public class TruckEntryService {
 
     public List<TruckEntryResponse> getAllTruckEntries() {
         return truckEntryRepository.findAll().stream()
+                                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .map(TruckEntryResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public TruckEntryResponse getTruckEntryById(Long id) {
         TruckEntry truckEntry = truckEntryRepository.findById(id)
+                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
         return TruckEntryResponse.fromEntity(truckEntry);
     }
 
     public TruckEntryResponse updateTruckEntry(Long id, TruckEntryRequest request, String username) {
         TruckEntry existing = truckEntryRepository.findById(id)
+                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
 
-        MaterialType materialType = materialRepository.findById(request.getMaterialTypeId())
+        MaterialType materialType = materialRepository.findByIdAndIsActiveTrue(request.getMaterialTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Material type not found: " + request.getMaterialTypeId()));
 
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
         existing.setEntryDate(request.getEntryDate());
@@ -89,7 +92,9 @@ public class TruckEntryService {
 
     public void deleteTruckEntry(Long id) {
         TruckEntry existing = truckEntryRepository.findById(id)
+                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
-        truckEntryRepository.delete(existing);
+        existing.setIsActive(false);
+        truckEntryRepository.save(existing);
     }
 }

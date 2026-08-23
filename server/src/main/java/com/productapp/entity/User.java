@@ -4,18 +4,22 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE users SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 
 @Builder
-public class User {
+public class User extends AuditableEntity {
 
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,13 +34,6 @@ public class User {
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role; 
-
-    @Column(nullable = false)
-	private Boolean isActive = true;
-	
-    private LocalDateTime createdAt;
-
-
 
     public Long getId() {
 		return id;
@@ -70,25 +67,4 @@ public class User {
 		this.role = role;
 	}
 
-	public Boolean getIsActive() {
-		return isActive;
-	}
-
-	public void setIsActive(Boolean isActive) {
-		this.isActive = isActive;
-	}
-
-	public LocalDateTime getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(LocalDateTime createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
 }

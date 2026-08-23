@@ -2,6 +2,8 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,12 +11,14 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "invoices")
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE invoices SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Invoice {
+public class Invoice extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,17 +61,4 @@ public class Invoice {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
