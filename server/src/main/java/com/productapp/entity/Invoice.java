@@ -2,7 +2,7 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -45,6 +45,14 @@ public class Invoice {
     @Column(columnDefinition = "TEXT")
     private String remarks;
 
+    
+
+    @OneToMany(
+        mappedBy = "invoice",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<InvoiceItem> invoiceItems;
     @ManyToOne
     @JoinColumn(name = "created_by")
     private User createdBy;

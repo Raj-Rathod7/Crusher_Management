@@ -21,7 +21,7 @@ public class TruckEntryRequest {
     @DecimalMin(value = "0.01")
     private BigDecimal quantityBrass;
 
-    private String supplierName;
+    private String supplierName; 
     private String remarks;
  
     public LocalDate getEntryDate() {

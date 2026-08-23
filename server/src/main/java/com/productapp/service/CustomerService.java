@@ -48,6 +48,7 @@ public class CustomerService {
     public void delete(Long id) {
         Customer existing = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
-        customerRepository.delete(existing);
+                existing.setIsActive(false);
+                customerRepository.save(existing);
     }
 }

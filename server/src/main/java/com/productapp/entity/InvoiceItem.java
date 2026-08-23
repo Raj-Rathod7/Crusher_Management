@@ -27,6 +27,9 @@ public class InvoiceItem {
     @JoinColumn(name = "material_type_id", nullable = false)
     private MaterialType materialType;
 
+    @Column(name = "truck_number", nullable = false, length = 20)
+    private String truckNumber;
+
     @Column(name = "quantity_brass", nullable = false, precision = 10, scale = 2)
     private BigDecimal quantityBrass;
 

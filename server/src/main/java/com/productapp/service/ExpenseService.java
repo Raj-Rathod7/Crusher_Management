@@ -1,13 +1,13 @@
 package com.productapp.service;
 
-import com.productapp.dto.ExpenseResponse;
-import com.productapp.entity.Expense;
-import com.productapp.entity.User;
+import com.productapp.entity.*;
+import com.productapp.dto.*;
 import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.ExpenseRepository;
 import com.productapp.repository.UserRepository;
 import org.springframework.stereotype.Service;
-
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,10 +22,20 @@ public class ExpenseService {
         this.userRepository = userRepository;
     }
 
-    public ExpenseResponse save(Expense expense) {
-        User user = userRepository.findById(expense.getCreatedBy().getId())
+    
+
+    public ExpenseResponse save(ExpenseRequest expenseRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        expense.setCreatedBy(user);
+        Expense expense = Expense.builder()
+                .expenseDate(expenseRequest.getExpenseDate())
+                .category(Categories.builder().id(expenseRequest.getCategoryId()).build())
+                .amount(expenseRequest.getAmount())
+                .notes(expenseRequest.getNotes())
+                .createdBy(user)
+                .build();
         return ExpenseResponse.fromEntity(expenseRepository.save(expense));
     }
 

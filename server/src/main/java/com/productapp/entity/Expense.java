@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
 @Builder
 public class Expense {
 
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,8 +26,9 @@ public class Expense {
     @Column(nullable = false)
     private LocalDate expenseDate;
 
-    @Column(name = "category_id", nullable = false)
-    private Long categoryId;
+    @ManyToOne
+    @JoinColumn(name = "category_id", nullable = false)
+    private Categories category;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
@@ -36,8 +40,7 @@ public class Expense {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    
 
     @PrePersist
     public void prePersist() {

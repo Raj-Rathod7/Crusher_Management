@@ -1,5 +1,6 @@
 package com.productapp.controller;
 
+import com.productapp.dto.ExpenseRequest;
 import com.productapp.dto.ExpenseResponse;
 import com.productapp.entity.Expense;
 import com.productapp.service.ExpenseService;
@@ -18,8 +19,8 @@ public class ExpenseController {
     }
 
     @PostMapping
-    public ExpenseResponse create(@RequestBody Expense expense) {
-        return expenseService.save(expense);
+    public ExpenseResponse create(@RequestBody ExpenseRequest expenseRequest) {
+        return expenseService.save(expenseRequest);
     }
 
     @GetMapping

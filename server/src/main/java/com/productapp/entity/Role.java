@@ -13,6 +13,19 @@ import lombok.*;
 @Builder
 public class Role {
 
+	@Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String roleName;
+
+    private String description;
+	
+    @Column(nullable = false)
+	private Boolean isActive = true;
+
+
     public Long getId() {
 		return id;
 	}
@@ -37,13 +50,5 @@ public class Role {
 	public void setIsActive(Boolean isActive) {
 		this.isActive = isActive;
 	}
-	@Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true)
-    private String roleName;
-
-    private String description;
-    private Boolean isActive = true;
+	
    }

@@ -42,4 +42,28 @@ VALUES
 ON DUPLICATE KEY UPDATE
   is_active = VALUES(is_active);
 
+INSERT INTO categories (name, is_active, created_at) VALUES
+('Fuel', true, NOW()),
+('Diesel', true, NOW()),
+('Truck Repair', true, NOW()),
+('Motor Repair', true, NOW()),
+('Machine Maintenance', true, NOW()),
+('Electricity Bill', true, NOW()),
+('Salary', true, NOW()),
+('Labour Charges', true, NOW()),
+('Crusher Maintenance', true, NOW()),
+('Tyre Replacement', true, NOW()),
+('Spare Parts', true, NOW()),
+('Oil & Lubricants', true, NOW()),
+('Transport Charges', true, NOW()),
+('Office Expense', true, NOW()),
+('Rent', true, NOW()),
+('Internet & Phone', true, NOW()),
+('Water Charges', true, NOW()),
+('Security Expense', true, NOW()),
+('Loading Charges', true, NOW()),
+('Unloading Charges', true, NOW()),
+('Other', true, NOW());
+
+
 COMMIT;

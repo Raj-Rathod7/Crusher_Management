@@ -53,6 +53,7 @@ public class MaterialType {
 		this.createdAt = createdAt;
 	}
 
+	@Column(nullable = false)
 	private Boolean isActive = true;
 
     private LocalDateTime createdAt;

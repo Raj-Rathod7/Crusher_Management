@@ -1,5 +1,6 @@
 package com.productapp.dto;
 
+import com.productapp.entity.Categories;
 import com.productapp.entity.Expense;
 
 import java.math.BigDecimal;
@@ -10,6 +11,7 @@ public class ExpenseResponse {
     private Long id;
     private LocalDate expenseDate;
     private Long categoryId;
+    private String categoryName;
     private BigDecimal amount;
     private String notes;
     private String createdByUsername;
@@ -19,11 +21,13 @@ public class ExpenseResponse {
     public ExpenseResponse() {
     }
 
-    public ExpenseResponse(Long id, LocalDate expenseDate, Long categoryId, BigDecimal amount,
+    public ExpenseResponse(Long id, LocalDate expenseDate, Long categoryId, String categoryName, BigDecimal amount,
                            String notes, String createdByUsername, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.expenseDate = expenseDate;
         this.categoryId = categoryId;
+        this.categoryName = categoryName;
+
         this.amount = amount;
         this.notes = notes;
         this.createdByUsername = createdByUsername;
@@ -39,7 +43,8 @@ public class ExpenseResponse {
         return new ExpenseResponse(
                 expense.getId(),
                 expense.getExpenseDate(),
-                expense.getCategoryId(),
+                expense.getCategory() != null ? expense.getCategory().getId() : null,
+                expense.getCategory() != null ? expense.getCategory().getName() : null,
                 expense.getAmount(),
                 expense.getNotes(),
                 expense.getCreatedBy() != null ? expense.getCreatedBy().getUsername() : null,
@@ -60,8 +65,10 @@ public class ExpenseResponse {
     public void setNotes(String notes) { this.notes = notes; }
     public String getCreatedByUsername() { return createdByUsername; }
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+    // public LocalDateTime getCreatedAt() { return createdAt; }
+    // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    // public LocalDateTime getUpdatedAt() { return updatedAt; }
+    // public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

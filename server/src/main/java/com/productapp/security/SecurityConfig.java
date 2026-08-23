@@ -49,7 +49,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/customers/**")
                         .hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/truck-entries/**").authenticated()
+                        .requestMatchers("/truck-entries/**","/invoices/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

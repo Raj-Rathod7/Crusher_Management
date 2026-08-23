@@ -30,6 +30,8 @@ public class Customer {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+
+    @Column(nullable = false)
     private Boolean isActive = true;
 
     private LocalDateTime createdAt;
