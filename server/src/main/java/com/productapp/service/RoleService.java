@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.productapp.dto.RoleResponse;
 import com.productapp.entity.Role;
@@ -19,15 +22,19 @@ public class RoleService {
         this.roleRepository = roleRepository;
     }
 
+    @Transactional
     public RoleResponse save(Role role) {
         return RoleResponse.fromEntity(roleRepository.save(role));
     }
 
     public List<RoleResponse> getAll() {
-        return roleRepository.findAll().stream()
-                .filter(role -> Boolean.TRUE.equals(role.getIsActive()))
+        return roleRepository.findAllByIsActiveTrue().stream()
                 .map(RoleResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    public Page<RoleResponse> getPage(Pageable pageable) {
+        return roleRepository.findAllByIsActiveTrue(pageable).map(RoleResponse::fromEntity);
     }
 
     public RoleResponse getById(Long id) {
@@ -37,6 +44,7 @@ public class RoleService {
         return RoleResponse.fromEntity(role);
     }
 
+    @Transactional
     public RoleResponse update(Long id, Role role) {
         Role existing = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
@@ -50,6 +58,7 @@ public class RoleService {
         return RoleResponse.fromEntity(roleRepository.save(existing));
     }
 
+    @Transactional
     public void delete(Long id) {
         Role existing = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));

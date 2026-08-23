@@ -4,7 +4,11 @@ import com.productapp.dto.CustomerResponse;
 import com.productapp.entity.Customer;
 import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.CustomerRepository;
+import com.productapp.repository.InvoiceRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,20 +17,26 @@ import java.util.stream.Collectors;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final InvoiceRepository invoiceRepository;
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(CustomerRepository customerRepository, InvoiceRepository invoiceRepository) {
         this.customerRepository = customerRepository;
+        this.invoiceRepository = invoiceRepository;
     }
 
+    @Transactional
     public CustomerResponse save(Customer customer) {
         return CustomerResponse.fromEntity(customerRepository.save(customer));
     }
 
     public List<CustomerResponse> getAll() {
-        return customerRepository.findAll().stream()
-                .filter(customer -> Boolean.TRUE.equals(customer.getIsActive()))
+        return customerRepository.findAllByIsActiveTrue().stream()
                 .map(CustomerResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    public Page<CustomerResponse> getPage(Pageable pageable) {
+        return customerRepository.findAllByIsActiveTrue(pageable).map(CustomerResponse::fromEntity);
     }
 
     public CustomerResponse getById(Long id) {
@@ -36,6 +46,7 @@ public class CustomerService {
         return CustomerResponse.fromEntity(customer);
     }
 
+    @Transactional
     public CustomerResponse update(Long id, Customer customer) {
         Customer existing = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
@@ -49,9 +60,13 @@ public class CustomerService {
         return CustomerResponse.fromEntity(customerRepository.save(existing));
     }
 
+    @Transactional
     public void delete(Long id) {
         Customer existing = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
+        if (invoiceRepository.sumOutstandingBalanceByCustomerId(id).signum() > 0) {
+            throw new IllegalArgumentException("Customer cannot be deactivated with an outstanding balance");
+        }
                 existing.setIsActive(false);
                 customerRepository.save(existing);
     }

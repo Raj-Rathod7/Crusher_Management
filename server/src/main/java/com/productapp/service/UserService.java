@@ -4,6 +4,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.productapp.dto.UserResponse;
 import com.productapp.entity.Role;
@@ -17,15 +21,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+        private final PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository userRepository,
-                       RoleRepository roleRepository) {
+                                           RoleRepository roleRepository,
+                                           PasswordEncoder passwordEncoder) {
 
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+                this.passwordEncoder = passwordEncoder;
     }
 
-    public UserResponse save(User user) {
+        @Transactional
+        public UserResponse save(User user) {
 
         Role role = roleRepository.findById(
                         user.getRole().getId())
@@ -34,16 +42,20 @@ public class UserService {
                                 "Role not found"));
 
         user.setRole(role);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         return UserResponse.fromEntity(userRepository.save(user));
     }
 
     public List<UserResponse> getAll() {
-        return userRepository.findAll().stream()
-                                .filter(user -> Boolean.TRUE.equals(user.getIsActive()))
+        return userRepository.findAllByIsActiveTrue().stream()
                 .map(UserResponse::fromEntity)
                 .collect(Collectors.toList());
     }
+
+        public Page<UserResponse> getPage(Pageable pageable) {
+                return userRepository.findAllByIsActiveTrue(pageable).map(UserResponse::fromEntity);
+        }
 
     public UserResponse getById(Long id) {
         User user = userRepository.findById(id)
@@ -52,12 +64,15 @@ public class UserService {
         return UserResponse.fromEntity(user);
     }
 
-    public UserResponse update(Long id, User user) {
+        @Transactional
+        public UserResponse update(Long id, User user) {
         User existing = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + id));
 
         existing.setUsername(user.getUsername());
-        existing.setPassword(user.getPassword());
+                if (user.getPassword() != null && !user.getPassword().isBlank()) {
+                        existing.setPassword(passwordEncoder.encode(user.getPassword()));
+                }
                 if (user.getIsActive() != null) {
                         existing.setIsActive(user.getIsActive());
                 }
@@ -73,7 +88,8 @@ public class UserService {
         return UserResponse.fromEntity(userRepository.save(existing));
     }
 
-    public void delete(Long id) {
+        @Transactional
+        public void delete(Long id) {
         User existing = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + id));
         

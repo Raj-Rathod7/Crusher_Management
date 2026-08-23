@@ -5,8 +5,11 @@ import com.productapp.dto.ExpenseResponse;
 import com.productapp.entity.Expense;
 import com.productapp.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/expenses")
@@ -19,13 +22,18 @@ public class ExpenseController {
     }
 
     @PostMapping
-    public ExpenseResponse create(@RequestBody ExpenseRequest expenseRequest) {
+    public ExpenseResponse create(@Valid @RequestBody ExpenseRequest expenseRequest) {
         return expenseService.save(expenseRequest);
     }
 
     @GetMapping
     public List<ExpenseResponse> getAll() {
         return expenseService.getAll();
+    }
+
+    @GetMapping("/page")
+    public Page<ExpenseResponse> getPage(Pageable pageable) {
+        return expenseService.getPage(pageable);
     }
 
     @GetMapping("/{id}")

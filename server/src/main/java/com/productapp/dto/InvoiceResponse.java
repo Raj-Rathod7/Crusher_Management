@@ -42,9 +42,9 @@ public class InvoiceResponse {
         this.customerId = customerId;
         this.invoiceItems = invoiceItems;
 
-        // this.createdByUsername = createdByUsername;
-        // this.createdAt = createdAt;
-        // this.updatedAt = updatedAt;
+        this.createdByUsername = invoice.getCreatedBy() != null ? invoice.getCreatedBy().getUsername() : null;
+        this.createdAt = invoice.getCreatedAt();
+        this.updatedAt = invoice.getUpdatedAt();
     }
 
     public static InvoiceResponse fromEntity(Invoice invoice) {

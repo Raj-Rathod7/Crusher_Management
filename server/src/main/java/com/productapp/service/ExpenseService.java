@@ -7,6 +7,9 @@ import com.productapp.repository.ExpenseRepository;
 import com.productapp.repository.CategoryRepository;
 import com.productapp.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
@@ -28,6 +31,7 @@ public class ExpenseService {
 
     
 
+    @Transactional
     public ExpenseResponse save(ExpenseRequest expenseRequest) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
@@ -46,10 +50,13 @@ public class ExpenseService {
     }
 
     public List<ExpenseResponse> getAll() {
-        return expenseRepository.findAll().stream()
-                .filter(expense -> Boolean.TRUE.equals(expense.getIsActive()))
+        return expenseRepository.findAllByIsActiveTrue().stream()
                 .map(ExpenseResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    public Page<ExpenseResponse> getPage(Pageable pageable) {
+        return expenseRepository.findAllByIsActiveTrue(pageable).map(ExpenseResponse::fromEntity);
     }
 
     public ExpenseResponse getById(Long id) {

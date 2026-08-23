@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 
 public class InvoiceRequest {
 
@@ -18,6 +20,7 @@ public class InvoiceRequest {
     private Long customerId;
 
     @NotNull
+    @DecimalMin(value = "0.00")
     private BigDecimal amountPaid;
 
     @NotNull
@@ -25,8 +28,10 @@ public class InvoiceRequest {
 
     private String status;
 
+    @NotBlank
     private String invoiceNumber;
 
+    @NotNull
     private LocalDate invoiceDate;
 
     private BigDecimal totalAmount; 
@@ -67,6 +72,7 @@ public class InvoiceRequest {
     }
 
     @NotEmpty
+    @Valid
     private List<InvoiceItemRequest> invoiceItems;
 
     

@@ -10,7 +10,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "truck_entries")
+@Table(name = "truck_entries", indexes = {
+	@Index(name = "idx_truck_entries_date", columnList = "entry_date"),
+	@Index(name = "idx_truck_entries_material", columnList = "material_type_id"),
+	@Index(name = "idx_truck_entries_number", columnList = "truck_number")
+})
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE truck_entries SET is_active = false WHERE id = ?")
 @Getter

@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.productapp.dto.RoleResponse;
 import com.productapp.entity.Role;
@@ -15,6 +18,7 @@ import com.productapp.service.RoleService;
 
 @RestController
 @RequestMapping("/roles")
+@PreAuthorize("hasRole('ADMIN')")
 public class RoleController {
 
     private final RoleService roleService;
@@ -31,6 +35,11 @@ public class RoleController {
     @GetMapping("/users")
     public List<RoleResponse> getAll() {
         return roleService.getAll();
+    }
+
+    @GetMapping("/page")
+    public Page<RoleResponse> getPage(Pageable pageable) {
+        return roleService.getPage(pageable);
     }
 
     @GetMapping("/{id}")

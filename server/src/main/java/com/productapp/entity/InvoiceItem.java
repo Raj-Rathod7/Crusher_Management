@@ -9,7 +9,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "invoice_items")
+@Table(name = "invoice_items", indexes = {
+    @Index(name = "idx_invoice_items_material", columnList = "material_type_id")
+})
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE invoice_items SET is_active = false WHERE id = ?")
 @Getter

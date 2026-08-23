@@ -6,6 +6,8 @@ import com.productapp.service.CustomerService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/customers")
@@ -25,6 +27,11 @@ public class CustomerController {
     @GetMapping
     public List<CustomerResponse> getAll() {
         return customerService.getAll();
+    }
+
+    @GetMapping("/page")
+    public Page<CustomerResponse> getPage(Pageable pageable) {
+        return customerService.getPage(pageable);
     }
 
     @GetMapping("/{id}")

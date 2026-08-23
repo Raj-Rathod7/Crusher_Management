@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.productapp.dto.UserResponse;
 import com.productapp.entity.User;
@@ -16,6 +19,7 @@ import com.productapp.service.UserService;
 
 @RestController
 @RequestMapping("/users")
+@PreAuthorize("hasRole('ADMIN')")
 public class UserController {
 
     private final UserService service;
@@ -34,7 +38,13 @@ public class UserController {
         return service.getAll();
     }
 
+    @GetMapping("/page")
+    public Page<UserResponse> getPage(Pageable pageable) {
+        return service.getPage(pageable);
+    }
+
     @GetMapping("/is-authenticated")
+    @PreAuthorize("isAuthenticated()")
     public boolean isAuthenticated(Authentication authentication) {
         return authentication != null && authentication.isAuthenticated();
     }

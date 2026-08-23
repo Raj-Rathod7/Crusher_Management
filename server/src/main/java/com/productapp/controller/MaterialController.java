@@ -6,6 +6,8 @@ import com.productapp.service.MaterialService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/materials")
@@ -25,6 +27,11 @@ public class MaterialController {
     @GetMapping
     public List<MaterialResponse> getAll() {
         return materialService.getAll();
+    }
+
+    @GetMapping("/page")
+    public Page<MaterialResponse> getPage(Pageable pageable) {
+        return materialService.getPage(pageable);
     }
 
     @GetMapping("/{id}")

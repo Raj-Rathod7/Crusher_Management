@@ -10,6 +10,9 @@ import com.productapp.repository.MaterialRepository;
 import com.productapp.repository.TruckEntryRepository;
 import com.productapp.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,7 +32,8 @@ public class TruckEntryService {
         this.userRepository = userRepository;
     }
 
-    public TruckEntryResponse createTruckEntry(TruckEntryRequest request, String username) {
+        @Transactional
+        public TruckEntryResponse createTruckEntry(TruckEntryRequest request, String username) {
         User user = userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
@@ -56,11 +60,14 @@ public class TruckEntryService {
     }
 
     public List<TruckEntryResponse> getAllTruckEntries() {
-        return truckEntryRepository.findAll().stream()
-                                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
+        return truckEntryRepository.findAllByIsActiveTrue().stream()
                 .map(TruckEntryResponse::fromEntity)
                 .collect(Collectors.toList());
     }
+
+        public Page<TruckEntryResponse> getPage(Pageable pageable) {
+                return truckEntryRepository.findAllByIsActiveTrue(pageable).map(TruckEntryResponse::fromEntity);
+        }
 
     public TruckEntryResponse getTruckEntryById(Long id) {
         TruckEntry truckEntry = truckEntryRepository.findById(id)
@@ -69,7 +76,8 @@ public class TruckEntryService {
         return TruckEntryResponse.fromEntity(truckEntry);
     }
 
-    public TruckEntryResponse updateTruckEntry(Long id, TruckEntryRequest request, String username) {
+        @Transactional
+        public TruckEntryResponse updateTruckEntry(Long id, TruckEntryRequest request, String username) {
         TruckEntry existing = truckEntryRepository.findById(id)
                 .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
@@ -90,7 +98,8 @@ public class TruckEntryService {
         return TruckEntryResponse.fromEntity(truckEntryRepository.save(existing));
     }
 
-    public void deleteTruckEntry(Long id) {
+        @Transactional
+        public void deleteTruckEntry(Long id) {
         TruckEntry existing = truckEntryRepository.findById(id)
                 .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));

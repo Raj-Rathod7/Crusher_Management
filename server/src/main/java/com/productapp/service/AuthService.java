@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class AuthService {
@@ -22,6 +23,9 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.auth.registration-enabled:false}")
+    private boolean registrationEnabled;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
@@ -56,6 +60,10 @@ public class AuthService {
     }
 
     public AuthResponse register(AuthRequest request) {
+
+        if (!registrationEnabled) {
+            throw new IllegalStateException("User registration is disabled");
+        }
 
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username already exists");

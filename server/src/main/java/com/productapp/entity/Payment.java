@@ -10,7 +10,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", indexes = {
+    @Index(name = "idx_payments_date", columnList = "payment_date"),
+    @Index(name = "idx_payments_invoice", columnList = "invoice_id"),
+    @Index(name = "idx_payments_customer", columnList = "customer_id")
+})
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE payments SET is_active = false WHERE id = ?")
 @Getter

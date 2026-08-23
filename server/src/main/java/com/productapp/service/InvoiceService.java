@@ -15,10 +15,14 @@ import com.productapp.entity.User;
 import com.productapp.repository.UserRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,6 +43,7 @@ public class InvoiceService {
         this.userRepository = userRepository;
     }
 
+    @Transactional
     public InvoiceResponse createInvoice(InvoiceRequest invoiceRequest) {
         Invoice invoice = new Invoice();
         User createdBy = getCurrentUser();
@@ -48,17 +53,15 @@ public class InvoiceService {
                                 new ResourceNotFoundException(
                                         "Customer not found"));
         invoice.setCustomer(customer);
-        invoice.setAmountPaid(invoiceRequest.getAmountPaid());
+        BigDecimal amountPaid = invoiceRequest.getAmountPaid();
         invoice.setInvoiceDate(invoiceRequest.getInvoiceDate());
         invoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
-        invoice.setTotalAmount(invoiceRequest.getTotalAmount());
-        invoice.setBalance(invoiceRequest.getBalance());
-        invoice.setStatus(invoiceRequest.getStatus());
         invoice.setRemarks(invoiceRequest.getRemarks());
 
                             
         
         List<InvoiceItem> invoiceItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
         for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
 
             MaterialType material = materialRepository.findByIdAndIsActiveTrue(
@@ -72,16 +75,30 @@ public class InvoiceService {
             item.setMaterialType(material);
             item.setQuantityBrass(itemRequest.getQuantityBrass());
             item.setRate(itemRequest.getRate());
-            item.setAmount(itemRequest.getAmount());
+            BigDecimal itemAmount = itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
+            item.setAmount(itemAmount);
             item.setTruckNumber(itemRequest.getTruckNumber());
 
             invoiceItems.add(item);
+            totalAmount = totalAmount.add(itemAmount);
         }
+        BigDecimal balance = totalAmount.subtract(amountPaid);
+        invoice.setAmountPaid(amountPaid);
+        invoice.setTotalAmount(totalAmount);
+        invoice.setBalance(balance);
+        invoice.setStatus(resolveStatus(amountPaid, balance));
         invoice.setInvoiceItems(invoiceItems);
         invoice.setCreatedBy(createdBy);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
         return InvoiceResponse.fromEntity(savedInvoice);
+    }
+
+    private String resolveStatus(BigDecimal amountPaid, BigDecimal balance) {
+        if (amountPaid.signum() == 0) {
+            return "pending";
+        }
+        return balance.signum() == 0 ? "paid" : "partial";
     }
 
     private User getCurrentUser() {
@@ -92,10 +109,13 @@ public class InvoiceService {
 
 
     public List<InvoiceResponse> getAll() {
-        return invoiceRepository.findAll().stream()
-                .filter(invoice -> Boolean.TRUE.equals(invoice.getIsActive()))
+        return invoiceRepository.findAllByIsActiveTrue().stream()
                 .map(InvoiceResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    public Page<InvoiceResponse> getPage(Pageable pageable) {
+        return invoiceRepository.findAllByIsActiveTrue(pageable).map(InvoiceResponse::fromEntity);
     }
 
     public InvoiceResponse getById(Long id) {

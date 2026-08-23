@@ -8,7 +8,10 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "customers")
+@Table(name = "customers", indexes = {
+    @Index(name = "idx_customers_name", columnList = "name"),
+    @Index(name = "idx_customers_phone", columnList = "phone")
+})
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE customers SET is_active = false WHERE id = ?")
 @Getter
