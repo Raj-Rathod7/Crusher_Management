@@ -53,6 +53,19 @@ function RouteComponent() {
   const collectionRate = data.invoiceTotal > 0 ? Math.min(100, (data.amountCollected / data.invoiceTotal) * 100) : 0
   const maxBar = Math.max(data.invoiceTotal, data.expenseTotal, data.amountCollected, 1)
 
+  function getStatusClass(status: string){
+    const normalizedStatus = status.toUpperCase();
+    if (normalizedStatus === 'PAID') {
+      return 'bg-green-500/20 border-green-700 text-green-700' as const
+    }
+
+    if (normalizedStatus === 'PARTIAL') {
+      return 'bg-yellow-500/20 border-yellow-700 text-yellow-700' as const
+    }
+
+    return 'bg-orange-500/20 border-orange-700 text-orange-700' as const
+  }
+
   return (
     <main className="min-h-full bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -124,21 +137,21 @@ function RouteComponent() {
           <CardHeader className="border-b">
             <div><CardDescription>Latest activity</CardDescription><CardTitle className="mt-1 text-2xl">Recent invoices</CardTitle></div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-1">
             <ConfigurableDataTable
               data={data.recentInvoices}
               columns={[
                 { accessorKey: 'invoiceNumber', header: 'Invoice' },
                 { accessorKey: 'customerName', header: 'Customer', cell: ({ row }) => row.original.customerName ?? 'Unassigned' },
                 { accessorKey: 'invoiceDate', header: 'Date', cell: ({ row }) => new Date(`${row.original.invoiceDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
-                { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={row.original.status === 'paid' ? 'default' : 'secondary'}>{row.original.status}</Badge> },
+                { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge className={`${getStatusClass(row.original.status)} capitalize border p-3`} variant={row.original.status === 'paid' ? 'default' : 'secondary'}>{row.original.status}</Badge> },
                 { accessorKey: 'balance', header: 'Balance', cell: ({ row }) => <span className="font-medium tabular-nums">{currency.format(row.original.balance)}</span> },
               ]}
               getRowId={(row) => row.id.toString()}
               enableColumnVisibility={false}
               enablePagination={false}
               enableSorting={false}
-              enableGlobalSearch={false}
+              enableGlobalSearch={true}
               emptyMessage="No invoices have been recorded yet."
             />
           </CardContent>

@@ -14,12 +14,18 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   IconCalendarStats,
+  IconCircleCheck,
+  IconCircleDashedCheck,
+  IconCircleLetterX,
   IconCurrencyRupee,
   IconReceipt,
   IconWallet,
 } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { CheckIcon, Truck } from 'lucide-react'
+import { Button } from '#/components/ui/button'
+import { Separator } from '#/components/ui/separator'
 
 export const Route = createFileRoute('/_app/sales/')({
   component: RouteComponent,
@@ -60,14 +66,28 @@ function getStatusVariant(status: string) {
 function getStatusClass(status: string){
   const normalizedStatus = status.toUpperCase();
   if (normalizedStatus === 'PAID') {
-    return 'bg-green-500/30 border-green-700 text-green-700' as const
+    return 'text-green-700' as const
   }
 
   if (normalizedStatus === 'PARTIAL') {
-    return 'bg-yellow-500/30 border-yellow-700 text-yellow-700' as const
+    return 'text-yellow-700' as const
   }
 
-  return 'bg-orange-500/30 border-orange-700 text-orange-700' as const
+  return 'text-orange-700' as const
+}
+
+function getStatusIcon(status: string) {
+  const normalizedStatus = status.toUpperCase();
+  const className = `${getStatusClass(status)} mr-2`
+  if (normalizedStatus === 'PAID') {
+    return <IconCircleCheck className={className} />
+  }
+
+  if (normalizedStatus === 'PARTIAL') {
+    return <IconCircleDashedCheck className={className}/>
+  }
+
+  return <IconCircleLetterX className={className}/>
 }
 
 function RouteComponent() {
@@ -170,6 +190,11 @@ function RouteComponent() {
             accessorKey: 'invoiceNumber',
             header: 'Invoice no',
             meta: { filterable: true, filterPlaceholder: 'Filter invoice' },
+            cell: ({ row }) => (
+              <Button variant={'link'} className='curosor-pointer'>
+                {row.original.invoiceNumber}
+              </Button>
+            ),
           },
           {
             accessorKey: 'invoiceDate',
@@ -180,6 +205,14 @@ function RouteComponent() {
             accessorKey: 'customerName',
             header: 'Customer',
             meta: { filterable: true, filterPlaceholder: 'Filter customer' },
+            cell: ({ row }) => (
+              <Badge 
+                variant='secondary'
+                className={`capitalize p-3  font-bold`}>
+                  
+                  {row.original.customerName}
+              </Badge>
+            ),
           },
           {
             accessorKey: 'totalAmount',
@@ -207,8 +240,9 @@ function RouteComponent() {
             },
             cell: ({ row }) => (
               <Badge 
-                variant={getStatusVariant(row.original.status)}
-                className={`${getStatusClass(row.original.status)} capitalize border p-3`}>
+                variant='outline'
+                className={`capitalize border p-3 items-center justify-start font-bold`}>
+                  {getStatusIcon(row.original.status)}
                   {row.original.status}
               </Badge>
             ),
@@ -276,14 +310,14 @@ function SaleDetailsDialog({
             <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
               <DetailField label="Invoice date" value={sale.invoiceDate} />
               <DetailField label="Customer" value={sale.customerName ?? '-'} />
-              <DetailField label="Status" value={sale.status} />
+              <DetailField label="Status" isBadge value={sale.status} />
               <DetailField label="Created by" value={sale.createdByUsername ?? '-'} />
               <DetailField label="Total" value={formatCurrency(sale.totalAmount)} />
               <DetailField label="Paid" value={formatCurrency(sale.amountPaid)} />
               <DetailField label="Balance" value={formatCurrency(sale.balance)} />
               <DetailField label="Remarks" value={sale.remarks || '-'} />
             </dl>
-
+            <Separator />
             <div className="space-y-3">
               <div>
                 <h3 className="text-sm font-medium">Invoice items</h3>
@@ -314,7 +348,15 @@ function SaleDetailsDialog({
                     {
                       accessorKey: 'truckNumber',
                       header: 'Truck',
-                      cell: ({ row }) => row.original.truckNumber || '-',
+                      cell: ({ row }) => (
+                        row.original.truckNumber ? <Badge
+                          variant="secondary"
+                          className={`uppercase p-3  font-bold`}
+                        >
+                          <Truck className="mr-2"/>
+                          {row.original.truckNumber}
+                        </Badge> : '-'
+                      ),
                     },
                     {
                       accessorKey: 'amount',
@@ -341,11 +383,21 @@ function SaleDetailsDialog({
   )
 }
 
-function DetailField({ label, value }: { label: string; value: string }) {
+function DetailField({ label, value, isBadge = false }: { label: string; value: string; isBadge?: boolean }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-foreground">{value}</dd>
+      <dd className="mt-1 truncate text-sm font-medium text-foreground">
+        {isBadge ? 
+        <Badge 
+                variant='outline'
+                className={`capitalize border p-3 items-center justify-start font-bold`}>
+                  {getStatusIcon(value)}
+                  {value}
+              </Badge>
+        : <>
+        {value}</>}
+      </dd>
     </div>
   )
 }

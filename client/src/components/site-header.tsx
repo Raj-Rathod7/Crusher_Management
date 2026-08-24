@@ -34,7 +34,7 @@ type BreadcrumbEntry = {
 };
 
 const user = {
-  name: "shadcn",
+  name: "Admin",
   email: "m@example.com",
   avatar: "/avatars/shadcn.jpg",
 };

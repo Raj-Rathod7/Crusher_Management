@@ -22,6 +22,8 @@ import {
   IconTrash,
   IconTruck,
 } from "@tabler/icons-react";
+import { Badge } from "#/components/ui/badge";
+import { Truck, TruckIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/truck-entry/")({
   component: RouteComponent,
@@ -37,9 +39,9 @@ type TruckRow = {
 };
 
 function RouteComponent() {
-  const queryClient = useQueryClient()
-  const router = useRouter()
-  const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null)
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: truckEntryKeys.all,
     queryFn: getAllTruckEntries,
@@ -63,34 +65,42 @@ function RouteComponent() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: truckEntryKeys.all }),
-        queryClient.refetchQueries({ queryKey: truckEntryKeys.all, type: 'all' }),
+        queryClient.refetchQueries({
+          queryKey: truckEntryKeys.all,
+          type: "all",
+        }),
         router.invalidate(),
-      ])
-      setEntryToDelete(null)
-      toast.success("Truck entry deleted.")
+      ]);
+      setEntryToDelete(null);
+      toast.success("Truck entry deleted.");
     },
     onError: () => {
-      toast.error("Failed to delete truck entry.")
+      toast.error("Failed to delete truck entry.");
     },
-  })
+  });
 
   const stats = useMemo(() => {
     const entries = data ?? [];
     const today = new Date();
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-      today.getDate()
+      today.getDate(),
     ).padStart(2, "0")}`;
-    const todayEntries = entries.filter((entry) => entry.entryDate === todayKey);
-    const quantityToday = todayEntries.reduce((sum, entry) => sum + entry.quantityBrass, 0);
+    const todayEntries = entries.filter(
+      (entry) => entry.entryDate === todayKey,
+    );
+    const quantityToday = todayEntries.reduce(
+      (sum, entry) => sum + entry.quantityBrass,
+      0,
+    );
     const uniqueSuppliersToday = new Set(
       todayEntries
         .map((entry) => entry.supplierName?.trim())
-        .filter((supplier): supplier is string => Boolean(supplier))
+        .filter((supplier): supplier is string => Boolean(supplier)),
     ).size;
     const uniqueMaterialsToday = new Set(
       todayEntries
         .map((entry) => entry.materialName?.trim())
-        .filter((material): material is string => Boolean(material))
+        .filter((material): material is string => Boolean(material)),
     ).size;
 
     return {
@@ -103,9 +113,7 @@ function RouteComponent() {
 
   useEffect(() => {
     if (isError) {
-      toast.error("Failed to load truck entries. Please try again later.", { 
-        
-      });
+      toast.error("Failed to load truck entries. Please try again later.", {});
     }
   }, [isError, error]);
 
@@ -140,6 +148,15 @@ function RouteComponent() {
             accessorKey: "truckNo",
             header: "Truck No",
             meta: { filterable: true, filterPlaceholder: "Filter truck" },
+            cell: ({ row }) => (
+              <Badge
+                variant="secondary"
+                className={`uppercase p-3  font-bold`}
+              >
+                <Truck className="mr-2"/>
+                {row.original.truckNo}
+              </Badge>
+            ),
           },
           {
             accessorKey: "entryDate",
@@ -201,14 +218,17 @@ function RouteComponent() {
         addButtonText="Add Truck Entry"
       />
 
-      <Dialog open={Boolean(entryToDelete)} onOpenChange={(open) => !open && setEntryToDelete(null)}>
+      <Dialog
+        open={Boolean(entryToDelete)}
+        onOpenChange={(open) => !open && setEntryToDelete(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete truck entry</DialogTitle>
             <DialogDescription>
               {entryToDelete
                 ? `Delete ${entryToDelete.truckNo} from ${entryToDelete.entryDate}? This action cannot be undone.`
-                : 'Delete this truck entry? This action cannot be undone.'}
+                : "Delete this truck entry? This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -219,9 +239,9 @@ function RouteComponent() {
               variant="destructive"
               onClick={() => {
                 if (!entryToDelete) {
-                  return
+                  return;
                 }
-                deleteMutation.mutate(entryToDelete.id)
+                deleteMutation.mutate(entryToDelete.id);
               }}
             >
               Delete
