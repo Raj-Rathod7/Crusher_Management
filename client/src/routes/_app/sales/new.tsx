@@ -35,7 +35,7 @@ function RouteComponent() {
       title="New Sale"
       description="Create invoice with customer, amount, payment, and status."
       backLabel="Back to sales"
-      submitLabel="Create sale"
+      submitLabel="Save sale"
       isSubmitting={createMutation.isPending}
       onSubmit={handleSubmit}
       showSummary={true}

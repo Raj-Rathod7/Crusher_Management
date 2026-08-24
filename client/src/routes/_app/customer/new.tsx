@@ -31,7 +31,7 @@ function RouteComponent() {
       title="New Customer"
       description="Create a customer profile with name, contact, and notes."
       backLabel="Back to customers"
-      submitLabel="Create customer"
+      submitLabel="Save customer"
       isSubmitting={createMutation.isPending}
       onSubmit={(payload: CreateCustomerPayload) => createMutation.mutate(payload)}
     />

@@ -36,7 +36,7 @@ function RouteComponent() {
       title="New Expense"
       description="Record a new expense with category, amount, and notes."
       backLabel="Back to expenses"
-      submitLabel="Create expense"
+      submitLabel="Save expense"
       isSubmitting={createMutation.isPending}
       onSubmit={(payload: CreateExpensePayload) => createMutation.mutate(payload)}
     />

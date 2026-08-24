@@ -20,6 +20,7 @@ import type { CreateExpensePayload } from '#/lib/models'
 import { getAllExpenseCategories, expenseCategoryKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { PlusIcon, SaveIcon } from 'lucide-react'
 import * as React from 'react'
 
 export type ExpenseFormValues = {
@@ -193,6 +194,7 @@ export function ExpenseForm({
           Back
         </Button>
         <Button disabled={isSubmitting} type="submit">
+          <SaveIcon />
           {isSubmitting ? 'Saving...' : submitLabel}
         </Button>
       </div>

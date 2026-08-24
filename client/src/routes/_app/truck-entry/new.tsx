@@ -36,7 +36,7 @@ function RouteComponent() {
       title="New Truck Entry"
       description="Add truck number, date, material, quantity, supplier, remarks."
       backLabel="Back to entries"
-      submitLabel="Create truck entry"
+      submitLabel="Save truck entry"
       isSubmitting={createMutation.isPending}
       onSubmit={(payload: CreateTruckEntryPayload) => createMutation.mutate(payload)}
     />

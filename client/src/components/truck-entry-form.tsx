@@ -26,6 +26,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { IconArrowLeft, IconCheck, IconCube, IconTruck, IconWeight } from '@tabler/icons-react'
 import * as React from 'react'
 import { z } from 'zod'
+import { SaveIcon } from 'lucide-react'
 
 const truckEntryFormSchema = z.object({
   entryDate: z.string().min(1, 'Entry date is required.'),
@@ -330,6 +331,7 @@ export function TruckEntryForm({
                 Back to Truck Entry
               </Button>
               <Button disabled={isSubmitting} type="submit" className="w-full sm:w-auto">
+                <SaveIcon />
                 {isSubmitting ? 'Saving...' : submitLabel}
               </Button>
             </div>

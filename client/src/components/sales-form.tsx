@@ -32,7 +32,7 @@ import { customerKeys, getAllCustomers, getAllMaterials, materialKeys } from '#/
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { IconArrowLeft, IconCurrencyRupee, IconPlus, IconReceipt, IconUser } from '@tabler/icons-react'
-import { SaveIcon } from 'lucide-react'
+import { PlusIcon, SaveIcon } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { CustomerForm } from './customer-form'
@@ -713,8 +713,8 @@ export function SalesForm({
 
                     <div className="mt-4 flex justify-end border-t border-border/70 pt-4">
                       <Button type="button" onClick={handleSaveInvoiceItem}>
-                        <SaveIcon />
-                        {editingInvoiceItemId ? 'Update item' : 'Save item'}
+                        <PlusIcon />
+                        {editingInvoiceItemId ? 'Update item' : 'Add item'}
                       </Button>
                     </div>
           </div>
@@ -792,7 +792,7 @@ export function SalesForm({
                   'Saving...'
                 ) : (
                   <>
-                    <IconPlus />
+                    <SaveIcon />
                     {submitLabel}
                   </>
                 )}
