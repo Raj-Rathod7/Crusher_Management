@@ -18,9 +18,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AnimatedPage,
+  AnimatedProgressFill,
+} from "@/components/ui/app-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/lib/common/api";
-import { motion } from "motion/react"
 
 export const Route = createFileRoute("/_app/")({
   component: RouteComponent,
@@ -91,7 +94,7 @@ function RouteComponent() {
   }
 
   return (
-    <main className="min-h-full bg-background p-4 md:p-8">
+    <AnimatedPage className="min-h-full bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         <header className="flex flex-col justify-between gap-5 border-b border-border/70 pb-6 sm:flex-row sm:items-end">
           <div>
@@ -222,9 +225,9 @@ function RouteComponent() {
                   </span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-muted">
-                  <div
+                  <AnimatedProgressFill
+                    progress={collectionRate}
                     className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${collectionRate}%` }}
                   />
                 </div>
               </div>
@@ -300,7 +303,7 @@ function RouteComponent() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </AnimatedPage>
   );
 }
 
@@ -379,9 +382,8 @@ function PositionBar({
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <motion.div
-          initial={{width: 0}}
-          animate={{width: `${Math.max(2, (value / max) * 100)}%`}}
+        <AnimatedProgressFill
+          progress={Math.max(2, (value / max) * 100)}
           className={`h-full rounded-full ${color} transition-all`}
         />
       </div>

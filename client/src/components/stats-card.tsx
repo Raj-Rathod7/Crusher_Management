@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { AnimatedReveal } from '@/components/ui/app-motion'
 
 type StatsCardProps = {
   title: React.ReactNode
@@ -27,16 +28,18 @@ export function StatsCard({
   className,
 }: StatsCardProps) {
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardDescription className="flex items-center gap-2">
-          {icon}
-          {title}
-        </CardDescription>
-        <CardTitle className="text-2xl font-semibold tabular-nums">{value}</CardTitle>
-      </CardHeader>
-      {description ? <CardContent>{description}</CardContent> : null}
-      {footer ? <CardFooter>{footer}</CardFooter> : null}
-    </Card>
+    <AnimatedReveal>
+      <Card className={className}>
+        <CardHeader>
+          <CardDescription className="flex items-center gap-2">
+            {icon}
+            {title}
+          </CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums">{value}</CardTitle>
+        </CardHeader>
+        {description ? <CardContent>{description}</CardContent> : null}
+        {footer ? <CardFooter>{footer}</CardFooter> : null}
+      </Card>
+    </AnimatedReveal>
   )
 }

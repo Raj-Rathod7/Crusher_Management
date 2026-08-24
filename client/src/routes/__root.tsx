@@ -52,7 +52,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="jcb-cursor">
         <ThemeProvider defaultTheme="dark">
             <TooltipProvider>
               <AuthProvider>

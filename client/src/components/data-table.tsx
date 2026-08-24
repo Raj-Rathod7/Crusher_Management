@@ -57,6 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { AnimatedReveal } from "@/components/ui/app-motion"
 import { Link } from "@tanstack/react-router"
 
 export const schema = z.object({
@@ -294,7 +295,7 @@ export function ConfigurableDataTable<TData>({
   )
 
   return (
-    <div className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
+    <AnimatedReveal className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
       <div className="mb-3 flex flex-col gap-3 border-b border-border/80 pb-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           {enableGlobalSearch ? (
@@ -565,7 +566,7 @@ export function ConfigurableDataTable<TData>({
           </div>
         </div>
       ) : null}
-    </div>
+    </AnimatedReveal>
   )
 }
 

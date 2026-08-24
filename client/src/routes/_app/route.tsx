@@ -1,9 +1,10 @@
 import { AppSidebar } from "#/components/app-sidebar";
+import { AnimatedPage } from "#/components/ui/app-motion";
 import { SiteHeader } from "#/components/site-header";
 import {
   SidebarInset, SidebarProvider
 } from "#/components/ui/sidebar";
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useLocation, useNavigate } from "@tanstack/react-router";
 import { ApiError, apiClient, getDefaultToken, setAuthToken } from "#/lib/common/api";
 import { authQueryKey, authQueryStaleTime } from "#/lib/auth-context";
 import { useShortcuts } from "#/hooks/use-shortcuts";
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/_app")({
 
 function RouteComponent() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const keybinds = quickLinks.filter((x) => x.shortcut).map((f) => {return {keys: f.shortcut!, action: () => navigate({to: f.path})}})
   useShortcuts({keybinds});
 
@@ -61,9 +63,9 @@ function RouteComponent() {
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
+          <AnimatedPage key={pathname} className="@container/main flex flex-1 flex-col gap-2">
             <Outlet />
-          </div>
+          </AnimatedPage>
         </div>
       </SidebarInset>
     </SidebarProvider>
