@@ -107,6 +107,56 @@ public class InvoiceService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
+    @Transactional
+    public InvoiceResponse updateInvoice(Long id, InvoiceRequest invoiceRequest) {
+        Invoice existingInvoice = invoiceRepository.findById(id)
+                .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
+
+        Customer customer =
+                customerRepository.findByIdAndIsActiveTrue(invoiceRequest.getCustomerId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Customer not found"));
+        existingInvoice.setCustomer(customer);
+        BigDecimal amountPaid = invoiceRequest.getAmountPaid();
+        existingInvoice.setInvoiceDate(invoiceRequest.getInvoiceDate());
+        existingInvoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
+        existingInvoice.setRemarks(invoiceRequest.getRemarks());
+
+        List<InvoiceItem> invoiceItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
+
+            MaterialType material = materialRepository.findByIdAndIsActiveTrue(
+                    itemRequest.getMaterialTypeId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Material not found"));
+
+            InvoiceItem item = new InvoiceItem();
+
+            item.setInvoice(existingInvoice);
+            item.setMaterialType(material);
+            item.setQuantityBrass(itemRequest.getQuantityBrass());
+            item.setRate(itemRequest.getRate());
+            BigDecimal itemAmount = itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
+            item.setAmount(itemAmount);
+            item.setTruckNumber(itemRequest.getTruckNumber());
+
+            invoiceItems.add(item);
+            totalAmount = totalAmount.add(itemAmount);
+        }
+        BigDecimal balance = totalAmount.subtract(amountPaid);
+        existingInvoice.setAmountPaid(amountPaid);
+        existingInvoice.setTotalAmount(totalAmount);
+        existingInvoice.setBalance(balance);
+        existingInvoice.setStatus(resolveStatus(amountPaid, balance));
+        existingInvoice.setInvoiceItems(invoiceItems);
+
+        Invoice savedInvoice = invoiceRepository.save(existingInvoice);
+        return InvoiceResponse.fromEntity(savedInvoice);
+    }
+
 
     public List<InvoiceResponse> getAll() {
         return invoiceRepository.findAllByIsActiveTrue().stream()

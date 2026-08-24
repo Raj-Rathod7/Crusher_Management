@@ -45,14 +45,6 @@ const data = {
         <IconUsers />
       )
     },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: (
-        <IconChartBar
-        />
-      ),
-    },
     
     {
       title: "Expenses",
