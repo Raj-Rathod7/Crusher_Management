@@ -3,6 +3,7 @@ package com.productapp.service;
 import com.productapp.dto.CustomerResponse;
 import com.productapp.entity.Customer;
 import com.productapp.repository.CustomerRepository;
+import com.productapp.repository.InvoiceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -10,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,6 +22,9 @@ class CustomerServiceTest {
 
     @Mock
     private CustomerRepository customerRepository;
+
+    @Mock
+    private InvoiceRepository invoiceRepository;
 
     @InjectMocks
     private CustomerService customerService;
@@ -34,6 +39,7 @@ class CustomerServiceTest {
         customer.setIsActive(true);
 
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(invoiceRepository.sumOutstandingBalanceByCustomerId(1L)).thenReturn(BigDecimal.ZERO);
 
         CustomerResponse response = customerService.getById(1L);
 

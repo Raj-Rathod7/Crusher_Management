@@ -38,6 +38,12 @@ export const Route = createFileRoute("/_app/customer/")({
 
 type CustomerRow = Omit<Customer, "createdAt" | "isActive">;
 
+const currency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
 function RouteComponent() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
@@ -58,6 +64,7 @@ function RouteComponent() {
       phone: customer.phone ?? "-",
       address: customer.address ?? "-",
       notes: customer.notes ?? "-",
+      pendingBalance: customer.pendingBalance ?? 0,
     };
   });
 
@@ -112,6 +119,16 @@ function RouteComponent() {
           {
             accessorKey: "notes",
             header: "Notes",
+          },
+          {
+            accessorKey: "pendingBalance",
+            header: "Pending Balance",
+            meta: { filterable: true, filterType: "number" },
+            cell: ({ row }) => (
+              <span className="font-medium text-amber-700 dark:text-amber-400">
+                {currency.format(Number(row.original.pendingBalance ?? 0))}
+              </span>
+            ),
           },
           {
             id: "actions",
@@ -183,6 +200,10 @@ function RouteComponent() {
             </div>
           </DialogHeader>
           <div className="max-h-[65vh] overflow-y-auto p-5">
+            {selectedCustomer ? (
+              <CustomerDetailsPanel customer={selectedCustomer} />
+            ) : null}
+
             {invoicesQuery.isLoading ? (
               <InvoiceModalSkeleton />
             ) : invoicesQuery.isError ? (
@@ -192,9 +213,12 @@ function RouteComponent() {
                 </CardContent>
               </Card>
             ) : invoicesQuery.data?.length ? (
-              <ExpandableInvoiceTable invoices={invoicesQuery.data} />
+              <div className="mt-4">
+                <CustomerInvoiceSummary invoices={invoicesQuery.data} />
+                <ExpandableInvoiceTable invoices={invoicesQuery.data} />
+              </div>
             ) : (
-              <Card>
+              <Card className="mt-4">
                 <CardContent className="p-8 text-center text-sm text-muted-foreground">
                   No invoices recorded for this customer.
                 </CardContent>
@@ -207,13 +231,87 @@ function RouteComponent() {
   );
 }
 
-function ExpandableInvoiceTable({ invoices }: { invoices: Invoice[] }) {
-  const currency = new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  });
+function CustomerDetailsPanel({ customer }: { customer: Customer }) {
+  return (
+    <Card>
+      <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Customer name</p>
+          <p className="mt-1 text-base font-semibold">{customer.name}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending balance</p>
+          <p className="mt-1 text-base font-semibold text-amber-700 dark:text-amber-400">
+            {currency.format(customer.pendingBalance ?? 0)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Phone</p>
+          <p className="mt-1 text-sm">{customer.phone ?? "-"}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Address</p>
+          <p className="mt-1 text-sm">{customer.address ?? "-"}</p>
+        </div>
+        <div className="md:col-span-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Notes</p>
+          <p className="mt-1 text-sm">{customer.notes ?? "-"}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
+function CustomerInvoiceSummary({ invoices }: { invoices: Invoice[] }) {
+  const consolidated = invoices.reduce(
+    (acc, invoice) => {
+      acc.totalAmount += invoice.totalAmount;
+      acc.amountPaid += invoice.amountPaid;
+      acc.pendingBalance += Math.max(invoice.balance, 0);
+      return acc;
+    },
+    {
+      totalAmount: 0,
+      amountPaid: 0,
+      pendingBalance: 0,
+    },
+  );
+
+  return (
+    <div className="mb-4 grid gap-3 md:grid-cols-4">
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Invoices</p>
+          <p className="mt-1 text-lg font-semibold">{invoices.length}</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total billed</p>
+          <p className="mt-1 text-lg font-semibold">{currency.format(consolidated.totalAmount)}</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Collected</p>
+          <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+            {currency.format(consolidated.amountPaid)}
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending balance</p>
+          <p className="mt-1 text-lg font-semibold text-amber-700 dark:text-amber-400">
+            {currency.format(consolidated.pendingBalance)}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ExpandableInvoiceTable({ invoices }: { invoices: Invoice[] }) {
   return (
     <ConfigurableDataTable
       data={invoices}

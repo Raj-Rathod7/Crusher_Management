@@ -41,6 +41,7 @@ export type Customer = {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  pendingBalance?: number;
   isActive: boolean | null;
   createdAt: string;
 }

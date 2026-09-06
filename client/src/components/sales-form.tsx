@@ -273,6 +273,14 @@ export function SalesForm({
     [customers, form.customerId]
   )
 
+  const selectedCustomerPendingBalance = React.useMemo(() => {
+    if (!selectedCustomer) {
+      return 0
+    }
+
+    return selectedCustomer.pendingBalance ?? 0
+  }, [selectedCustomer])
+
   React.useEffect(() => {
     setForm((current) => ({
       ...current,
@@ -482,6 +490,11 @@ export function SalesForm({
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Customer</p>
             <p className="mt-1 truncate text-sm font-semibold">{selectedCustomer?.name ?? 'Not set'}</p>
+            {selectedCustomer ? (
+              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+                Pending: {inrConverter.format(selectedCustomerPendingBalance)}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -536,7 +549,9 @@ export function SalesForm({
                               className="w-full justify-between font-normal"
                               disabled={isLoadingCustomers}
                             >
-                              {selectedCustomer?.name || (isLoadingCustomers ? 'Loading customers...' : 'Select a customer')}
+                              {selectedCustomer
+                                ? `${selectedCustomer.name} (${inrConverter.format(selectedCustomerPendingBalance)} pending)`
+                                : (isLoadingCustomers ? 'Loading customers...' : 'Select a customer')}
                             </Button>
                           }
                         />
@@ -546,7 +561,12 @@ export function SalesForm({
                           <ComboboxList>
                             {(customer) => (
                               <ComboboxItem key={customer.id} value={customer}>
-                                {customer.name}
+                                <div className="flex w-full items-center justify-between gap-3">
+                                  <span>{customer.name}</span>
+                                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                                    {inrConverter.format(customer.pendingBalance ?? 0)}
+                                  </span>
+                                </div>
                               </ComboboxItem>
                             )}
                           </ComboboxList>

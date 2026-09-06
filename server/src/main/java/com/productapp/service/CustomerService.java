@@ -11,7 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,20 +34,36 @@ public class CustomerService {
     }
 
     public List<CustomerResponse> getAll() {
-        return customerRepository.findAllByIsActiveTrue().stream()
-                .map(CustomerResponse::fromEntity)
+        List<Customer> customers = customerRepository.findAllByIsActiveTrue();
+        Map<Long, BigDecimal> pendingBalanceByCustomerId = getOutstandingBalanceMap();
+
+        return customers.stream()
+            .map(customer -> CustomerResponse.fromEntity(
+                customer,
+                pendingBalanceByCustomerId.getOrDefault(customer.getId(), BigDecimal.ZERO)
+            ))
                 .collect(Collectors.toList());
     }
 
     public Page<CustomerResponse> getPage(Pageable pageable) {
-        return customerRepository.findAllByIsActiveTrue(pageable).map(CustomerResponse::fromEntity);
+        Page<Customer> customersPage = customerRepository.findAllByIsActiveTrue(pageable);
+        List<Long> customerIds = customersPage.getContent().stream()
+            .map(Customer::getId)
+            .toList();
+
+        Map<Long, BigDecimal> pendingBalanceByCustomerId = getOutstandingBalanceMap(customerIds);
+
+        return customersPage.map(customer -> CustomerResponse.fromEntity(
+            customer,
+            pendingBalanceByCustomerId.getOrDefault(customer.getId(), BigDecimal.ZERO)
+        ));
     }
 
     public CustomerResponse getById(Long id) {
         Customer customer = customerRepository.findById(id)
             .filter(foundCustomer -> Boolean.TRUE.equals(foundCustomer.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
-        return CustomerResponse.fromEntity(customer);
+        return CustomerResponse.fromEntity(customer, invoiceRepository.sumOutstandingBalanceByCustomerId(id));
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +86,8 @@ public class CustomerService {
         if (customer.getIsActive() != null) {
             existing.setIsActive(customer.getIsActive());
         }
-        return CustomerResponse.fromEntity(customerRepository.save(existing));
+        Customer saved = customerRepository.save(existing);
+        return CustomerResponse.fromEntity(saved, invoiceRepository.sumOutstandingBalanceByCustomerId(saved.getId()));
     }
 
     @Transactional
@@ -79,5 +99,31 @@ public class CustomerService {
         }
                 existing.setIsActive(false);
                 customerRepository.save(existing);
+    }
+
+    private Map<Long, BigDecimal> getOutstandingBalanceMap() {
+        return toOutstandingBalanceMap(invoiceRepository.sumOutstandingBalanceByCustomer());
+    }
+
+    private Map<Long, BigDecimal> getOutstandingBalanceMap(List<Long> customerIds) {
+        if (customerIds == null || customerIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return toOutstandingBalanceMap(invoiceRepository.sumOutstandingBalanceByCustomerIds(customerIds));
+    }
+
+    private Map<Long, BigDecimal> toOutstandingBalanceMap(List<Object[]> rows) {
+        Map<Long, BigDecimal> result = new HashMap<>();
+        for (Object[] row : rows) {
+            if (row.length < 2 || row[0] == null) {
+                continue;
+            }
+
+            Long customerId = (Long) row[0];
+            BigDecimal balance = (BigDecimal) row[1];
+            result.put(customerId, balance == null ? BigDecimal.ZERO : balance);
+        }
+        return result;
     }
 }
