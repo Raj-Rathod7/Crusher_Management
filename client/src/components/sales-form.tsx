@@ -27,8 +27,8 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { createCustomer } from '#/lib/mutation'
-import type { CreateInvoicePayload, Customer, InvoiceItem } from '#/lib/models'
-import { customerKeys, getAllCustomers, getAllMaterials, materialKeys } from '#/lib/query'
+import type { CreateInvoicePayload, Customer, Invoice, InvoiceItem } from '#/lib/models'
+import { customerKeys, getAllCustomers, getAllMaterials, getAllSales, materialKeys, salesKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { IconArrowLeft, IconCurrencyRupee, IconPlus, IconReceipt, IconUser } from '@tabler/icons-react'
@@ -94,6 +94,31 @@ const initialInvoiceItemForm: InvoiceItemFormState = {
   quantityBrass: '',
   rate: '',
   truckNumber: ''
+}
+
+function buildNextInvoiceNumber(invoices: Invoice[], year: number) {
+  const yearText = String(year)
+
+  const maxSequence = invoices.reduce((max, invoice) => {
+    const invoiceNumber = (invoice.invoiceNumber ?? '').trim()
+
+    if (!invoiceNumber.includes(yearText)) {
+      return max
+    }
+
+    const yearSequenceMatch = invoiceNumber.match(new RegExp(`${yearText}\\D*(\\d+)$`))
+    const fallbackLastNumberMatch = invoiceNumber.match(/(\d+)(?!.*\d)/)
+    const sequenceText = yearSequenceMatch?.[1] ?? fallbackLastNumberMatch?.[1]
+    const sequence = sequenceText ? Number(sequenceText) : NaN
+
+    if (!Number.isFinite(sequence)) {
+      return max
+    }
+
+    return Math.max(max, sequence)
+  }, 0)
+
+  return `INV-${yearText}-${String(maxSequence + 1).padStart(4, '0')}`
 }
 
 function validateForm(form: FormState) {
@@ -205,6 +230,7 @@ export function SalesForm({
   variant = 'page',
 }: SalesFormProps) {
   const queryClient = useQueryClient()
+  const shouldAutoGenerateInvoiceNumber = !initialValues?.invoiceNumber
   const [form, setForm] = React.useState<FormState>({ ...initialFormState, ...initialValues })
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
@@ -225,6 +251,16 @@ export function SalesForm({
   const { data: materials = [], isLoading: isLoadingMaterials } = useQuery({
     queryKey: materialKeys.all,
     queryFn: getAllMaterials,
+    retry: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+  })
+
+  const { data: sales = [] } = useQuery({
+    queryKey: salesKeys.all,
+    queryFn: getAllSales,
+    enabled: shouldAutoGenerateInvoiceNumber,
     retry: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
@@ -287,6 +323,23 @@ export function SalesForm({
       totalAmount: invoiceItems.length > 0 ? computedTotalAmount.toFixed(2) : '0.00',
     }))
   }, [computedTotalAmount, invoiceItems.length])
+
+  React.useEffect(() => {
+    if (!shouldAutoGenerateInvoiceNumber) {
+      return
+    }
+
+    setForm((current) => {
+      if (current.invoiceNumber.trim()) {
+        return current
+      }
+
+      return {
+        ...current,
+        invoiceNumber: buildNextInvoiceNumber(sales, new Date().getFullYear()),
+      }
+    })
+  }, [sales, shouldAutoGenerateInvoiceNumber])
 
   const totalAmount = Number(form.totalAmount || 0)
   const amountPaid = Number(form.amountPaid || 0)
@@ -512,8 +565,8 @@ export function SalesForm({
                   <Input
                     id="invoiceNumber"
                     value={form.invoiceNumber}
-                    onChange={(event) => handleChange('invoiceNumber', event.target.value)}
-                    placeholder="INV-001"
+                    readOnly
+                    placeholder="INV-YYYY-0001"
                   />
                   <FieldError>{errors.invoiceNumber}</FieldError>
                 </FieldContent>
