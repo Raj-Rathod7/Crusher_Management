@@ -121,14 +121,14 @@ function RouteComponent() {
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
       <div className=" mb-6 bg-red flex shrink-0 items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Truck Entry</h1>
-          <p className="text-sm text-muted-foreground">All truck entries.</p>
+          <h1 className="text-2xl font-semibold">Purchase</h1>
+          <p className="text-sm text-muted-foreground">All purchase entries.</p>
         </div>
       </div>
       <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
           icon={<IconTruck className="size-4" />}
-          title="Truck entries today"
+          title="Purchase entries today"
           value={stats.entriesToday}
           footer="Entries recorded for today"
         />

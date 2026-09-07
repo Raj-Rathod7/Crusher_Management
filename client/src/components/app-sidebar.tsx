@@ -23,7 +23,7 @@ const data = {
       ),
     },
     {
-      title: "Truck Entries",
+      title: "Purchase",
       url: "/truck-entry",
       icon: (
         <IconListDetails
@@ -39,6 +39,13 @@ const data = {
       ),
     },
     {
+      title: "Receipt",
+      url: "/receipt",
+      icon: (
+        <IconChartBar />
+      )
+    },
+    {
       title: "Customers",
       url: "/customer",
       icon: (
@@ -47,7 +54,7 @@ const data = {
     },
     
     {
-      title: "Expenses",
+      title: "Expenses/Payments",
       url: "/expenses",
       icon: (
         <IconMoneybagMinus

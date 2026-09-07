@@ -51,10 +51,10 @@ function RouteComponent() {
 
   return (
     <TruckEntryForm
-      title="Edit Truck Entry"
+      title="Edit Purchase"
       description="Update truck number, date, material, quantity, supplier, remarks."
       backLabel="Back to entries"
-      submitLabel="Update truck entry"
+      submitLabel="Update Purchase"
       isSubmitting={updateMutation.isPending}
       initialMaterialName={entry.materialName ?? undefined}
       initialValues={{

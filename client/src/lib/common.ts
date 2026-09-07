@@ -19,14 +19,14 @@ export const quickLinks: quickLink[] = [
 
   {
     path: "/truck-entry",
-    label: "Truck Entries",
+    label: "Purchase",
     shortcut: "F3",
     icon: IconListDetails
   },
 
   {
     path: "/truck-entry/new",
-    label: "New Truck Entry",
+    label: "New Purchase",
     shortcut: "F4",
     icon: TruckIcon
   },
@@ -48,8 +48,8 @@ export const quickLinks: quickLink[] = [
   { path: "/customer", label: "Customers", icon: IconUsers },
   { path: "/customer/new", label: "New Customer", icon: UserSearch },
 
-  { path: "/expenses", label: "Expenses", icon: IconMoneybagMinus },
-  { path: "/expenses/new", label: "New Expenses", icon: IconMoneybagPlus},
+  { path: "/expenses", label: "Expenses/Payments", icon: IconMoneybagMinus },
+  { path: "/expenses/new", label: "New Expenses/Payments", icon: IconMoneybagPlus},
 
   { path: "/analytics", label: "Analytics", icon: IconChartBar },
 ];
