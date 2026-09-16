@@ -1,6 +1,7 @@
 package com.productapp.controller;
 
 import com.productapp.dto.CustomerResponse;
+import com.productapp.dto.CustomerSummaryResponse;
 import com.productapp.dto.InvoiceResponse;
 import com.productapp.entity.Customer;
 import com.productapp.service.CustomerService;
@@ -38,6 +39,11 @@ public class CustomerController {
     @GetMapping("/{id}/invoices")
     public List<InvoiceResponse> getInvoices(@PathVariable Long id) {
         return customerService.getInvoices(id);
+    }
+
+    @GetMapping("/{id}/summary")
+    public CustomerSummaryResponse getSummary(@PathVariable Long id) {
+        return customerService.getSummary(id);
     }
 
     @GetMapping("/{id}")

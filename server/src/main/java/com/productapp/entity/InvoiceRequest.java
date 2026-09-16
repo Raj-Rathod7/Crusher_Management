@@ -38,6 +38,36 @@ public class InvoiceRequest {
     
     private String remarks;
 
+    private Boolean applyCredit = false;
+
+    private BigDecimal creditToApply;
+
+    private BigDecimal cashPaidNow;
+
+    public Boolean getApplyCredit() {
+        return applyCredit;
+    }
+
+    public void setApplyCredit(Boolean applyCredit) {
+        this.applyCredit = applyCredit;
+    }
+
+    public BigDecimal getCreditToApply() {
+        return creditToApply;
+    }
+
+    public void setCreditToApply(BigDecimal creditToApply) {
+        this.creditToApply = creditToApply;
+    }
+
+    public BigDecimal getCashPaidNow() {
+        return cashPaidNow;
+    }
+
+    public void setCashPaidNow(BigDecimal cashPaidNow) {
+        this.cashPaidNow = cashPaidNow;
+    }
+
     public LocalDate getInvoiceDate() {
         return invoiceDate;
     }

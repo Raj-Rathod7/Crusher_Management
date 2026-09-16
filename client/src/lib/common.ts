@@ -1,4 +1,4 @@
-import { IconChartBar, IconDashboard, IconFolder, IconInvoice, IconListDetails, IconMoneybagMinus, IconMoneybagPlus, IconUsers, type IconProps } from "@tabler/icons-react";
+import { IconChartBar, IconDashboard, IconFolder, IconInvoice, IconListDetails, IconMoneybagMinus, IconMoneybagPlus, IconReceipt, IconUsers, type IconProps } from "@tabler/icons-react";
 import { TruckIcon, UserSearch, type LucideProps } from "lucide-react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 
@@ -50,6 +50,9 @@ export const quickLinks: quickLink[] = [
 
   { path: "/expenses", label: "Expenses/Payments", icon: IconMoneybagMinus },
   { path: "/expenses/new", label: "New Expenses/Payments", icon: IconMoneybagPlus},
+
+  { path: "/receipt", label: "Receipts", icon: IconReceipt },
+  { path: "/receipt/new", label: "New Receipt", shortcut: "F8", icon: IconReceipt },
 
   { path: "/analytics", label: "Analytics", icon: IconChartBar },
 ];

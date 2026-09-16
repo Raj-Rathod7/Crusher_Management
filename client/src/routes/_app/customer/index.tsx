@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -17,9 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "#/components/ui/table";
-import type { Customer, Invoice } from "#/lib/models";
-import { apiClient } from "#/lib/common/api";
-import { customerKeys, getAllCustomers } from "#/lib/query";
+import type { Customer, Invoice, Payment } from "#/lib/models";
+import { applyCreditToInvoice } from "#/lib/mutation";
+import { customerKeys, customerSummaryKeys, getAllCustomers, getCustomerSummary, receiptKeys } from "#/lib/query";
 import {
   IconChevronDown,
   IconChevronRight,
@@ -28,9 +29,10 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PersonStanding, User2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/customer/")({
   component: RouteComponent,
@@ -65,6 +67,7 @@ function RouteComponent() {
       address: customer.address ?? "-",
       notes: customer.notes ?? "-",
       pendingBalance: customer.pendingBalance ?? 0,
+      availableCredit: customer.availableCredit ?? 0,
     };
   });
 
@@ -72,13 +75,37 @@ function RouteComponent() {
     void entry;
   };
 
-  const invoicesQuery = useQuery({
-    queryKey: ["customer-invoices", selectedCustomer?.id],
-    queryFn: () =>
-      apiClient.get<Invoice[]>(`/customers/${selectedCustomer!.id}/invoices`),
+  const queryClient = useQueryClient();
+
+  const summaryQuery = useQuery({
+    queryKey: customerSummaryKeys.detail(selectedCustomer?.id ?? ""),
+    queryFn: () => getCustomerSummary(selectedCustomer!.id),
     enabled: selectedCustomer !== null,
     retry: false,
   });
+
+  const applyCreditMutation = useMutation({
+    mutationFn: ({ invoiceId }: { invoiceId: number }) => applyCreditToInvoice(invoiceId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: customerKeys.all }),
+        queryClient.invalidateQueries({ queryKey: customerSummaryKeys.detail(selectedCustomer?.id ?? "") }),
+        queryClient.invalidateQueries({ queryKey: receiptKeys.all }),
+      ]);
+      toast.success("Credit applied to invoice.");
+    },
+    onError: () => {
+      toast.error("Failed to apply credit to invoice.");
+    },
+  });
+
+  const invoices = summaryQuery.data?.recentInvoices ?? [];
+  const payments = summaryQuery.data?.recentPayments ?? [];
+  const receipts = payments.filter(
+    (payment) => payment.entryType === "ADVANCE_RECEIPT" || payment.entryType === "CREDIT_ADJUSTMENT",
+  );
+  const creditUsage = payments.filter((payment) => payment.entryType === "CREDIT_APPLIED");
+  const currentAvailableCredit = summaryQuery.data?.customer.availableCredit ?? selectedCustomer?.availableCredit ?? 0;
 
   return (
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
@@ -127,6 +154,16 @@ function RouteComponent() {
             cell: ({ row }) => (
               <span className="font-medium text-amber-700 dark:text-amber-400">
                 {currency.format(Number(row.original.pendingBalance ?? 0))}
+              </span>
+            ),
+          },
+          {
+            accessorKey: "availableCredit",
+            header: "Available Credit",
+            meta: { filterable: true, filterType: "number" },
+            cell: ({ row }) => (
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                {currency.format(Number(row.original.availableCredit ?? 0))}
               </span>
             ),
           },
@@ -194,7 +231,7 @@ function RouteComponent() {
               <div>
                 <DialogTitle>{selectedCustomer?.name}</DialogTitle>
                 <DialogDescription className="mt-1">
-                  Invoice history and material breakdown
+                  Invoices, receipts, and credit usage
                 </DialogDescription>
               </div>
             </div>
@@ -204,25 +241,50 @@ function RouteComponent() {
               <CustomerDetailsPanel customer={selectedCustomer} />
             ) : null}
 
-            {invoicesQuery.isLoading ? (
+            {summaryQuery.isLoading ? (
               <InvoiceModalSkeleton />
-            ) : invoicesQuery.isError ? (
-              <Card className="border-destructive/30">
+            ) : summaryQuery.isError ? (
+              <Card className="mt-4 border-destructive/30">
                 <CardContent className="p-5 text-sm text-destructive">
-                  Unable to load this customer&apos;s invoices.
+                  Unable to load this customer&apos;s history.
                 </CardContent>
               </Card>
-            ) : invoicesQuery.data?.length ? (
-              <div className="mt-4">
-                <CustomerInvoiceSummary invoices={invoicesQuery.data} />
-                <ExpandableInvoiceTable invoices={invoicesQuery.data} />
-              </div>
             ) : (
-              <Card className="mt-4">
-                <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  No invoices recorded for this customer.
-                </CardContent>
-              </Card>
+              <Tabs defaultValue="invoices" className="mt-4">
+                <TabsList>
+                  <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
+                  <TabsTrigger value="receipts">Receipts ({receipts.length})</TabsTrigger>
+                  <TabsTrigger value="credit-usage">Credit usage ({creditUsage.length})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="invoices">
+                  {invoices.length ? (
+                    <div>
+                      <CustomerInvoiceSummary invoices={invoices} />
+                      <ExpandableInvoiceTable
+                        invoices={invoices}
+                        availableCredit={currentAvailableCredit}
+                        onApplyCredit={(invoiceId) => applyCreditMutation.mutate({ invoiceId })}
+                        isApplyingCredit={applyCreditMutation.isPending}
+                      />
+                    </div>
+                  ) : (
+                    <Card>
+                      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                        No invoices recorded for this customer.
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="receipts">
+                  <ReceiptsTable receipts={receipts} />
+                </TabsContent>
+
+                <TabsContent value="credit-usage">
+                  <CreditUsageTable entries={creditUsage} />
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </DialogContent>
@@ -311,7 +373,17 @@ function CustomerInvoiceSummary({ invoices }: { invoices: Invoice[] }) {
   );
 }
 
-function ExpandableInvoiceTable({ invoices }: { invoices: Invoice[] }) {
+function ExpandableInvoiceTable({
+  invoices,
+  availableCredit = 0,
+  onApplyCredit,
+  isApplyingCredit = false,
+}: {
+  invoices: Invoice[];
+  availableCredit?: number;
+  onApplyCredit?: (invoiceId: number) => void;
+  isApplyingCredit?: boolean;
+}) {
   return (
     <ConfigurableDataTable
       data={invoices}
@@ -354,6 +426,29 @@ function ExpandableInvoiceTable({ invoices }: { invoices: Invoice[] }) {
               {currency.format(row.original.balance)}
             </span>
           ),
+        },
+        {
+          id: "credit-action",
+          header: "Pending balance",
+          meta: { sortable: false, searchable: false },
+          cell: ({ row }) =>
+            row.original.balance > 0 && onApplyCredit ? (
+              availableCredit > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isApplyingCredit}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onApplyCredit(row.original.id);
+                  }}
+                >
+                  Apply credit
+                </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">No credit available</span>
+              )
+            ) : null,
         },
       ]}
       getRowId={(row) => row.id.toString()}
@@ -417,6 +512,105 @@ function ExpandableInvoiceTable({ invoices }: { invoices: Invoice[] }) {
         </div>
       )}
       emptyMessage="No invoices recorded for this customer."
+    />
+  );
+}
+
+function ReceiptsTable({ receipts }: { receipts: Payment[] }) {
+  if (!receipts.length) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-sm text-muted-foreground">
+          No advance receipts recorded for this customer.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <ConfigurableDataTable
+      data={receipts}
+      columns={[
+        { accessorKey: "paymentDate", header: "Date" },
+        {
+          accessorKey: "entryType",
+          header: "Type",
+          cell: ({ row }) => (
+            <Badge variant={row.original.entryType === "CREDIT_ADJUSTMENT" ? "outline" : "default"}>
+              {row.original.entryType === "CREDIT_ADJUSTMENT" ? "Reversal" : "Advance receipt"}
+            </Badge>
+          ),
+        },
+        {
+          accessorKey: "amount",
+          header: "Amount",
+          cell: ({ row }) => (
+            <span
+              className={
+                row.original.entryType === "CREDIT_ADJUSTMENT"
+                  ? "font-medium text-amber-700 dark:text-amber-400"
+                  : "font-medium text-emerald-700 dark:text-emerald-400"
+              }
+            >
+              {row.original.entryType === "CREDIT_ADJUSTMENT" ? "-" : ""}
+              {currency.format(row.original.amount)}
+            </span>
+          ),
+        },
+        { accessorKey: "receiptNumber", header: "Receipt #" },
+        { accessorKey: "paymentMode", header: "Mode" },
+        { accessorKey: "notes", header: "Notes" },
+      ]}
+      getRowId={(row) => row.id.toString()}
+      enableColumnVisibility={false}
+      enablePagination={false}
+      enableSorting={false}
+      enableGlobalSearch={false}
+      emptyMessage="No advance receipts recorded for this customer."
+    />
+  );
+}
+
+function CreditUsageTable({ entries }: { entries: Payment[] }) {
+  if (!entries.length) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-sm text-muted-foreground">
+          No credit has been applied to invoices for this customer yet.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <ConfigurableDataTable
+      data={entries}
+      columns={[
+        { accessorKey: "paymentDate", header: "Date" },
+        {
+          accessorKey: "invoiceNumber",
+          header: "Invoice",
+          cell: ({ row }) => row.original.invoiceNumber ?? "-",
+        },
+        {
+          accessorKey: "sourceReceiptNumber",
+          header: "Funded by receipt",
+          cell: ({ row }) => row.original.sourceReceiptNumber ?? "Pooled credit",
+        },
+        {
+          accessorKey: "amount",
+          header: "Amount applied",
+          cell: ({ row }) => (
+            <span className="font-medium text-primary">{currency.format(row.original.amount)}</span>
+          ),
+        },
+      ]}
+      getRowId={(row) => row.id.toString()}
+      enableColumnVisibility={false}
+      enablePagination={false}
+      enableSorting={false}
+      enableGlobalSearch={false}
+      emptyMessage="No credit usage recorded for this customer."
     />
   );
 }

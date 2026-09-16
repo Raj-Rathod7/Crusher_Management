@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 @Table(name = "payments", indexes = {
     @Index(name = "idx_payments_date", columnList = "payment_date"),
     @Index(name = "idx_payments_invoice", columnList = "invoice_id"),
-    @Index(name = "idx_payments_customer", columnList = "customer_id")
+    @Index(name = "idx_payments_customer", columnList = "customer_id"),
+    @Index(name = "idx_payments_entry_type", columnList = "entry_type")
 })
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE payments SET is_active = false WHERE id = ?")
@@ -32,7 +33,7 @@ public class Payment extends AuditableEntity {
     private LocalDate paymentDate;
 
     @ManyToOne
-    @JoinColumn(name = "invoice_id", nullable = false)
+    @JoinColumn(name = "invoice_id", nullable = true)
     private Invoice invoice;
 
     @ManyToOne
@@ -50,6 +51,25 @@ public class Payment extends AuditableEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    // ADVANCE_RECEIPT, CREDIT_APPLIED, INVOICE_PAYMENT, CREDIT_REFUND, CREDIT_ADJUSTMENT
+    @Column(name = "entry_type", nullable = false, length = 30)
+    private String entryType;
+
+    // CREDIT_IN / CREDIT_OUT; null for plain INVOICE_PAYMENT rows (not part of credit ledger)
+    @Column(name = "direction", length = 20)
+    private String direction;
+
+    @Column(name = "receipt_number", length = 40, unique = true)
+    private String receiptNumber;
+
+    @Column(name = "external_ref", length = 100)
+    private String externalRef;
+
+    // links a CREDIT_APPLIED/CREDIT_ADJUSTMENT row back to the ADVANCE_RECEIPT it drew from
+    @ManyToOne
+    @JoinColumn(name = "source_receipt_id", nullable = true)
+    private Payment sourceReceipt;
 
     @ManyToOne
     @JoinColumn(name = "created_by")

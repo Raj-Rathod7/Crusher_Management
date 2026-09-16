@@ -1,10 +1,13 @@
 package com.productapp.service;
 
 import com.productapp.dto.CustomerResponse;
+import com.productapp.dto.CustomerSummaryResponse;
+import com.productapp.dto.PaymentResponse;
 import com.productapp.entity.Customer;
 import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.CustomerRepository;
 import com.productapp.repository.InvoiceRepository;
+import com.productapp.repository.PaymentRepository;
 import com.productapp.dto.InvoiceResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +25,13 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
 
-    public CustomerService(CustomerRepository customerRepository, InvoiceRepository invoiceRepository) {
+    public CustomerService(CustomerRepository customerRepository, InvoiceRepository invoiceRepository,
+                           PaymentRepository paymentRepository) {
         this.customerRepository = customerRepository;
         this.invoiceRepository = invoiceRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     @Transactional
@@ -40,7 +46,8 @@ public class CustomerService {
         return customers.stream()
             .map(customer -> CustomerResponse.fromEntity(
                 customer,
-                pendingBalanceByCustomerId.getOrDefault(customer.getId(), BigDecimal.ZERO)
+                pendingBalanceByCustomerId.getOrDefault(customer.getId(), BigDecimal.ZERO),
+                getAvailableCredit(customer.getId())
             ))
                 .collect(Collectors.toList());
     }
@@ -55,7 +62,8 @@ public class CustomerService {
 
         return customersPage.map(customer -> CustomerResponse.fromEntity(
             customer,
-            pendingBalanceByCustomerId.getOrDefault(customer.getId(), BigDecimal.ZERO)
+            pendingBalanceByCustomerId.getOrDefault(customer.getId(), BigDecimal.ZERO),
+            getAvailableCredit(customer.getId())
         ));
     }
 
@@ -63,7 +71,38 @@ public class CustomerService {
         Customer customer = customerRepository.findById(id)
             .filter(foundCustomer -> Boolean.TRUE.equals(foundCustomer.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
-        return CustomerResponse.fromEntity(customer, invoiceRepository.sumOutstandingBalanceByCustomerId(id));
+        return CustomerResponse.fromEntity(customer, invoiceRepository.sumOutstandingBalanceByCustomerId(id),
+                getAvailableCredit(id));
+    }
+
+    public BigDecimal getAvailableCredit(Long customerId) {
+        BigDecimal creditIn = paymentRepository.sumAmountByCustomerIdAndDirection(customerId, "CREDIT_IN");
+        BigDecimal creditOut = paymentRepository.sumAmountByCustomerIdAndDirection(customerId, "CREDIT_OUT");
+        return creditIn.subtract(creditOut);
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerSummaryResponse getSummary(Long id) {
+        Customer customer = customerRepository.findById(id)
+            .filter(foundCustomer -> Boolean.TRUE.equals(foundCustomer.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + id));
+
+        CustomerResponse customerResponse = CustomerResponse.fromEntity(customer,
+                invoiceRepository.sumOutstandingBalanceByCustomerId(id), getAvailableCredit(id));
+
+        List<PaymentResponse> recentPayments = paymentRepository
+                .findAllByCustomerIdAndIsActiveTrueOrderByPaymentDateDesc(id).stream()
+                .limit(10)
+                .map(PaymentResponse::fromEntity)
+                .toList();
+
+        List<InvoiceResponse> recentInvoices = invoiceRepository
+                .findAllByCustomerIdAndIsActiveTrueOrderByInvoiceDateDesc(id).stream()
+                .limit(10)
+                .map(InvoiceResponse::fromEntity)
+                .toList();
+
+        return new CustomerSummaryResponse(customerResponse, recentPayments, recentInvoices);
     }
 
     @Transactional(readOnly = true)
@@ -87,7 +126,8 @@ public class CustomerService {
             existing.setIsActive(customer.getIsActive());
         }
         Customer saved = customerRepository.save(existing);
-        return CustomerResponse.fromEntity(saved, invoiceRepository.sumOutstandingBalanceByCustomerId(saved.getId()));
+        return CustomerResponse.fromEntity(saved, invoiceRepository.sumOutstandingBalanceByCustomerId(saved.getId()),
+                getAvailableCredit(saved.getId()));
     }
 
     @Transactional

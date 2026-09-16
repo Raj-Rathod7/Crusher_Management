@@ -24,6 +24,9 @@ public class InvoiceResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<InvoiceItemResponse> invoiceItems;
+    private BigDecimal creditApplied;
+    private BigDecimal cashPaid;
+    private BigDecimal customerAvailableCreditAfterTxn;
 
     public InvoiceResponse() {
     }
@@ -96,6 +99,14 @@ public class InvoiceResponse {
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
     public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }
     public void setInvoiceItems(List<InvoiceItemResponse> invoiceItems) { this.invoiceItems = invoiceItems; }
+    public BigDecimal getCreditApplied() { return creditApplied; }
+    public void setCreditApplied(BigDecimal creditApplied) { this.creditApplied = creditApplied; }
+    public BigDecimal getCashPaid() { return cashPaid; }
+    public void setCashPaid(BigDecimal cashPaid) { this.cashPaid = cashPaid; }
+    public BigDecimal getCustomerAvailableCreditAfterTxn() { return customerAvailableCreditAfterTxn; }
+    public void setCustomerAvailableCreditAfterTxn(BigDecimal customerAvailableCreditAfterTxn) {
+        this.customerAvailableCreditAfterTxn = customerAvailableCreditAfterTxn;
+    }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     // public LocalDateTime getUpdatedAt() { return updatedAt; }

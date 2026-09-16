@@ -34,13 +34,16 @@ public class InvoiceService {
     private final CustomerRepository customerRepository;
     private final MaterialRepository materialRepository;
     private final UserRepository userRepository;
+    private final PaymentService paymentService;
 
     public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository,
-                          MaterialRepository materialRepository, UserRepository userRepository) {
+                          MaterialRepository materialRepository, UserRepository userRepository,
+                          PaymentService paymentService) {
         this.invoiceRepository = invoiceRepository;
         this.customerRepository = customerRepository;
         this.materialRepository = materialRepository;
         this.userRepository = userRepository;
+        this.paymentService = paymentService;
     }
 
     @Transactional
@@ -53,7 +56,6 @@ public class InvoiceService {
                                 new ResourceNotFoundException(
                                         "Customer not found"));
         invoice.setCustomer(customer);
-        BigDecimal amountPaid = invoiceRequest.getAmountPaid();
         invoice.setInvoiceDate(invoiceRequest.getInvoiceDate());
         invoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
         invoice.setRemarks(invoiceRequest.getRemarks());
@@ -82,6 +84,29 @@ public class InvoiceService {
             invoiceItems.add(item);
             totalAmount = totalAmount.add(itemAmount);
         }
+
+        BigDecimal creditApplied = BigDecimal.ZERO;
+        BigDecimal cashPaidNow = invoiceRequest.getCashPaidNow() != null ? invoiceRequest.getCashPaidNow() : BigDecimal.ZERO;
+        BigDecimal amountPaid;
+        Customer lockedCustomer = customer;
+
+        if (Boolean.TRUE.equals(invoiceRequest.getApplyCredit())) {
+            lockedCustomer = customerRepository.findByIdForUpdate(customer.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+            BigDecimal availableCredit = paymentService.getAvailableCredit(lockedCustomer.getId());
+            creditApplied = availableCredit;
+            if (invoiceRequest.getCreditToApply() != null) {
+                creditApplied = creditApplied.min(invoiceRequest.getCreditToApply());
+            }
+            creditApplied = creditApplied.min(totalAmount);
+            if (creditApplied.signum() < 0) {
+                creditApplied = BigDecimal.ZERO;
+            }
+            amountPaid = creditApplied.add(cashPaidNow);
+        } else {
+            amountPaid = invoiceRequest.getAmountPaid() != null ? invoiceRequest.getAmountPaid() : BigDecimal.ZERO;
+        }
+
         BigDecimal balance = totalAmount.subtract(amountPaid);
         invoice.setAmountPaid(amountPaid);
         invoice.setTotalAmount(totalAmount);
@@ -91,7 +116,16 @@ public class InvoiceService {
         invoice.setCreatedBy(createdBy);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
-        return InvoiceResponse.fromEntity(savedInvoice);
+
+        if (creditApplied.signum() > 0) {
+            paymentService.applyCreditToInvoice(lockedCustomer, savedInvoice, creditApplied, createdBy);
+        }
+
+        InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
+        response.setCreditApplied(creditApplied);
+        response.setCashPaid(cashPaidNow);
+        response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(customer.getId()));
+        return response;
     }
 
     private String resolveStatus(BigDecimal amountPaid, BigDecimal balance) {
@@ -99,6 +133,45 @@ public class InvoiceService {
             return "pending";
         }
         return balance.signum() == 0 ? "paid" : "partial";
+    }
+
+    @Transactional
+    public InvoiceResponse applyCreditToExistingInvoice(Long invoiceId, BigDecimal creditToApply) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + invoiceId));
+
+        if (invoice.getBalance().signum() <= 0) {
+            throw new IllegalArgumentException("Invoice has no pending balance");
+        }
+
+        Customer lockedCustomer = customerRepository.findByIdForUpdate(invoice.getCustomer().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+
+        BigDecimal amount = paymentService.getAvailableCredit(lockedCustomer.getId());
+        if (creditToApply != null) {
+            amount = amount.min(creditToApply);
+        }
+        amount = amount.min(invoice.getBalance());
+
+        if (amount.signum() <= 0) {
+            throw new IllegalArgumentException("No available credit to apply");
+        }
+
+        User createdBy = getCurrentUser();
+        paymentService.applyCreditToInvoice(lockedCustomer, invoice, amount, createdBy);
+
+        invoice.setAmountPaid(invoice.getAmountPaid().add(amount));
+        invoice.setBalance(invoice.getTotalAmount().subtract(invoice.getAmountPaid()));
+        invoice.setStatus(resolveStatus(invoice.getAmountPaid(), invoice.getBalance()));
+
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
+        response.setCreditApplied(amount);
+        response.setCashPaid(BigDecimal.ZERO);
+        response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(lockedCustomer.getId()));
+        return response;
     }
 
     private User getCurrentUser() {

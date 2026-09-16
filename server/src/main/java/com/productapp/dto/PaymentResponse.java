@@ -10,11 +10,19 @@ public class PaymentResponse {
     private Long id;
     private LocalDate paymentDate;
     private String invoiceNumber;
+    private Long invoiceId;
     private String customerName;
+    private Long customerId;
     private BigDecimal amount;
     private String paymentMode;
     private String chequeNumber;
     private String notes;
+    private String entryType;
+    private String direction;
+    private String receiptNumber;
+    private String externalRef;
+    private Long sourceReceiptId;
+    private String sourceReceiptNumber;
     private String createdByUsername;
     private LocalDateTime createdAt;
 
@@ -41,7 +49,7 @@ public class PaymentResponse {
             return null;
         }
 
-        return new PaymentResponse(
+        PaymentResponse response = new PaymentResponse(
                 payment.getId(),
                 payment.getPaymentDate(),
                 payment.getInvoice() != null ? payment.getInvoice().getInvoiceNumber() : null,
@@ -53,6 +61,19 @@ public class PaymentResponse {
                 payment.getCreatedBy() != null ? payment.getCreatedBy().getUsername() : null,
                 payment.getCreatedAt()
         );
+        response.customerId = payment.getCustomer() != null ? payment.getCustomer().getId() : null;
+        response.entryType = payment.getEntryType();
+        response.direction = payment.getDirection();
+        response.receiptNumber = payment.getReceiptNumber();
+        response.externalRef = payment.getExternalRef();
+        response.invoiceId = payment.getInvoice() != null ? payment.getInvoice().getId() : null;
+        if (payment.getSourceReceipt() != null) {
+            response.sourceReceiptId = payment.getSourceReceipt().getId();
+            response.sourceReceiptNumber = payment.getSourceReceipt().getReceiptNumber() != null
+                    ? payment.getSourceReceipt().getReceiptNumber()
+                    : "#" + payment.getSourceReceipt().getId();
+        }
+        return response;
     }
 
     public Long getId() { return id; }
@@ -73,6 +94,22 @@ public class PaymentResponse {
     public void setNotes(String notes) { this.notes = notes; }
     public String getCreatedByUsername() { return createdByUsername; }
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
+    public String getEntryType() { return entryType; }
+    public void setEntryType(String entryType) { this.entryType = entryType; }
+    public String getDirection() { return direction; }
+    public void setDirection(String direction) { this.direction = direction; }
+    public String getReceiptNumber() { return receiptNumber; }
+    public void setReceiptNumber(String receiptNumber) { this.receiptNumber = receiptNumber; }
+    public String getExternalRef() { return externalRef; }
+    public void setExternalRef(String externalRef) { this.externalRef = externalRef; }
+    public Long getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(Long invoiceId) { this.invoiceId = invoiceId; }
+    public Long getSourceReceiptId() { return sourceReceiptId; }
+    public void setSourceReceiptId(Long sourceReceiptId) { this.sourceReceiptId = sourceReceiptId; }
+    public String getSourceReceiptNumber() { return sourceReceiptNumber; }
+    public void setSourceReceiptNumber(String sourceReceiptNumber) { this.sourceReceiptNumber = sourceReceiptNumber; }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

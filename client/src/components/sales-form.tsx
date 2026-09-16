@@ -2,6 +2,7 @@ import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
+import { Checkbox } from '#/components/ui/checkbox'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger } from '#/components/ui/combobox'
 import {
   Dialog,
@@ -32,7 +33,7 @@ import { customerKeys, getAllCustomers, getAllMaterials, getAllSales, materialKe
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { IconArrowLeft, IconCurrencyRupee, IconPlus, IconReceipt, IconUser } from '@tabler/icons-react'
-import { PlusIcon, SaveIcon } from 'lucide-react'
+import { SaveIcon } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { CustomerForm } from './customer-form'
@@ -44,6 +45,9 @@ type FormState = {
   totalAmount: string
   amountPaid: string
   remarks: string
+  applyCredit: boolean
+  creditToApply: string
+  cashPaidNow: string
 }
 
 type InvoiceItemEntry = {
@@ -87,6 +91,9 @@ const initialFormState: FormState = {
   totalAmount: '',
   amountPaid: '',
   remarks: '',
+  applyCredit: false,
+  creditToApply: '',
+  cashPaidNow: '',
 }
 
 const initialInvoiceItemForm: InvoiceItemFormState = {
@@ -140,12 +147,21 @@ function validateForm(form: FormState) {
     errors.totalAmount = 'Total amount must be greater than 0.'
   }
 
-  if (form.amountPaid.trim() && Number(form.amountPaid) < 0) {
-    errors.amountPaid = 'Paid amount cannot be negative.'
-  }
+  if (form.applyCredit) {
+    if (form.cashPaidNow.trim() && Number(form.cashPaidNow) < 0) {
+      errors.cashPaidNow = 'Cash received cannot be negative.'
+    }
+    if (form.creditToApply.trim() && Number(form.creditToApply) < 0) {
+      errors.creditToApply = 'Credit cap cannot be negative.'
+    }
+  } else {
+    if (form.amountPaid.trim() && Number(form.amountPaid) < 0) {
+      errors.amountPaid = 'Paid amount cannot be negative.'
+    }
 
-  if (form.totalAmount.trim() && form.amountPaid.trim() && Number(form.amountPaid) > Number(form.totalAmount)) {
-    errors.amountPaid = 'Paid amount cannot exceed total amount.'
+    if (form.totalAmount.trim() && form.amountPaid.trim() && Number(form.amountPaid) > Number(form.totalAmount)) {
+      errors.amountPaid = 'Paid amount cannot exceed total amount.'
+    }
   }
 
   return errors
@@ -234,10 +250,18 @@ export function SalesForm({
   const [form, setForm] = React.useState<FormState>({ ...initialFormState, ...initialValues })
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
-  const [invoiceItemForm, setInvoiceItemForm] = React.useState<InvoiceItemFormState>(initialInvoiceItemForm)
+  const [invoiceItemForm, setInvoiceItemForm] = React.useState<InvoiceItemFormState>(() => {
+    const initialItem = initialInvoiceItems?.[0]
+    return initialItem
+      ? {
+          materialTypeId: initialItem.materialTypeId,
+          quantityBrass: initialItem.quantityBrass,
+          rate: initialItem.rate,
+          truckNumber: initialItem.truckNumber,
+        }
+      : initialInvoiceItemForm
+  })
   const [invoiceItemErrors, setInvoiceItemErrors] = React.useState<InvoiceItemErrors>({})
-  const [invoiceItems, setInvoiceItems] = React.useState<InvoiceItemEntry[]>(initialInvoiceItems || [])
-  const [editingInvoiceItemId, setEditingInvoiceItemId] = React.useState<string | null>(null)
 
   const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
     queryKey: customerKeys.all,
@@ -287,22 +311,11 @@ export function SalesForm({
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
-  const computedTotalAmount = React.useMemo(
-    () =>
-      invoiceItems.reduce((sum, item) => {
-        const amount = Number(item.amount || 0)
-        return sum + amount
-      }, 0),
-    [invoiceItems]
-  )
+  const handleApplyCreditToggle = (checked: boolean) => {
+    setForm((current) => ({ ...current, applyCredit: checked }))
+  }
 
-  const computedPaymentStatus = React.useMemo(
-    () => {
-      const amountPaidValue = Number(form.amountPaid || 0)
-      return deriveInvoiceStatus(computedTotalAmount, amountPaidValue)
-    },
-    [computedTotalAmount, form.amountPaid]
-  )
+  const totalAmount = Number(form.totalAmount || 0)
 
   const selectedCustomer = React.useMemo(
     () => customers.find((customer) => String(customer.id) === form.customerId) ?? null,
@@ -317,12 +330,36 @@ export function SalesForm({
     return selectedCustomer.pendingBalance ?? 0
   }, [selectedCustomer])
 
-  React.useEffect(() => {
-    setForm((current) => ({
-      ...current,
-      totalAmount: invoiceItems.length > 0 ? computedTotalAmount.toFixed(2) : '0.00',
-    }))
-  }, [computedTotalAmount, invoiceItems.length])
+  const selectedCustomerAvailableCredit = React.useMemo(() => {
+    if (!selectedCustomer) {
+      return 0
+    }
+
+    return selectedCustomer.availableCredit ?? 0
+  }, [selectedCustomer])
+
+  const creditAppliedPreview = React.useMemo(() => {
+    if (!form.applyCredit) {
+      return 0
+    }
+
+    let credit = selectedCustomerAvailableCredit
+    if (form.creditToApply.trim()) {
+      credit = Math.min(credit, Number(form.creditToApply))
+    }
+    credit = Math.min(credit, totalAmount)
+
+    return Math.max(credit, 0)
+  }, [form.applyCredit, form.creditToApply, selectedCustomerAvailableCredit, totalAmount])
+
+  const effectiveAmountPaid = form.applyCredit
+    ? creditAppliedPreview + Number(form.cashPaidNow || 0)
+    : Number(form.amountPaid || 0)
+
+  const computedPaymentStatus = React.useMemo(
+    () => deriveInvoiceStatus(totalAmount, effectiveAmountPaid),
+    [totalAmount, effectiveAmountPaid]
+  )
 
   React.useEffect(() => {
     if (!shouldAutoGenerateInvoiceNumber) {
@@ -341,8 +378,7 @@ export function SalesForm({
     })
   }, [sales, shouldAutoGenerateInvoiceNumber])
 
-  const totalAmount = Number(form.totalAmount || 0)
-  const amountPaid = Number(form.amountPaid || 0)
+  const amountPaid = effectiveAmountPaid
   const balance = Math.max(totalAmount - amountPaid, 0)
   const paymentStatusBadge = getPaymentStatusBadge(computedPaymentStatus)
   const balanceTone = getBalanceTone(computedPaymentStatus)
@@ -352,7 +388,7 @@ export function SalesForm({
     setInvoiceItemErrors((current) => ({ ...current, [field]: undefined }))
   }
 
-  const handleSaveInvoiceItem = () => {
+  const validateInvoiceItem = () => {
     const nextErrors: InvoiceItemErrors = {}
 
     if (!invoiceItemForm.materialTypeId) {
@@ -371,61 +407,27 @@ export function SalesForm({
       nextErrors.rate = 'Rate must be greater than 0.'
     }
 
-    if(!invoiceItemForm.truckNumber.trim()){
+    if (!invoiceItemForm.truckNumber.trim()) {
       nextErrors.truckNumber = 'Truck Number required.'
     }
 
-    if (Object.keys(nextErrors).length > 0) {
-      setInvoiceItemErrors(nextErrors)
-      return
-    }
+    return nextErrors
+  }
 
+  const buildInvoiceItem = (): InvoiceItemEntry => {
     const material = materials.find((entry) => String(entry.id) === invoiceItemForm.materialTypeId)
     const quantity = Number(invoiceItemForm.quantityBrass)
     const rate = Number(invoiceItemForm.rate)
     const amount = quantity * rate
 
-    const row: InvoiceItemEntry = {
-      id: editingInvoiceItemId ?? crypto.randomUUID(),
+    return {
+      id: crypto.randomUUID(),
       materialTypeId: invoiceItemForm.materialTypeId,
       quantityBrass: String(quantity),
       rate: String(rate),
       amount: String(amount),
       materialName: material?.name ?? 'Unknown material',
-      truckNumber: invoiceItemForm.truckNumber
-    }
-
-    setInvoiceItems((current) => {
-      if (editingInvoiceItemId) {
-        return current.map((item) => (item.id === editingInvoiceItemId ? row : item))
-      }
-
-      return [...current, row]
-    })
-
-    setEditingInvoiceItemId(null)
-    setInvoiceItemForm(initialInvoiceItemForm)
-    setInvoiceItemErrors({})
-  }
-
-  const handleEditInvoiceItem = (item: InvoiceItemEntry) => {
-    setEditingInvoiceItemId(item.id)
-    setInvoiceItemForm({
-      materialTypeId: item.materialTypeId,
-      quantityBrass: item.quantityBrass,
-      rate: item.rate,
-      truckNumber: item.truckNumber
-    })
-    setInvoiceItemErrors({})
-  }
-
-  const handleDeleteInvoiceItem = (itemId: string) => {
-    setInvoiceItems((current) => current.filter((item) => item.id !== itemId))
-
-    if (editingInvoiceItemId === itemId) {
-      setEditingInvoiceItemId(null)
-      setInvoiceItemForm(initialInvoiceItemForm)
-      setInvoiceItemErrors({})
+      truckNumber: invoiceItemForm.truckNumber,
     }
   }
 
@@ -433,13 +435,15 @@ export function SalesForm({
     event.preventDefault()
 
     const nextErrors = validateForm(form)
+    const invoiceItemErrorsNext = validateInvoiceItem()
 
-    if (invoiceItems.length === 0) {
-      toast.error('Add at least one invoice item before creating the sale.')
+    if (Object.keys(invoiceItemErrorsNext).length > 0) {
+      setInvoiceItemErrors(invoiceItemErrorsNext)
+      setErrors(nextErrors)
       return
     }
 
-    if (Number(form.amountPaid || 0) > computedTotalAmount) {
+    if (!form.applyCredit && Number(form.amountPaid || 0) > totalAmount) {
       nextErrors.amountPaid = 'Paid amount cannot exceed total amount.'
     }
 
@@ -448,27 +452,31 @@ export function SalesForm({
       return
     }
 
-    const invoiceStatus = deriveInvoiceStatus(computedTotalAmount, amountPaid)
+    const invoiceStatus = deriveInvoiceStatus(totalAmount, amountPaid)
+    const invoiceItem = buildInvoiceItem()
 
     const payload: CreateInvoicePayload = {
       invoiceNumber: form.invoiceNumber.trim(),
       invoiceDate: form.invoiceDate,
       customerId: Number(form.customerId),
-      totalAmount: computedTotalAmount,
+      totalAmount,
       amountPaid,
       balance,
       status: invoiceStatus,
       remarks: form.remarks.trim() || undefined,
-      invoiceItems: invoiceItems.map(item => {
-        return {
-          ...item, 
-          quantity: Number(item.quantityBrass),
-          id: !isNaN(Number(item.id)) ? Number(item.id) : 0,
-          materialTypeId: Number(item.materialTypeId),
-          rate: Number(item.rate),
-          amount: Number(item.amount)
-        }
-      })
+      applyCredit: form.applyCredit,
+      creditToApply: form.applyCredit && form.creditToApply.trim() ? Number(form.creditToApply) : undefined,
+      cashPaidNow: form.applyCredit ? Number(form.cashPaidNow || 0) : undefined,
+      invoiceItems: [
+        {
+          ...invoiceItem,
+          id: !isNaN(Number(invoiceItem.id)) ? Number(invoiceItem.id) : 0,
+          materialTypeId: Number(invoiceItem.materialTypeId),
+          quantityBrass: Number(invoiceItem.quantityBrass),
+          rate: Number(invoiceItem.rate),
+          amount: Number(invoiceItem.amount),
+        },
+      ],
     }
 
     onSubmit(payload)
@@ -500,7 +508,7 @@ export function SalesForm({
             {inrConverter.format(totalAmount)}
           </span>
           <span className="mb-1 text-xs font-medium text-muted-foreground">
-            {invoiceItems.length} item{invoiceItems.length === 1 ? '' : 's'}
+            1 item
           </span>
         </div>
       </div>
@@ -544,9 +552,19 @@ export function SalesForm({
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Customer</p>
             <p className="mt-1 truncate text-sm font-semibold">{selectedCustomer?.name ?? 'Not set'}</p>
             {selectedCustomer ? (
-              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
-                Pending: {inrConverter.format(selectedCustomerPendingBalance)}
-              </p>
+              <>
+                <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+                  Pending: {inrConverter.format(selectedCustomerPendingBalance)}
+                </p>
+                <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-300">
+                  Available credit: {inrConverter.format(selectedCustomerAvailableCredit)}
+                </p>
+                {form.applyCredit ? (
+                  <p className="mt-0.5 text-xs text-primary">
+                    Credit to apply: {inrConverter.format(creditAppliedPreview)}
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </div>
         </div>
@@ -616,8 +634,13 @@ export function SalesForm({
                               <ComboboxItem key={customer.id} value={customer}>
                                 <div className="flex w-full items-center justify-between gap-3">
                                   <span>{customer.name}</span>
-                                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                                    {inrConverter.format(customer.pendingBalance ?? 0)}
+                                  <span className="flex flex-col items-end text-xs font-medium">
+                                    <span className="text-amber-700 dark:text-amber-300">
+                                      {inrConverter.format(customer.pendingBalance ?? 0)} pending
+                                    </span>
+                                    <span className="text-emerald-700 dark:text-emerald-300">
+                                      {inrConverter.format(customer.availableCredit ?? 0)} credit
+                                    </span>
                                   </span>
                                 </div>
                               </ComboboxItem>
@@ -677,38 +700,91 @@ export function SalesForm({
                     value={form.totalAmount}
                     onChange={(event) => handleChange('totalAmount', event.target.value)}
                     placeholder="0.00"
-                    disabled
                     className="font-semibold tabular-nums"
                   />
                   <FieldError>{errors.totalAmount}</FieldError>
                 </FieldContent>
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="amountPaid">Amount paid</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="amountPaid"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.amountPaid}
-                    onChange={(event) => handleChange('amountPaid', event.target.value)}
-                    placeholder="0.00"
-                    className="font-semibold tabular-nums"
+              <Field className="md:col-span-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="applyCredit"
+                    checked={form.applyCredit}
+                    onCheckedChange={(checked) => handleApplyCreditToggle(checked === true)}
+                    disabled={!selectedCustomer || selectedCustomerAvailableCredit <= 0}
                   />
-                  <FieldError>{errors.amountPaid}</FieldError>
-                </FieldContent>
+                  <FieldLabel htmlFor="applyCredit" className="font-normal">
+                    Apply available credit
+                    {selectedCustomer ? ` (${inrConverter.format(selectedCustomerAvailableCredit)} available)` : ''}
+                  </FieldLabel>
+                </div>
               </Field>
+
+              {form.applyCredit ? (
+                <>
+                  <Field>
+                    <FieldLabel htmlFor="creditToApply">Credit cap (optional)</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="creditToApply"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={form.creditToApply}
+                        onChange={(event) => handleChange('creditToApply', event.target.value)}
+                        placeholder={`Up to ${selectedCustomerAvailableCredit.toFixed(2)}`}
+                      />
+                      <FieldError>{errors.creditToApply}</FieldError>
+                    </FieldContent>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="cashPaidNow">Cash received now</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="cashPaidNow"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={form.cashPaidNow}
+                        onChange={(event) => handleChange('cashPaidNow', event.target.value)}
+                        placeholder="0.00"
+                        className="font-semibold tabular-nums"
+                      />
+                      <FieldError>{errors.cashPaidNow}</FieldError>
+                    </FieldContent>
+                  </Field>
+
+                  <Field className="md:col-span-2">
+                    <p className="text-xs text-muted-foreground">
+                      Credit to apply: <span className="font-semibold text-foreground">{inrConverter.format(creditAppliedPreview)}</span>
+                      {' '}&middot; Total paid: <span className="font-semibold text-foreground">{inrConverter.format(effectiveAmountPaid)}</span>
+                    </p>
+                  </Field>
+                </>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="amountPaid">Amount paid</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="amountPaid"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.amountPaid}
+                      onChange={(event) => handleChange('amountPaid', event.target.value)}
+                      placeholder="0.00"
+                      className="font-semibold tabular-nums"
+                    />
+                    <FieldError>{errors.amountPaid}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
           </div>
         </div>
 
         <div className="py-6">
-          <div className="mb-4 flex justify-end">
-            <Badge variant="secondary" className="shrink-0 tabular-nums">
-              {invoiceItems.length} item{invoiceItems.length === 1 ? '' : 's'}
-            </Badge>
-          </div>
           <div className="border border-border/80 bg-muted/20 p-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <Field>
@@ -783,52 +859,7 @@ export function SalesForm({
                         </FieldContent>
                       </Field>
                     </div>
-
-                    <div className="mt-4 flex justify-end border-t border-border/70 pt-4">
-                      <Button type="button" onClick={handleSaveInvoiceItem}>
-                        <PlusIcon />
-                        {editingInvoiceItemId ? 'Update item' : 'Add item'}
-                      </Button>
-                    </div>
           </div>
-
-          {invoiceItems.length > 0 && (
-                    <div className="mt-4 overflow-x-auto border border-border/80 bg-card">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
-                          <tr>
-                            <th className="px-3 py-2.5 font-semibold">Material</th>
-                            <th className="px-3 py-2.5 font-semibold">Truck Number</th>
-                            <th className="px-3 py-2.5 font-semibold">Qty</th>
-                            <th className="px-3 py-2.5 font-semibold">Rate</th>
-                            <th className="px-3 py-2.5 font-semibold">Amount</th>
-                            <th className="px-3 py-2.5 font-semibold text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoiceItems.map((item) => (
-                            <tr key={item.id} className="border-t hover:bg-muted/30">
-                              <td className="px-3 py-3 font-medium">{item.materialName}</td>
-                              <td className="px-3 py-3 font-medium">{item.truckNumber}</td>
-                              <td className="px-3 py-3 tabular-nums">{item.quantityBrass}</td>
-                              <td className="px-3 py-3 tabular-nums">{item.rate}</td>
-                              <td className="px-3 py-3 font-medium tabular-nums">{item.amount}</td>
-                              <td className="px-3 py-3">
-                                <div className="flex justify-end gap-2">
-                                  <Button type="button" variant="outline" size="sm" onClick={() => handleEditInvoiceItem(item)}>
-                                    Edit
-                                  </Button>
-                                  <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteInvoiceItem(item.id)}>
-                                    Delete
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-          )}
         </div>
 
         <div className="border-t border-border/80 pt-6">

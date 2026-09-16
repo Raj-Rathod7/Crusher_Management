@@ -4,6 +4,7 @@ import com.productapp.dto.CustomerResponse;
 import com.productapp.entity.Customer;
 import com.productapp.repository.CustomerRepository;
 import com.productapp.repository.InvoiceRepository;
+import com.productapp.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,6 +27,9 @@ class CustomerServiceTest {
     @Mock
     private InvoiceRepository invoiceRepository;
 
+    @Mock
+    private PaymentRepository paymentRepository;
+
     @InjectMocks
     private CustomerService customerService;
 
@@ -40,6 +44,8 @@ class CustomerServiceTest {
 
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         when(invoiceRepository.sumOutstandingBalanceByCustomerId(1L)).thenReturn(BigDecimal.ZERO);
+        when(paymentRepository.sumAmountByCustomerIdAndDirection(1L, "CREDIT_IN")).thenReturn(BigDecimal.ZERO);
+        when(paymentRepository.sumAmountByCustomerIdAndDirection(1L, "CREDIT_OUT")).thenReturn(BigDecimal.ZERO);
 
         CustomerResponse response = customerService.getById(1L);
 

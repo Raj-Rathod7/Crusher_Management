@@ -1,5 +1,5 @@
 import { apiClient } from "../common/api"
-import type { Customer, Expense, ExpenseCategory, Invoice, Material, TruckEntry } from "../models"
+import type { Customer, CustomerSummaryResponse, Expense, ExpenseCategory, Invoice, Material, Payment, TruckEntry } from "../models"
 
 export const truckEntryKeys = {
   all: ['truck-entries'] as const,
@@ -67,4 +67,27 @@ export const getExpenseById = async (id: number | string) => {
 
 export const getAllExpenseCategories = async () => {
   return apiClient.get<ExpenseCategory[]>('/expenses/categories')
+}
+
+export const receiptKeys = {
+  all: ['receipts'] as const,
+  list: (filters: { customerId?: number | string; dateFrom?: string; dateTo?: string }) =>
+    ['receipts', filters] as const,
+}
+
+export const getAllReceipts = async (filters: { customerId?: number | string; dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.customerId) params.set('customerId', String(filters.customerId))
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get<Payment[]>(`/payments/receipts${query ? `?${query}` : ''}`)
+}
+
+export const getCustomerSummary = async (id: number | string) => {
+  return apiClient.get<CustomerSummaryResponse>(`/customers/${id}/summary`)
+}
+
+export const customerSummaryKeys = {
+  detail: (id: number | string) => ['customer-summary', String(id)] as const,
 }

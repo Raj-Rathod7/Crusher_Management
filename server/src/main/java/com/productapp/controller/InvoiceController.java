@@ -1,6 +1,7 @@
 package com.productapp.controller;
 
 import com.productapp.dto.InvoiceResponse;
+import com.productapp.entity.ApplyCreditRequest;
 import com.productapp.entity.Invoice;
 import com.productapp.entity.InvoiceRequest;
 import com.productapp.service.InvoiceService;
@@ -24,6 +25,11 @@ public class InvoiceController {
     @PostMapping
     public InvoiceResponse create(@Valid @RequestBody InvoiceRequest invoiceRequest) {
         return invoiceService.createInvoice(invoiceRequest);
+    }
+
+    @PostMapping("/{id}/apply-credit")
+    public InvoiceResponse applyCredit(@PathVariable Long id, @RequestBody(required = false) ApplyCreditRequest request) {
+        return invoiceService.applyCreditToExistingInvoice(id, request != null ? request.getCreditToApply() : null);
     }
 
     @GetMapping

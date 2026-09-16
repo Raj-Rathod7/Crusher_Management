@@ -42,6 +42,7 @@ export type Customer = {
   address: string | null;
   notes: string | null;
   pendingBalance?: number;
+  availableCredit?: number;
   isActive: boolean | null;
   createdAt: string;
 }
@@ -60,6 +61,9 @@ export type Invoice = {
   createdAt: string;
   updatedAt: string;
   invoiceItems: InvoiceItem[];
+  creditApplied?: number;
+  cashPaid?: number;
+  customerAvailableCreditAfterTxn?: number;
 }
 
 export type InvoiceItem = {
@@ -82,6 +86,9 @@ export type CreateInvoicePayload = {
   remarks?: string;
   customerId: number;
   invoiceItems: InvoiceItem[];
+  applyCredit?: boolean;
+  creditToApply?: number;
+  cashPaidNow?: number;
 }
 
 export type CreateCustomerPayload = {
@@ -114,4 +121,45 @@ export type CreateExpensePayload = {
   categoryId: number;
   amount: number;
   notes?: string;
+}
+
+export type Payment = {
+  id: number;
+  paymentDate: string;
+  invoiceNumber: string | null;
+  invoiceId: number | null;
+  customerName: string | null;
+  customerId: number | null;
+  amount: number;
+  paymentMode: string | null;
+  chequeNumber: string | null;
+  notes: string | null;
+  entryType: string | null;
+  direction: string | null;
+  receiptNumber: string | null;
+  externalRef: string | null;
+  sourceReceiptId: number | null;
+  sourceReceiptNumber: string | null;
+  createdByUsername: string | null;
+}
+
+export type CreateAdvanceReceiptPayload = {
+  customerId: number;
+  amount: number;
+  paymentDate: string;
+  paymentMode?: string;
+  receiptNumber?: string;
+  externalRef?: string;
+  notes?: string;
+}
+
+export type AdvanceReceiptResponse = {
+  payment: Payment;
+  customerAvailableCredit: number;
+}
+
+export type CustomerSummaryResponse = {
+  customer: Customer;
+  recentPayments: Payment[];
+  recentInvoices: Invoice[];
 }
