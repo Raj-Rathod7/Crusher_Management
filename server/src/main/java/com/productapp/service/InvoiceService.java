@@ -64,7 +64,7 @@ public class InvoiceService {
                             
         
         List<InvoiceItem> invoiceItems = new ArrayList<>();
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal totalAmount = invoiceRequest.getTotalAmount();
         for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
 
             MaterialType material = materialRepository.findByIdAndIsActiveTrue(
@@ -83,7 +83,6 @@ public class InvoiceService {
             item.setTruckNumber(itemRequest.getTruckNumber());
 
             invoiceItems.add(item);
-            totalAmount = totalAmount.add(itemAmount);
         }
 
         BigDecimal creditApplied = BigDecimal.ZERO;
