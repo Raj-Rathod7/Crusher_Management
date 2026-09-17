@@ -11,6 +11,7 @@ import com.productapp.entity.InvoiceItem;
 import com.productapp.entity.InvoiceItemRequest;
 import com.productapp.entity.InvoiceRequest;
 import com.productapp.entity.MaterialType;
+import com.productapp.entity.RecordInvoicePaymentRequest;
 import com.productapp.entity.User;
 import com.productapp.repository.UserRepository;
 
@@ -122,6 +123,8 @@ public class InvoiceService {
         }
 
         InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
+        response.setAppliedReceipts(paymentService.listCreditApplicationsForInvoice(savedInvoice.getId()));
+        response.setPayments(paymentService.listPaymentsForInvoice(savedInvoice));
         response.setCreditApplied(creditApplied);
         response.setCashPaid(cashPaidNow);
         response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(customer.getId()));
@@ -168,6 +171,8 @@ public class InvoiceService {
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
         InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
+        response.setAppliedReceipts(paymentService.listCreditApplicationsForInvoice(savedInvoice.getId()));
+        response.setPayments(paymentService.listPaymentsForInvoice(savedInvoice));
         response.setCreditApplied(amount);
         response.setCashPaid(BigDecimal.ZERO);
         response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(lockedCustomer.getId()));
@@ -178,6 +183,37 @@ public class InvoiceService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return userRepository.findByUsernameAndIsActiveTrue(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public InvoiceResponse recordPayment(Long invoiceId, RecordInvoicePaymentRequest request) {
+        Invoice invoice = invoiceRepository.findByIdForUpdate(invoiceId)
+                .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + invoiceId));
+
+        if (invoice.getBalance().signum() <= 0) {
+            throw new IllegalArgumentException("Invoice has no pending balance");
+        }
+        if (request.getAmount().compareTo(invoice.getBalance()) > 0) {
+            throw new IllegalArgumentException("Payment exceeds outstanding balance");
+        }
+
+        User createdBy = getCurrentUser();
+        paymentService.recordInvoicePayment(invoice, request, createdBy);
+
+        invoice.setAmountPaid(invoice.getAmountPaid().add(request.getAmount()));
+        invoice.setBalance(invoice.getTotalAmount().subtract(invoice.getAmountPaid()));
+        invoice.setStatus(resolveStatus(invoice.getAmountPaid(), invoice.getBalance()));
+
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
+        response.setAppliedReceipts(paymentService.listCreditApplicationsForInvoice(savedInvoice.getId()));
+        response.setPayments(paymentService.listPaymentsForInvoice(savedInvoice));
+        response.setCreditApplied(BigDecimal.ZERO);
+        response.setCashPaid(request.getAmount());
+        response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(invoice.getCustomer().getId()));
+        return response;
     }
 
     @Transactional
@@ -246,6 +282,9 @@ public class InvoiceService {
         Invoice invoice = invoiceRepository.findById(id)
             .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
-        return InvoiceResponse.fromEntity(invoice);
+        InvoiceResponse response = InvoiceResponse.fromEntity(invoice);
+        response.setAppliedReceipts(paymentService.listCreditApplicationsForInvoice(invoice.getId()));
+        response.setPayments(paymentService.listPaymentsForInvoice(invoice));
+        return response;
     }
 }

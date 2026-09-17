@@ -52,6 +52,7 @@ export type Invoice = {
   invoiceNumber: string;
   invoiceDate: string;
   customerName: string | null;
+  customerId: number | null;
   totalAmount: number;
   amountPaid: number;
   balance: number;
@@ -61,6 +62,8 @@ export type Invoice = {
   createdAt: string;
   updatedAt: string;
   invoiceItems: InvoiceItem[];
+  appliedReceipts: Payment[];
+  payments: Payment[];
   creditApplied?: number;
   cashPaid?: number;
   customerAvailableCreditAfterTxn?: number;
@@ -149,6 +152,15 @@ export type CreateAdvanceReceiptPayload = {
   paymentDate: string;
   paymentMode?: string;
   receiptNumber?: string;
+  externalRef?: string;
+  notes?: string;
+}
+
+export type RecordInvoicePaymentPayload = {
+  amount: number;
+  paymentDate: string;
+  paymentMode?: string;
+  chequeNumber?: string;
   externalRef?: string;
   notes?: string;
 }

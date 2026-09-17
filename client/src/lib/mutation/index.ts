@@ -1,5 +1,5 @@
 import { apiClient } from "../common/api";
-import type { AdvanceReceiptResponse, AuthResponse, CreateAdvanceReceiptPayload, CreateCustomerPayload, CreateExpensePayload, CreateInvoicePayload, CreateTruckEntryPayload, Customer, Expense, Invoice, TruckEntry } from "../models";
+import type { AdvanceReceiptResponse, AuthResponse, CreateAdvanceReceiptPayload, CreateCustomerPayload, CreateExpensePayload, CreateInvoicePayload, CreateTruckEntryPayload, Customer, Expense, Invoice, RecordInvoicePaymentPayload, TruckEntry } from "../models";
 
 export const login = async (username: string, password: string) => {
   return apiClient.post<AuthResponse>("/auth/login", {username, password}, {auth: false});
@@ -51,6 +51,10 @@ export const createAdvanceReceipt = async (payload: CreateAdvanceReceiptPayload)
 
 export const applyCreditToInvoice = async (invoiceId: number | string, creditToApply?: number) => {
   return apiClient.post<Invoice>(`/invoices/${invoiceId}/apply-credit`, { creditToApply });
+}
+
+export const recordInvoicePayment = async (invoiceId: number | string, payload: RecordInvoicePaymentPayload) => {
+  return apiClient.post<Invoice>(`/invoices/${invoiceId}/payments`, payload);
 }
 
 export const reverseReceipt = async (id: number | string, reason: string) => {

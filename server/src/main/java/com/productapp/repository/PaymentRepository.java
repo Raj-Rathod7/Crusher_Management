@@ -39,4 +39,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	BigDecimal sumAmountBySourceReceiptId(@Param("receiptId") Long receiptId);
 
 	List<Payment> findAllByCustomerIdAndEntryTypeOrderByPaymentDateAscIdAsc(Long customerId, String entryType);
+
+	List<Payment> findAllByInvoiceIdAndEntryTypeOrderByPaymentDateAscIdAsc(Long invoiceId, String entryType);
+
+	List<Payment> findAllByInvoiceIdOrderByPaymentDateAscIdAsc(Long invoiceId);
 }

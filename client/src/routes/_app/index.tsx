@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   Boxes,
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/")({
 });
 
 function RouteComponent() {
+  const navigate = useNavigate();
   const dashboard = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => apiClient.get<DashboardData>("/dashboard"),
@@ -296,6 +297,7 @@ function RouteComponent() {
               enableSorting={false}
               enableGlobalSearch={true}
               emptyMessage="No invoices have been recorded yet."
+              onRowClick={(row) => navigate({ to: "/sales/$saleId", params: { saleId: String(row.id) } })}
             />
           </CardContent>
         </Card>

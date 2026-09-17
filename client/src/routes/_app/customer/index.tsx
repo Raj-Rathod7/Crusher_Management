@@ -1,44 +1,24 @@
 import { ConfigurableDataTable } from "#/components/data-table";
 import { Button } from "#/components/ui/button";
 import { Badge } from "#/components/ui/badge";
-import { Card, CardContent } from "#/components/ui/card";
+import type { Customer } from "#/lib/models";
+import { customerKeys, getAllCustomers } from "#/lib/query";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "#/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "#/components/ui/table";
-import type { Customer, Invoice, Payment } from "#/lib/models";
-import { applyCreditToInvoice } from "#/lib/mutation";
-import { customerKeys, customerSummaryKeys, getAllCustomers, getCustomerSummary, receiptKeys } from "#/lib/query";
-import {
-  IconChevronDown,
-  IconChevronRight,
   IconPencil,
-  IconReceipt,
   IconTrash,
 } from "@tabler/icons-react";
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { PersonStanding, User2 } from "lucide-react";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { User2 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/_app/customer/")({
   component: RouteComponent,
 });
 
 type CustomerRow = Omit<Customer, "createdAt" | "isActive">;
+
+type QuickFilter = "all" | "pendingBalance" | "hasCredit" | "settled";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -47,19 +27,43 @@ const currency = new Intl.NumberFormat("en-IN", {
 });
 
 function RouteComponent() {
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
-  );
-  const [expandedInvoiceId, setExpandedInvoiceId] = useState<number | null>(
-    null,
-  );
-  const { data, isLoading, isError, error } = useQuery({
+  const navigate = useNavigate();
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const { data, isLoading } = useQuery({
     queryKey: customerKeys.all,
     queryFn: getAllCustomers,
     retry: false,
   });
 
-  const customerRows: CustomerRow[] = (data ?? []).map((customer) => {
+  const quickFilterCounts = useMemo(() => {
+    const customers = data ?? [];
+    return {
+      all: customers.length,
+      pendingBalance: customers.filter((customer) => (customer.pendingBalance ?? 0) > 0).length,
+      hasCredit: customers.filter((customer) => (customer.availableCredit ?? 0) > 0).length,
+      settled: customers.filter(
+        (customer) => (customer.pendingBalance ?? 0) === 0 && (customer.availableCredit ?? 0) === 0,
+      ).length,
+    };
+  }, [data]);
+
+  const filteredCustomers = useMemo(() => {
+    const customers = data ?? [];
+    switch (quickFilter) {
+      case "pendingBalance":
+        return customers.filter((customer) => (customer.pendingBalance ?? 0) > 0);
+      case "hasCredit":
+        return customers.filter((customer) => (customer.availableCredit ?? 0) > 0);
+      case "settled":
+        return customers.filter(
+          (customer) => (customer.pendingBalance ?? 0) === 0 && (customer.availableCredit ?? 0) === 0,
+        );
+      default:
+        return customers;
+    }
+  }, [data, quickFilter]);
+
+  const customerRows: CustomerRow[] = filteredCustomers.map((customer) => {
     return {
       id: customer.id,
       name: customer.name,
@@ -75,38 +79,6 @@ function RouteComponent() {
     void entry;
   };
 
-  const queryClient = useQueryClient();
-
-  const summaryQuery = useQuery({
-    queryKey: customerSummaryKeys.detail(selectedCustomer?.id ?? ""),
-    queryFn: () => getCustomerSummary(selectedCustomer!.id),
-    enabled: selectedCustomer !== null,
-    retry: false,
-  });
-
-  const applyCreditMutation = useMutation({
-    mutationFn: ({ invoiceId }: { invoiceId: number }) => applyCreditToInvoice(invoiceId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: customerKeys.all }),
-        queryClient.invalidateQueries({ queryKey: customerSummaryKeys.detail(selectedCustomer?.id ?? "") }),
-        queryClient.invalidateQueries({ queryKey: receiptKeys.all }),
-      ]);
-      toast.success("Credit applied to invoice.");
-    },
-    onError: () => {
-      toast.error("Failed to apply credit to invoice.");
-    },
-  });
-
-  const invoices = summaryQuery.data?.recentInvoices ?? [];
-  const payments = summaryQuery.data?.recentPayments ?? [];
-  const receipts = payments.filter(
-    (payment) => payment.entryType === "ADVANCE_RECEIPT" || payment.entryType === "CREDIT_ADJUSTMENT",
-  );
-  const creditUsage = payments.filter((payment) => payment.entryType === "CREDIT_APPLIED");
-  const currentAvailableCredit = summaryQuery.data?.customer.availableCredit ?? selectedCustomer?.availableCredit ?? 0;
-
   return (
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
       <div className="mb-6 flex shrink-0 items-start justify-between gap-4">
@@ -114,6 +86,27 @@ function RouteComponent() {
           <h1 className="text-2xl font-semibold">Customers</h1>
           <p className="text-sm text-muted-foreground">All customers</p>
         </div>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <QuickFilterChip label="All" count={quickFilterCounts.all} active={quickFilter === "all"} onClick={() => setQuickFilter("all")} />
+        <QuickFilterChip
+          label="Pending balance"
+          count={quickFilterCounts.pendingBalance}
+          active={quickFilter === "pendingBalance"}
+          onClick={() => setQuickFilter("pendingBalance")}
+        />
+        <QuickFilterChip
+          label="Has credit"
+          count={quickFilterCounts.hasCredit}
+          active={quickFilter === "hasCredit"}
+          onClick={() => setQuickFilter("hasCredit")}
+        />
+        <QuickFilterChip
+          label="Settled"
+          count={quickFilterCounts.settled}
+          active={quickFilter === "settled"}
+          onClick={() => setQuickFilter("settled")}
+        />
       </div>
       <ConfigurableDataTable
         data={customerRows}
@@ -211,678 +204,32 @@ function RouteComponent() {
         addButtonLink="/customer/new"
         addButtonText="Add Customer"
         onRowClick={(row) => {
-          setSelectedCustomer(
-            data?.find((customer) => customer.id === row.id) ?? null,
-          );
-          setExpandedInvoiceId(null);
+          navigate({ to: "/customer/$customerId", params: { customerId: String(row.id) } });
         }}
       />
-
-      <Dialog
-        open={selectedCustomer !== null}
-        onOpenChange={(open) => !open && setSelectedCustomer(null)}
-      >
-        <DialogContent className="max-w-5xl">
-          <DialogHeader className="border-b bg-muted/30 pb-5">
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-amber-500/15 p-2 text-amber-700 dark:text-amber-400">
-                <IconReceipt className="size-5" />
-              </div>
-              <div>
-                <DialogTitle>{selectedCustomer?.name}</DialogTitle>
-                <DialogDescription className="mt-1">
-                  Invoices, receipts, and credit usage
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="max-h-[65vh] overflow-y-auto p-5">
-            {selectedCustomer ? (
-              <CustomerDetailsPanel customer={selectedCustomer} />
-            ) : null}
-
-            {summaryQuery.isLoading ? (
-              <InvoiceModalSkeleton />
-            ) : summaryQuery.isError ? (
-              <Card className="mt-4 border-destructive/30">
-                <CardContent className="p-5 text-sm text-destructive">
-                  Unable to load this customer&apos;s history.
-                </CardContent>
-              </Card>
-            ) : (
-              <Tabs defaultValue="invoices" className="mt-4">
-                <TabsList>
-                  <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
-                  <TabsTrigger value="receipts">Receipts ({receipts.length})</TabsTrigger>
-                  <TabsTrigger value="credit-usage">Credit usage ({creditUsage.length})</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="invoices">
-                  {invoices.length ? (
-                    <div>
-                      <CustomerInvoiceSummary invoices={invoices} />
-                      <ExpandableInvoiceTable
-                        invoices={invoices}
-                        availableCredit={currentAvailableCredit}
-                        onApplyCredit={(invoiceId) => applyCreditMutation.mutate({ invoiceId })}
-                        isApplyingCredit={applyCreditMutation.isPending}
-                      />
-                    </div>
-                  ) : (
-                    <Card>
-                      <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                        No invoices recorded for this customer.
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="receipts">
-                  <ReceiptsTable receipts={receipts} />
-                </TabsContent>
-
-                <TabsContent value="credit-usage">
-                  <CreditUsageTable entries={creditUsage} />
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-function CustomerDetailsPanel({ customer }: { customer: Customer }) {
-  return (
-    <Card>
-      <CardContent className="grid gap-4 p-4 md:grid-cols-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Customer name</p>
-          <p className="mt-1 text-base font-semibold">{customer.name}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending balance</p>
-          <p className="mt-1 text-base font-semibold text-amber-700 dark:text-amber-400">
-            {currency.format(customer.pendingBalance ?? 0)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Phone</p>
-          <p className="mt-1 text-sm">{customer.phone ?? "-"}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Address</p>
-          <p className="mt-1 text-sm">{customer.address ?? "-"}</p>
-        </div>
-        <div className="md:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Notes</p>
-          <p className="mt-1 text-sm">{customer.notes ?? "-"}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function CustomerInvoiceSummary({ invoices }: { invoices: Invoice[] }) {
-  const consolidated = invoices.reduce(
-    (acc, invoice) => {
-      acc.totalAmount += invoice.totalAmount;
-      acc.amountPaid += invoice.amountPaid;
-      acc.pendingBalance += Math.max(invoice.balance, 0);
-      return acc;
-    },
-    {
-      totalAmount: 0,
-      amountPaid: 0,
-      pendingBalance: 0,
-    },
-  );
-
-  return (
-    <div className="mb-4 grid gap-3 md:grid-cols-4">
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Invoices</p>
-          <p className="mt-1 text-lg font-semibold">{invoices.length}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total billed</p>
-          <p className="mt-1 text-lg font-semibold">{currency.format(consolidated.totalAmount)}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Collected</p>
-          <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-            {currency.format(consolidated.amountPaid)}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending balance</p>
-          <p className="mt-1 text-lg font-semibold text-amber-700 dark:text-amber-400">
-            {currency.format(consolidated.pendingBalance)}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function ExpandableInvoiceTable({
-  invoices,
-  availableCredit = 0,
-  onApplyCredit,
-  isApplyingCredit = false,
+function QuickFilterChip({
+  label,
+  count,
+  active,
+  onClick,
 }: {
-  invoices: Invoice[];
-  availableCredit?: number;
-  onApplyCredit?: (invoiceId: number) => void;
-  isApplyingCredit?: boolean;
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <ConfigurableDataTable
-      data={invoices}
-      columns={[
-        { accessorKey: "invoiceNumber", header: "Invoice" },
-        { accessorKey: "invoiceDate", header: "Date" },
-        {
-          accessorKey: "status",
-          header: "Status",
-          cell: ({ row }) => (
-            <Badge
-              variant={
-                row.original.status === "paid"
-                  ? "default"
-                  : row.original.status === "partial"
-                    ? "secondary"
-                    : "outline"
-              }
-            >
-              {row.original.status}
-            </Badge>
-          ),
-        },
-        {
-          accessorKey: "totalAmount",
-          header: "Total",
-          cell: ({ row }) => currency.format(row.original.totalAmount),
-        },
-        {
-          accessorKey: "balance",
-          header: "Balance",
-          cell: ({ row }) => (
-            <span
-              className={
-                row.original.balance > 0
-                  ? "font-medium text-amber-700 dark:text-amber-400"
-                  : "font-medium text-emerald-700 dark:text-emerald-400"
-              }
-            >
-              {currency.format(row.original.balance)}
-            </span>
-          ),
-        },
-        {
-          id: "credit-action",
-          header: "Pending balance",
-          meta: { sortable: false, searchable: false },
-          cell: ({ row }) =>
-            row.original.balance > 0 && onApplyCredit ? (
-              availableCredit > 0 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={isApplyingCredit}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onApplyCredit(row.original.id);
-                  }}
-                >
-                  Apply credit
-                </Button>
-              ) : (
-                <span className="text-xs text-muted-foreground">No credit available</span>
-              )
-            ) : null,
-        },
-      ]}
-      getRowId={(row) => row.id.toString()}
-      enableColumnVisibility={false}
-      enablePagination={false}
-      enableSorting={false}
-      enableGlobalSearch={false}
-      renderExpandedRow={(invoice) => (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Material items</p>
-            <span className="text-xs text-muted-foreground">
-              {invoice.invoiceItems?.length ?? 0} item
-              {invoice.invoiceItems?.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          {invoice.invoiceItems?.length ? (
-            <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/40">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">
-                      Material
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium">Truck</th>
-                    <th className="px-3 py-2 text-right font-medium">
-                      Quantity
-                    </th>
-                    <th className="px-3 py-2 text-right font-medium">Rate</th>
-                    <th className="px-3 py-2 text-right font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.invoiceItems.map((item) => (
-                    <tr key={item.id} className="border-b last:border-0">
-                      <td className="px-3 py-2">
-                        {item.materialName ?? "Material"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {item.truckNumber ?? "Not assigned"}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {item.quantityBrass}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {currency.format(item.rate)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">
-                        {currency.format(item.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No material items attached.
-            </p>
-          )}
-        </div>
-      )}
-      emptyMessage="No invoices recorded for this customer."
-    />
+    <Button type="button" size="sm" variant={active ? "default" : "outline"} onClick={onClick} className="gap-2">
+      {label}
+      <Badge variant={active ? "secondary" : "outline"} className="px-1.5 font-mono">
+        {count}
+      </Badge>
+    </Button>
   );
 }
 
-function ReceiptsTable({ receipts }: { receipts: Payment[] }) {
-  if (!receipts.length) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center text-sm text-muted-foreground">
-          No advance receipts recorded for this customer.
-        </CardContent>
-      </Card>
-    );
-  }
 
-  return (
-    <ConfigurableDataTable
-      data={receipts}
-      columns={[
-        { accessorKey: "paymentDate", header: "Date" },
-        {
-          accessorKey: "entryType",
-          header: "Type",
-          cell: ({ row }) => (
-            <Badge variant={row.original.entryType === "CREDIT_ADJUSTMENT" ? "outline" : "default"}>
-              {row.original.entryType === "CREDIT_ADJUSTMENT" ? "Reversal" : "Advance receipt"}
-            </Badge>
-          ),
-        },
-        {
-          accessorKey: "amount",
-          header: "Amount",
-          cell: ({ row }) => (
-            <span
-              className={
-                row.original.entryType === "CREDIT_ADJUSTMENT"
-                  ? "font-medium text-amber-700 dark:text-amber-400"
-                  : "font-medium text-emerald-700 dark:text-emerald-400"
-              }
-            >
-              {row.original.entryType === "CREDIT_ADJUSTMENT" ? "-" : ""}
-              {currency.format(row.original.amount)}
-            </span>
-          ),
-        },
-        { accessorKey: "receiptNumber", header: "Receipt #" },
-        { accessorKey: "paymentMode", header: "Mode" },
-        { accessorKey: "notes", header: "Notes" },
-      ]}
-      getRowId={(row) => row.id.toString()}
-      enableColumnVisibility={false}
-      enablePagination={false}
-      enableSorting={false}
-      enableGlobalSearch={false}
-      emptyMessage="No advance receipts recorded for this customer."
-    />
-  );
-}
-
-function CreditUsageTable({ entries }: { entries: Payment[] }) {
-  if (!entries.length) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center text-sm text-muted-foreground">
-          No credit has been applied to invoices for this customer yet.
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <ConfigurableDataTable
-      data={entries}
-      columns={[
-        { accessorKey: "paymentDate", header: "Date" },
-        {
-          accessorKey: "invoiceNumber",
-          header: "Invoice",
-          cell: ({ row }) => row.original.invoiceNumber ?? "-",
-        },
-        {
-          accessorKey: "sourceReceiptNumber",
-          header: "Funded by receipt",
-          cell: ({ row }) => row.original.sourceReceiptNumber ?? "Pooled credit",
-        },
-        {
-          accessorKey: "amount",
-          header: "Amount applied",
-          cell: ({ row }) => (
-            <span className="font-medium text-primary">{currency.format(row.original.amount)}</span>
-          ),
-        },
-      ]}
-      getRowId={(row) => row.id.toString()}
-      enableColumnVisibility={false}
-      enablePagination={false}
-      enableSorting={false}
-      enableGlobalSearch={false}
-      emptyMessage="No credit usage recorded for this customer."
-    />
-  );
-}
-
-function ReusableInvoiceTable({
-  invoices,
-  expandedInvoiceId,
-  onToggle,
-}: {
-  invoices: Invoice[];
-  expandedInvoiceId: number | null;
-  onToggle: (id: number) => void;
-}) {
-  const currency = new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  });
-  const selectedInvoice = invoices.find(
-    (invoice) => invoice.id === expandedInvoiceId,
-  );
-
-  return (
-    <div className="space-y-4">
-      <ConfigurableDataTable
-        data={invoices}
-        columns={[
-          { accessorKey: "invoiceNumber", header: "Invoice" },
-          {
-            accessorKey: "invoiceDate",
-            header: "Date",
-            cell: ({ row }) =>
-              new Date(
-                `${row.original.invoiceDate}T00:00:00`,
-              ).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              }),
-          },
-          {
-            accessorKey: "status",
-            header: "Status",
-            cell: ({ row }) => (
-              <Badge
-                variant={
-                  row.original.status === "paid"
-                    ? "default"
-                    : row.original.status === "partial"
-                      ? "secondary"
-                      : "outline"
-                }
-              >
-                {row.original.status}
-              </Badge>
-            ),
-          },
-          {
-            accessorKey: "totalAmount",
-            header: "Total",
-            cell: ({ row }) => currency.format(row.original.totalAmount),
-          },
-          {
-            accessorKey: "balance",
-            header: "Balance",
-            cell: ({ row }) => (
-              <span
-                className={
-                  row.original.balance > 0
-                    ? "font-medium text-amber-700 dark:text-amber-400"
-                    : "font-medium text-emerald-700 dark:text-emerald-400"
-                }
-              >
-                {currency.format(row.original.balance)}
-              </span>
-            ),
-          },
-        ]}
-        getRowId={(row) => row.id.toString()}
-        enableColumnVisibility={false}
-        enablePagination={false}
-        enableSorting={false}
-        enableGlobalSearch={false}
-        onRowClick={(row) => onToggle(row.id)}
-        emptyMessage="No invoices recorded for this customer."
-      />
-      {selectedInvoice ? (
-        <Card className="border-l-2 border-l-primary">
-          <CardContent className="space-y-3 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">
-                Materials in {selectedInvoice.invoiceNumber}
-              </p>
-              <span className="text-xs text-muted-foreground">
-                {selectedInvoice.invoiceItems.length} item
-                {selectedInvoice.invoiceItems.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            {selectedInvoice.invoiceItems.length ? (
-              <div className="grid gap-2">
-                {selectedInvoice.invoiceItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-md border px-3 py-2 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {item.materialName ?? "Material"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Truck {item.truckNumber ?? "Not assigned"}
-                      </p>
-                    </div>
-                    <span className="text-muted-foreground">
-                      {item.quantityBrass} x{" "}
-                      {currency.format(item.rate)}
-                    </span>
-                    <span className="font-medium tabular-nums">
-                      {currency.format(item.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No material items attached.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
-  );
-}
-
-function InvoiceTable({
-  invoices,
-  expandedInvoiceId,
-  onToggle,
-}: {
-  invoices: Invoice[];
-  expandedInvoiceId: number | null;
-  onToggle: (id: number) => void;
-}) {
-  const currency = new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  });
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-10" />
-          <TableHead>Invoice</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Total</TableHead>
-          <TableHead className="text-right">Balance</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {invoices.map((invoice) => {
-          const expanded = expandedInvoiceId === invoice.id;
-          const statusVariant =
-            invoice.status === "paid"
-              ? "default"
-              : invoice.status === "partial"
-                ? "secondary"
-                : "outline";
-          return (
-            <>
-              <TableRow
-                key={invoice.id}
-                className="cursor-pointer"
-                onClick={() => onToggle(invoice.id)}
-                aria-expanded={expanded}
-              >
-                <TableCell>
-                  {expanded ? (
-                    <IconChevronDown className="size-4 text-muted-foreground" />
-                  ) : (
-                    <IconChevronRight className="size-4 text-muted-foreground" />
-                  )}
-                </TableCell>
-                <TableCell className="font-medium">
-                  {invoice.invoiceNumber}
-                </TableCell>
-                <TableCell>
-                  {new Date(
-                    `${invoice.invoiceDate}T00:00:00`,
-                  ).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant}>{invoice.status}</Badge>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {currency.format(invoice.totalAmount)}
-                </TableCell>
-                <TableCell
-                  className={`text-right font-medium tabular-nums ${invoice.balance > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}
-                >
-                  {currency.format(invoice.balance)}
-                </TableCell>
-              </TableRow>
-              {expanded ? (
-                <TableRow
-                  key={`${invoice.id}-items`}
-                  className="bg-muted/20 hover:bg-muted/20"
-                >
-                  <TableCell colSpan={6} className="p-0">
-                    <div className="border-l-2 border-amber-500/60 px-6 py-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Material items
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {invoice.invoiceItems.length} item
-                          {invoice.invoiceItems.length === 1 ? "" : "s"}
-                        </p>
-                      </div>
-                      {invoice.invoiceItems.length ? (
-                        <div className="space-y-2">
-                          {invoice.invoiceItems.map((item) => (
-                            <div
-                              key={item.id}
-                              className="grid grid-cols-[1fr_auto_auto] items-center gap-4 rounded-md bg-background px-3 py-2 text-sm ring-1 ring-border/60"
-                            >
-                              <div>
-                                <p className="font-medium">
-                                  {item.materialName ?? "Material"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Truck {item.truckNumber ?? "未 assigned"}
-                                </p>
-                              </div>
-                              <span className="text-muted-foreground">
-                                {item.quantityBrass} × {currency.format(item.rate)}
-                              </span>
-                              <span className="font-medium tabular-nums">
-                                {currency.format(item.amount)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No material items attached.
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
-}
-
-function InvoiceModalSkeleton() {
-  return (
-    <div className="space-y-3">
-      {[1, 2, 3].map((item) => (
-        <div key={item} className="h-14 animate-pulse rounded-md bg-muted" />
-      ))}
-    </div>
-  );
-}

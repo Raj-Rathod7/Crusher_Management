@@ -4,6 +4,7 @@ import com.productapp.dto.InvoiceResponse;
 import com.productapp.entity.ApplyCreditRequest;
 import com.productapp.entity.Invoice;
 import com.productapp.entity.InvoiceRequest;
+import com.productapp.entity.RecordInvoicePaymentRequest;
 import com.productapp.service.InvoiceService;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -30,6 +31,11 @@ public class InvoiceController {
     @PostMapping("/{id}/apply-credit")
     public InvoiceResponse applyCredit(@PathVariable Long id, @RequestBody(required = false) ApplyCreditRequest request) {
         return invoiceService.applyCreditToExistingInvoice(id, request != null ? request.getCreditToApply() : null);
+    }
+
+    @PostMapping("/{id}/payments")
+    public InvoiceResponse recordPayment(@PathVariable Long id, @Valid @RequestBody RecordInvoicePaymentRequest request) {
+        return invoiceService.recordPayment(id, request);
     }
 
     @GetMapping

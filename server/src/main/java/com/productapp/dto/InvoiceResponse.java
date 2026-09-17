@@ -24,6 +24,8 @@ public class InvoiceResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<InvoiceItemResponse> invoiceItems;
+    private List<PaymentResponse> appliedReceipts = List.of();
+    private List<PaymentResponse> payments = List.of();
     private BigDecimal creditApplied;
     private BigDecimal cashPaid;
     private BigDecimal customerAvailableCreditAfterTxn;
@@ -99,6 +101,10 @@ public class InvoiceResponse {
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
     public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }
     public void setInvoiceItems(List<InvoiceItemResponse> invoiceItems) { this.invoiceItems = invoiceItems; }
+    public List<PaymentResponse> getAppliedReceipts() { return appliedReceipts; }
+    public void setAppliedReceipts(List<PaymentResponse> appliedReceipts) { this.appliedReceipts = appliedReceipts; }
+    public List<PaymentResponse> getPayments() { return payments; }
+    public void setPayments(List<PaymentResponse> payments) { this.payments = payments; }
     public BigDecimal getCreditApplied() { return creditApplied; }
     public void setCreditApplied(BigDecimal creditApplied) { this.creditApplied = creditApplied; }
     public BigDecimal getCashPaid() { return cashPaid; }

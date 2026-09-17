@@ -6,6 +6,7 @@ import com.productapp.entity.AdvanceReceiptRequest;
 import com.productapp.entity.Customer;
 import com.productapp.entity.Invoice;
 import com.productapp.entity.Payment;
+import com.productapp.entity.RecordInvoicePaymentRequest;
 import com.productapp.entity.ReversePaymentRequest;
 import com.productapp.entity.User;
 import com.productapp.exceptions.ResourceNotFoundException;
@@ -20,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,7 @@ public class PaymentService {
     private static final String ENTRY_TYPE_ADVANCE_RECEIPT = "ADVANCE_RECEIPT";
     private static final String ENTRY_TYPE_CREDIT_APPLIED = "CREDIT_APPLIED";
     private static final String ENTRY_TYPE_CREDIT_ADJUSTMENT = "CREDIT_ADJUSTMENT";
+    private static final String ENTRY_TYPE_INVOICE_PAYMENT = "INVOICE_PAYMENT";
     private static final String DIRECTION_CREDIT_IN = "CREDIT_IN";
     private static final String DIRECTION_CREDIT_OUT = "CREDIT_OUT";
     private static final List<String> RECEIPT_ENTRY_TYPES = List.of(ENTRY_TYPE_ADVANCE_RECEIPT, ENTRY_TYPE_CREDIT_ADJUSTMENT);
@@ -113,6 +116,45 @@ public class PaymentService {
                 .collect(Collectors.toList());
     }
 
+    public List<PaymentResponse> listCreditApplicationsForInvoice(Long invoiceId) {
+        return paymentRepository.findAllByInvoiceIdAndEntryTypeOrderByPaymentDateAscIdAsc(
+                        invoiceId, ENTRY_TYPE_CREDIT_APPLIED).stream()
+                .map(PaymentResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * All money movements recorded against this invoice (credit applied + direct payments),
+     * plus a synthetic entry for any cash paid at invoice-creation time that has no ledger row.
+     */
+    public List<PaymentResponse> listPaymentsForInvoice(Invoice invoice) {
+        List<Payment> ledgerRows = paymentRepository.findAllByInvoiceIdOrderByPaymentDateAscIdAsc(invoice.getId());
+
+        BigDecimal loggedTotal = BigDecimal.ZERO;
+        for (Payment payment : ledgerRows) {
+            loggedTotal = loggedTotal.add(payment.getAmount());
+        }
+
+        List<PaymentResponse> responses = new ArrayList<>();
+        BigDecimal remainder = invoice.getAmountPaid().subtract(loggedTotal);
+        if (remainder.signum() > 0) {
+            PaymentResponse initialPayment = new PaymentResponse();
+            initialPayment.setPaymentDate(invoice.getInvoiceDate());
+            initialPayment.setAmount(remainder);
+            initialPayment.setEntryType(ENTRY_TYPE_INVOICE_PAYMENT);
+            initialPayment.setPaymentMode("cash");
+            initialPayment.setNotes("Recorded at invoice creation");
+            initialPayment.setInvoiceId(invoice.getId());
+            initialPayment.setInvoiceNumber(invoice.getInvoiceNumber());
+            responses.add(initialPayment);
+        }
+
+        for (Payment payment : ledgerRows) {
+            responses.add(PaymentResponse.fromEntity(payment));
+        }
+        return responses;
+    }
+
     @Transactional
     public AdvanceReceiptResponse reverseReceipt(Long id, ReversePaymentRequest request) {
         Payment original = paymentRepository.findById(id)
@@ -169,6 +211,28 @@ public class PaymentService {
             // fallback: credit available but not traceable to a specific receipt (e.g. adjustments)
             saveCreditApplied(customer, invoice, null, remainingToApply, createdBy);
         }
+    }
+
+    public void recordInvoicePayment(Invoice invoice, RecordInvoicePaymentRequest request, User createdBy) {
+        String paymentMode = request.getPaymentMode() != null ? request.getPaymentMode() : "cash";
+        if ("cheque".equalsIgnoreCase(paymentMode)
+                && (request.getChequeNumber() == null || request.getChequeNumber().isBlank())) {
+            throw new IllegalArgumentException("Cheque number is required for cheque payments");
+        }
+
+        Payment payment = new Payment();
+        payment.setCustomer(invoice.getCustomer());
+        payment.setInvoice(invoice);
+        payment.setAmount(request.getAmount());
+        payment.setPaymentDate(request.getPaymentDate());
+        payment.setPaymentMode(paymentMode);
+        payment.setChequeNumber(request.getChequeNumber());
+        payment.setExternalRef(request.getExternalRef());
+        payment.setNotes(request.getNotes());
+        payment.setEntryType(ENTRY_TYPE_INVOICE_PAYMENT);
+        payment.setDirection(null);
+        payment.setCreatedBy(createdBy);
+        paymentRepository.save(payment);
     }
 
     private void saveCreditApplied(Customer customer, Invoice invoice, Payment sourceReceipt, BigDecimal amount, User createdBy) {

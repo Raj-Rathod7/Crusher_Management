@@ -2,7 +2,7 @@ import { ConfigurableDataTable } from '#/components/data-table'
 import { StatsCard } from '#/components/stats-card'
 import { getAllReceipts, receiptKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { IconCurrencyRupee, IconReceipt } from '@tabler/icons-react'
 import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ type ReceiptRow = {
   id: number
   paymentDate: string
   customerName: string
+  customerId: number | null
   amount: string
   entryType: string
   paymentMode: string
@@ -39,6 +40,7 @@ function formatEntryType(entryType: string) {
 }
 
 function RouteComponent() {
+  const navigate = useNavigate()
   const { data, isLoading, isError, error } = useQuery({
     queryKey: receiptKeys.list({}),
     queryFn: () => getAllReceipts(),
@@ -52,6 +54,7 @@ function RouteComponent() {
     id: payment.id,
     paymentDate: payment.paymentDate,
     customerName: payment.customerName ?? '-',
+    customerId: payment.customerId,
     amount: formatCurrency(payment.amount),
     entryType: formatEntryType(payment.entryType ?? ''),
     paymentMode: payment.paymentMode ?? '-',
@@ -163,6 +166,11 @@ function RouteComponent() {
         enableAddButton
         addButtonLink="/receipt/new"
         addButtonText="Add Receipt"
+        onRowClick={(row) => {
+          if (row.customerId) {
+            navigate({ to: '/customer/$customerId', params: { customerId: String(row.customerId) } })
+          }
+        }}
       />
     </div>
   )
