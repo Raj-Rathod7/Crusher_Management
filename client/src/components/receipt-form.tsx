@@ -94,7 +94,7 @@ export function ReceiptForm({
     queryKey: customerKeys.all,
     queryFn: getAllCustomers,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

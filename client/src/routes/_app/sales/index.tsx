@@ -90,7 +90,7 @@ function RouteComponent() {
     queryKey: salesKeys.all,
     queryFn: getAllSales,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

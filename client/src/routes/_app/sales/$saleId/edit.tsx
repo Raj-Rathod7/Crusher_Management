@@ -21,7 +21,7 @@ function RouteComponent() {
     queryKey: salesKeys.detail(saleId),
     queryFn: () => getSaleById(saleId),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -30,7 +30,7 @@ function RouteComponent() {
     queryKey: customerKeys.all,
     queryFn: getAllCustomers,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

@@ -104,6 +104,7 @@ const initialInvoiceItemForm: InvoiceItemFormState = {
 }
 
 function buildNextInvoiceNumber(invoices: Invoice[], year: number) {
+  console.log(invoices);
   const yearText = String(year)
 
   const maxSequence = invoices.reduce((max, invoice) => {
@@ -159,9 +160,9 @@ function validateForm(form: FormState) {
       errors.amountPaid = 'Paid amount cannot be negative.'
     }
 
-    if (form.totalAmount.trim() && form.amountPaid.trim() && Number(form.amountPaid) > Number(form.totalAmount)) {
-      errors.amountPaid = 'Paid amount cannot exceed total amount.'
-    }
+    // if (form.totalAmount.trim() && form.amountPaid.trim() && Number(form.amountPaid) > Number(form.totalAmount)) {
+    //   errors.amountPaid = 'Paid amount cannot exceed total amount.'
+    // }
   }
 
   return errors
@@ -246,7 +247,8 @@ export function SalesForm({
   variant = 'page',
 }: SalesFormProps) {
   const queryClient = useQueryClient()
-  const shouldAutoGenerateInvoiceNumber = !initialValues?.invoiceNumber
+  const shouldAutoGenerateInvoiceNumber = !initialValues?.invoiceNumber;
+  console.log(shouldAutoGenerateInvoiceNumber);
   const [form, setForm] = React.useState<FormState>({ ...initialFormState, ...initialValues })
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
@@ -267,7 +269,7 @@ export function SalesForm({
     queryKey: customerKeys.all,
     queryFn: getAllCustomers,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -276,7 +278,7 @@ export function SalesForm({
     queryKey: materialKeys.all,
     queryFn: getAllMaterials,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -286,7 +288,7 @@ export function SalesForm({
     queryFn: getAllSales,
     enabled: shouldAutoGenerateInvoiceNumber,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -365,10 +367,11 @@ export function SalesForm({
     if (!shouldAutoGenerateInvoiceNumber) {
       return
     }
-
+    console.log('in useeffeect', sales);
     setForm((current) => {
-      if (current.invoiceNumber.trim()) {
-        return current
+      const invoiceNumber = buildNextInvoiceNumber(sales, new Date().getFullYear());
+      if(current.invoiceNumber.trim() === invoiceNumber.trim()){
+        return current;
       }
 
       return {
@@ -443,9 +446,9 @@ export function SalesForm({
       return
     }
 
-    if (!form.applyCredit && Number(form.amountPaid || 0) > totalAmount) {
-      nextErrors.amountPaid = 'Paid amount cannot exceed total amount.'
-    }
+    // if (!form.applyCredit && Number(form.amountPaid || 0) > totalAmount) {
+    //   nextErrors.amountPaid = 'Paid amount cannot exceed total amount.'
+    // }
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)

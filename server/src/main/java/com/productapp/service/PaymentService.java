@@ -110,6 +110,25 @@ public class PaymentService {
         return new AdvanceReceiptResponse(PaymentResponse.fromEntity(saved), getAvailableCredit(customer.getId()));
     }
 
+    public void createInvoiceOverpaymentReceipt(Customer customer, BigDecimal amount,
+                                                LocalDate paymentDate, String invoiceNumber, User createdBy) {
+        if (amount == null || amount.signum() <= 0) {
+            return;
+        }
+
+        Payment payment = new Payment();
+        payment.setCustomer(customer);
+        payment.setInvoice(null);
+        payment.setAmount(amount);
+        payment.setPaymentDate(paymentDate);
+        payment.setPaymentMode("cash");
+        payment.setNotes(String.format("Overpayment from invoice %s converted to customer credit", invoiceNumber));
+        payment.setEntryType(ENTRY_TYPE_ADVANCE_RECEIPT);
+        payment.setDirection(DIRECTION_CREDIT_IN);
+        payment.setCreatedBy(createdBy);
+        paymentRepository.save(payment);
+    }
+
     public List<PaymentResponse> listReceipts(Long customerId, LocalDate dateFrom, LocalDate dateTo) {
         return paymentRepository.findReceipts(RECEIPT_ENTRY_TYPES, customerId, dateFrom, dateTo).stream()
                 .map(PaymentResponse::fromEntity)

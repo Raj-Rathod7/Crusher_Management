@@ -21,7 +21,7 @@ function RouteComponent() {
     queryKey: truckEntryKeys.detail(entryId),
     queryFn: () => getTruckEntryById(entryId),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

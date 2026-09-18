@@ -45,7 +45,7 @@ function RouteComponent() {
     queryKey: receiptKeys.list({}),
     queryFn: () => getAllReceipts(),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

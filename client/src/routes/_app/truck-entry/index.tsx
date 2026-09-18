@@ -46,7 +46,7 @@ function RouteComponent() {
     queryKey: truckEntryKeys.all,
     queryFn: getAllTruckEntries,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   });

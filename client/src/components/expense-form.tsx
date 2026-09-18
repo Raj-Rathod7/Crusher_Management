@@ -87,7 +87,7 @@ export function ExpenseForm({
     queryKey: expenseCategoryKeys.all,
     queryFn: getAllExpenseCategories,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

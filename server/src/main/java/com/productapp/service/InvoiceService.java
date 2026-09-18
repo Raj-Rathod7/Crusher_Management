@@ -107,11 +107,13 @@ public class InvoiceService {
             amountPaid = invoiceRequest.getAmountPaid() != null ? invoiceRequest.getAmountPaid() : BigDecimal.ZERO;
         }
 
-        BigDecimal balance = totalAmount.subtract(amountPaid);
+        BigDecimal invoiceAmountPaid = amountPaid.min(totalAmount);
+        BigDecimal overpayment = amountPaid.subtract(totalAmount).max(BigDecimal.ZERO);
+        BigDecimal balance = totalAmount.subtract(invoiceAmountPaid);
         invoice.setAmountPaid(amountPaid);
         invoice.setTotalAmount(totalAmount);
         invoice.setBalance(balance);
-        invoice.setStatus(resolveStatus(amountPaid, balance));
+        invoice.setStatus(resolveStatus(invoiceAmountPaid, balance));
         invoice.setInvoiceItems(invoiceItems);
         invoice.setCreatedBy(createdBy);
 
@@ -120,6 +122,8 @@ public class InvoiceService {
         if (creditApplied.signum() > 0) {
             paymentService.applyCreditToInvoice(lockedCustomer, savedInvoice, creditApplied, createdBy);
         }
+        paymentService.createInvoiceOverpaymentReceipt(customer, overpayment,
+            invoiceRequest.getInvoiceDate(), invoiceRequest.getInvoiceNumber(), createdBy);
 
         InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
         response.setAppliedReceipts(paymentService.listCreditApplicationsForInvoice(savedInvoice.getId()));

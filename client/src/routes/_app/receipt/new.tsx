@@ -21,8 +21,9 @@ function RouteComponent() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: receiptKeys.all }),
         queryClient.invalidateQueries({ queryKey: customerKeys.all }),
-        router.invalidate(),
       ])
+      await router.invalidate(),
+
       toast.success('Receipt recorded.')
       navigate({ to: '/receipt' })
     },

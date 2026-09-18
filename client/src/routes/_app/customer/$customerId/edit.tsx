@@ -19,7 +19,7 @@ function RouteComponent() {
     queryKey: customerKeys.detail(customerId),
     queryFn: () => getCustomerById(customerId),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

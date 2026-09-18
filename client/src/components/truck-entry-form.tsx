@@ -119,7 +119,7 @@ export function TruckEntryForm({
     queryKey: materialKeys.all,
     queryFn: getAllMaterials,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

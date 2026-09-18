@@ -47,7 +47,7 @@ function RouteComponent() {
     queryKey: expenseKeys.all,
     queryFn: getAllExpenses,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })

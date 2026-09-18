@@ -20,7 +20,7 @@ function RouteComponent() {
     queryKey: expenseKeys.detail(expenseId),
     queryFn: () => getExpenseById(expenseId),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
