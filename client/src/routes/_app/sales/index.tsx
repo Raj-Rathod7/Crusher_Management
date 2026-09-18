@@ -132,7 +132,7 @@ function RouteComponent() {
     amountPaid: formatCurrency(invoice.amountPaid),
     balance: formatCurrency(invoice.balance),
     status: invoice.status,
-  }))
+  })).sort((a, b) => b.invoiceNumber.localeCompare(a.invoiceNumber, undefined));
 
   const stats = useMemo(() => {
     const invoices = data ?? []
