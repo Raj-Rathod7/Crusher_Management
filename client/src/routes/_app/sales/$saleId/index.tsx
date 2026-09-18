@@ -4,7 +4,7 @@ import { FormPageLayout } from '#/components/form-page-layout'
 import { RecordPaymentForm, type RecordPaymentFormValues } from '#/components/record-payment-form'
 import { Button } from '#/components/ui/button'
 import { Separator } from '#/components/ui/separator'
-import { getSaleById, salesKeys } from '#/lib/query'
+import { customerKeys, getCustomerById, getSaleById, salesKeys } from '#/lib/query'
 import { recordInvoicePayment } from '#/lib/mutation'
 import type { Payment } from '#/lib/models'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -76,12 +76,22 @@ function RouteComponent() {
     retry: false,
   })
 
+  const customerQuery = useQuery({
+    queryKey: customerKeys.detail(saleQuery.data?.customerId ?? 0),
+    queryFn: () => getCustomerById(saleQuery.data!.customerId!),
+    enabled: Boolean(saleQuery.data?.customerId),
+    retry: false,
+  })
+
   const recordPaymentMutation = useMutation({
     mutationFn: (payload: RecordPaymentFormValues) => recordInvoicePayment(saleId, payload),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: salesKeys.all }),
         queryClient.invalidateQueries({ queryKey: salesKeys.detail(saleId) }),
+        ...(saleQuery.data?.customerId
+          ? [queryClient.invalidateQueries({ queryKey: customerKeys.detail(saleQuery.data.customerId) })]
+          : []),
       ])
       toast.success('Payment recorded.')
     },
@@ -136,6 +146,7 @@ function RouteComponent() {
           {sale.balance > 0 && (
             <RecordPaymentSection
               balance={sale.balance}
+              availableCredit={customerQuery.data?.availableCredit ?? 0}
               isSubmitting={recordPaymentMutation.isPending}
               onSubmit={(payload) => recordPaymentMutation.mutate(payload)}
             />
@@ -251,10 +262,12 @@ function RouteComponent() {
 
 function RecordPaymentSection({
   balance,
+  availableCredit,
   isSubmitting,
   onSubmit,
 }: {
   balance: number
+  availableCredit: number
   isSubmitting: boolean
   onSubmit: (payload: RecordPaymentFormValues) => void
 }) {
@@ -278,6 +291,7 @@ function RecordPaymentSection({
       </div>
       <RecordPaymentForm
         balance={balance}
+        availableCredit={availableCredit}
         isSubmitting={isSubmitting}
         onCancel={() => setIsOpen(false)}
         onSubmit={(payload) => {

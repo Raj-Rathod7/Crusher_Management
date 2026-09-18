@@ -158,6 +158,7 @@ export type CreateAdvanceReceiptPayload = {
 
 export type RecordInvoicePaymentPayload = {
   amount: number;
+  creditToApply?: number;
   paymentDate: string;
   paymentMode?: string;
   chequeNumber?: string;

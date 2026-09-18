@@ -197,14 +197,33 @@ public class InvoiceService {
         if (invoice.getBalance().signum() <= 0) {
             throw new IllegalArgumentException("Invoice has no pending balance");
         }
-        if (request.getAmount().compareTo(invoice.getBalance()) > 0) {
-            throw new IllegalArgumentException("Payment exceeds outstanding balance");
-        }
 
         User createdBy = getCurrentUser();
-        paymentService.recordInvoicePayment(invoice, request, createdBy);
+        Customer lockedCustomer = customerRepository.findByIdForUpdate(invoice.getCustomer().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        BigDecimal cashAmount = request.getAmount() != null ? request.getAmount() : BigDecimal.ZERO;
+        BigDecimal creditRequested = request.getCreditToApply() != null
+                ? request.getCreditToApply() : BigDecimal.ZERO;
+        BigDecimal creditApplied = creditRequested.min(paymentService.getAvailableCredit(lockedCustomer.getId()))
+                .min(invoice.getBalance());
+        BigDecimal remainingBalance = invoice.getBalance().subtract(creditApplied);
 
-        invoice.setAmountPaid(invoice.getAmountPaid().add(request.getAmount()));
+        if (cashAmount.signum() == 0 && creditApplied.signum() == 0) {
+            throw new IllegalArgumentException("Payment amount or credit to apply must be greater than zero");
+        }
+        if (cashAmount.compareTo(remainingBalance) > 0) {
+            throw new IllegalArgumentException("Payment exceeds outstanding balance after credit application");
+        }
+
+        if (creditApplied.signum() > 0) {
+            paymentService.applyCreditToInvoice(lockedCustomer, invoice, creditApplied, createdBy);
+        }
+        if (cashAmount.signum() > 0) {
+            paymentService.recordInvoicePayment(invoice, request, createdBy);
+        }
+
+        BigDecimal totalPayment = creditApplied.add(cashAmount);
+        invoice.setAmountPaid(invoice.getAmountPaid().add(totalPayment));
         invoice.setBalance(invoice.getTotalAmount().subtract(invoice.getAmountPaid()));
         invoice.setStatus(resolveStatus(invoice.getAmountPaid(), invoice.getBalance()));
 
@@ -213,9 +232,9 @@ public class InvoiceService {
         InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
         response.setAppliedReceipts(paymentService.listCreditApplicationsForInvoice(savedInvoice.getId()));
         response.setPayments(paymentService.listPaymentsForInvoice(savedInvoice));
-        response.setCreditApplied(BigDecimal.ZERO);
-        response.setCashPaid(request.getAmount());
-        response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(invoice.getCustomer().getId()));
+        response.setCreditApplied(creditApplied);
+        response.setCashPaid(cashAmount);
+        response.setCustomerAvailableCreditAfterTxn(paymentService.getAvailableCredit(lockedCustomer.getId()));
         return response;
     }
 

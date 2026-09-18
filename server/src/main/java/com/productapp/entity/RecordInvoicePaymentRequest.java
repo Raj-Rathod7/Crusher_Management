@@ -9,8 +9,11 @@ import jakarta.validation.constraints.NotNull;
 public class RecordInvoicePaymentRequest {
 
     @NotNull
-    @DecimalMin(value = "0.01")
+    @DecimalMin(value = "0.00")
     private BigDecimal amount;
+
+    @DecimalMin(value = "0.00")
+    private BigDecimal creditToApply;
 
     @NotNull
     private LocalDate paymentDate;
@@ -29,6 +32,14 @@ public class RecordInvoicePaymentRequest {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public BigDecimal getCreditToApply() {
+        return creditToApply;
+    }
+
+    public void setCreditToApply(BigDecimal creditToApply) {
+        this.creditToApply = creditToApply;
     }
 
     public LocalDate getPaymentDate() {

@@ -180,6 +180,7 @@ function RouteComponent() {
           {paymentInvoice ? (
             <RecordPaymentForm
               balance={paymentInvoice.balance}
+              availableCredit={currentAvailableCredit}
               isSubmitting={recordPaymentMutation.isPending}
               onCancel={() => setPaymentInvoice(null)}
               onSubmit={(payload) => recordPaymentMutation.mutate({ invoiceId: paymentInvoice.id, payload })}

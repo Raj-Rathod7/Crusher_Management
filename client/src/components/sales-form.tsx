@@ -104,7 +104,6 @@ const initialInvoiceItemForm: InvoiceItemFormState = {
 }
 
 function buildNextInvoiceNumber(invoices: Invoice[], year: number) {
-  console.log(invoices);
   const yearText = String(year)
 
   const maxSequence = invoices.reduce((max, invoice) => {

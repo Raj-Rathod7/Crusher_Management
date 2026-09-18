@@ -12,6 +12,7 @@ import * as React from 'react'
 
 export type RecordPaymentFormValues = {
   amount: number
+  creditToApply?: number
   paymentDate: string
   paymentMode: string
   chequeNumber?: string
@@ -26,16 +27,20 @@ const currency = new Intl.NumberFormat('en-IN', {
 
 export function RecordPaymentForm({
   balance,
+  availableCredit = 0,
   isSubmitting = false,
   onSubmit,
   onCancel,
 }: {
   balance: number
+  availableCredit?: number
   isSubmitting?: boolean
   onSubmit: (payload: RecordPaymentFormValues) => void
   onCancel?: () => void
 }) {
   const [amount, setAmount] = React.useState(String(balance))
+  const [applyCredit, setApplyCredit] = React.useState(false)
+  const [creditToApply, setCreditToApply] = React.useState('')
   const [paymentMode, setPaymentMode] = React.useState('cash')
   const [chequeNumber, setChequeNumber] = React.useState('')
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10))
@@ -45,13 +50,23 @@ export function RecordPaymentForm({
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const numericAmount = Number(amount)
+    const numericCredit = Number(creditToApply || 0)
+    const maxCredit = Math.min(availableCredit, balance)
 
-    if (!numericAmount || numericAmount <= 0) {
-      setError('Amount must be greater than 0.')
+    if (numericAmount < 0 || numericCredit < 0) {
+      setError('Payment amounts cannot be negative.')
       return
     }
-    if (numericAmount > balance) {
-      setError(`Amount cannot exceed the outstanding balance of ${currency.format(balance)}.`)
+    if (applyCredit && (!numericCredit || numericCredit > maxCredit)) {
+      setError(`Credit cannot exceed ${currency.format(maxCredit)}.`)
+      return
+    }
+    if (numericAmount + (applyCredit ? numericCredit : 0) <= 0) {
+      setError('Cash or credit amount must be greater than 0.')
+      return
+    }
+    if (numericAmount > balance - (applyCredit ? numericCredit : 0)) {
+      setError('Combined cash and credit cannot exceed the outstanding balance.')
       return
     }
     if (paymentMode === 'cheque' && !chequeNumber.trim()) {
@@ -62,6 +77,7 @@ export function RecordPaymentForm({
     setError(null)
     onSubmit({
       amount: numericAmount,
+      creditToApply: applyCredit ? numericCredit : undefined,
       paymentDate,
       paymentMode,
       chequeNumber: chequeNumber.trim() || undefined,
@@ -73,7 +89,7 @@ export function RecordPaymentForm({
     <form className="space-y-4" onSubmit={handleSubmit}>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1.5">
-          <Label htmlFor="payment-amount">Amount</Label>
+          <Label htmlFor="payment-amount">Cash amount</Label>
           <Input
             id="payment-amount"
             type="number"
@@ -83,6 +99,43 @@ export function RecordPaymentForm({
             onChange={(event) => setAmount(event.target.value)}
           />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="payment-credit-toggle">Apply available credit</Label>
+          <div className="flex h-9 items-center gap-2">
+            <input
+              id="payment-credit-toggle"
+              type="checkbox"
+              checked={applyCredit}
+              disabled={availableCredit <= 0}
+              onChange={(event) => {
+                const enabled = event.target.checked
+                const suggestedCredit = Math.min(availableCredit, balance)
+                setApplyCredit(enabled)
+                setCreditToApply(enabled ? String(suggestedCredit) : '')
+                if (enabled) setAmount(String(Math.max(balance - suggestedCredit, 0)))
+                if (!enabled) setAmount(String(balance))
+              }}
+            />
+            <span className="text-sm text-muted-foreground">
+              Available: {currency.format(availableCredit)}
+            </span>
+          </div>
+        </div>
+        {applyCredit && (
+          <div className="space-y-1.5">
+            <Label htmlFor="payment-credit">Credit amount</Label>
+            <Input
+              id="payment-credit"
+              type="number"
+              min="0.01"
+              max={Math.min(availableCredit, balance)}
+              step="0.01"
+              value={creditToApply}
+              onChange={(event) => setCreditToApply(event.target.value)}
+              placeholder={String(Math.min(availableCredit, balance))}
+            />
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="payment-date">Date</Label>
           <Input
