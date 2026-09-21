@@ -207,6 +207,12 @@ function CustomerDetailsPanel({ customer }: { customer: Customer }) {
           </p>
         </div>
         <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Available credit</p>
+          <p className="mt-1 text-base font-semibold text-green-700 dark:text-green-400">
+            {currency.format(customer.availableCredit ?? 0)}
+          </p>
+        </div>
+        <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Phone</p>
           <p className="mt-1 text-sm">{customer.phone ?? '-'}</p>
         </div>
