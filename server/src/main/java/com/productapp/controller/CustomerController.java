@@ -4,7 +4,10 @@ import com.productapp.dto.CustomerResponse;
 import com.productapp.dto.CustomerSummaryResponse;
 import com.productapp.dto.InvoiceResponse;
 import com.productapp.entity.Customer;
+import com.productapp.entity.CustomerPaymentRequest;
+import com.productapp.dto.PaymentResponse;
 import com.productapp.service.CustomerService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,6 +47,12 @@ public class CustomerController {
     @GetMapping("/{id}/summary")
     public CustomerSummaryResponse getSummary(@PathVariable Long id) {
         return customerService.getSummary(id);
+    }
+
+    @PostMapping("/{id}/payments")
+    public PaymentResponse recordPayment(@PathVariable Long id,
+                                         @Valid @RequestBody CustomerPaymentRequest request) {
+        return customerService.recordPayment(id, request);
     }
 
     @GetMapping("/{id}")

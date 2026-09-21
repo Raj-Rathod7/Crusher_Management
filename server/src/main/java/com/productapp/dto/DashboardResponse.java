@@ -18,8 +18,6 @@ public record DashboardResponse(
             String invoiceNumber,
             LocalDate invoiceDate,
             String customerName,
-            BigDecimal totalAmount,
-            BigDecimal balance,
-            String status) {
+            BigDecimal totalAmount) {
     }
 }

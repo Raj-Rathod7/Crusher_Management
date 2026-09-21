@@ -33,7 +33,7 @@ function RouteComponent() {
   return (
     <SalesForm
       title="New Sale"
-      description="Create invoice with customer, amount, payment, and status."
+      description="Record the customer, material, truck, quantity, and sale total."
       backLabel="Back to sales"
       submitLabel="Save sale"
       isSubmitting={createMutation.isPending}

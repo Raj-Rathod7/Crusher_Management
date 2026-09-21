@@ -33,12 +33,29 @@ SELECT 'Northline Contractors','+91 98765 10003','Igatpuri','Monthly account',TR
 INSERT INTO truck_entries (entry_date,truck_number,material_type_id,quantity_brass,supplier_name,remarks,created_by,is_active,created_at,updated_at)
 SELECT '2026-08-18','MH15AB1234',m.id,18.50,'Patil Aggregates','Raw stone load',u.id,TRUE,NOW(),NOW() FROM material_types m JOIN users u ON u.username='demo-manager' WHERE m.name='20mm' AND NOT EXISTS (SELECT 1 FROM truck_entries WHERE truck_number='MH15AB1234' AND entry_date='2026-08-18');
 
-INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,amount_paid,balance,status,remarks,created_by,is_active,created_at,updated_at)
-SELECT 'INV-2026-0001','2026-08-18',c.id,52500.00,52500.00,0.00,'paid','Full payment received',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-admin' WHERE c.phone='+91 98765 10001' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0001');
-INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,amount_paid,balance,status,remarks,created_by,is_active,created_at,updated_at)
-SELECT 'INV-2026-0002','2026-08-20',c.id,68000.00,30000.00,38000.00,'partial','Balance due',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-admin' WHERE c.phone='+91 98765 10002' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0002');
-INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,amount_paid,balance,status,remarks,created_by,is_active,created_at,updated_at)
-SELECT 'INV-2026-0003','2026-08-21',c.id,41500.00,0.00,41500.00,'pending','Awaiting confirmation',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-manager' WHERE c.phone='+91 98765 10003' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0003');
+INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,remarks,created_by,is_active,created_at,updated_at)
+SELECT 'INV-2026-0001','2026-08-18',c.id,52500.00,'Sale recorded; payment is tracked on the customer ledger',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-admin' WHERE c.phone='+91 98765 10001' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0001');
+INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,remarks,created_by,is_active,created_at,updated_at)
+SELECT 'INV-2026-0002','2026-08-20',c.id,68000.00,'Sale recorded; payment is tracked on the customer ledger',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-admin' WHERE c.phone='+91 98765 10002' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0002');
+INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,remarks,created_by,is_active,created_at,updated_at)
+SELECT 'INV-2026-0003','2026-08-21',c.id,41500.00,'Awaiting confirmation',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-manager' WHERE c.phone='+91 98765 10003' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0003');
+
+INSERT INTO payments (payment_date,customer_id,amount,payment_mode,notes,entry_type,is_active,created_by,created_at,updated_at)
+SELECT '2026-08-25',c.id,30000.00,'cash','Customer payment received','CUSTOMER_PAYMENT',TRUE,u.id,NOW(),NOW()
+FROM customers c JOIN users u ON u.username='demo-admin'
+WHERE c.phone='+91 98765 10002'
+	AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id=c.id AND p.entry_type='CUSTOMER_PAYMENT' AND p.amount=30000.00);
+
+INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
+SELECT i.invoice_date,i.customer_id,'SALE',i.invoice_number,CONCAT('Sale ',i.invoice_number),i.total_amount,0.00,'INVOICE',i.id,TRUE,NOW(),NOW()
+FROM invoices i
+WHERE NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='INVOICE' AND l.source_id=i.id);
+
+INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
+SELECT p.payment_date,p.customer_id,'CUSTOMER_PAYMENT',CONCAT('PAYMENT-',p.id),COALESCE(p.notes,'Customer payment'),0.00,p.amount,'PAYMENT',p.id,TRUE,NOW(),NOW()
+FROM payments p
+WHERE p.entry_type='CUSTOMER_PAYMENT'
+	AND NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='PAYMENT' AND l.source_id=p.id);
 
 INSERT INTO invoice_items (invoice_id,material_type_id,truck_number,quantity_brass,rate,amount,is_active,created_at,updated_at)
 SELECT i.id,m.id,'MH15AB1234',25.00,2100.00,52500.00,TRUE,NOW(),NOW() FROM invoices i JOIN material_types m ON m.name='20mm' WHERE i.invoice_number='INV-2026-0001' AND NOT EXISTS (SELECT 1 FROM invoice_items WHERE invoice_id=i.id AND truck_number='MH15AB1234');

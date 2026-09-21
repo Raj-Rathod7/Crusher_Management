@@ -1,10 +1,7 @@
 package com.productapp.controller;
 
 import com.productapp.dto.InvoiceResponse;
-import com.productapp.entity.ApplyCreditRequest;
-import com.productapp.entity.Invoice;
 import com.productapp.entity.InvoiceRequest;
-import com.productapp.entity.RecordInvoicePaymentRequest;
 import com.productapp.service.InvoiceService;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -28,14 +25,9 @@ public class InvoiceController {
         return invoiceService.createInvoice(invoiceRequest);
     }
 
-    @PostMapping("/{id}/apply-credit")
-    public InvoiceResponse applyCredit(@PathVariable Long id, @RequestBody(required = false) ApplyCreditRequest request) {
-        return invoiceService.applyCreditToExistingInvoice(id, request != null ? request.getCreditToApply() : null);
-    }
-
-    @PostMapping("/{id}/payments")
-    public InvoiceResponse recordPayment(@PathVariable Long id, @Valid @RequestBody RecordInvoicePaymentRequest request) {
-        return invoiceService.recordPayment(id, request);
+    @PutMapping("/{id}")
+    public InvoiceResponse update(@PathVariable Long id, @Valid @RequestBody InvoiceRequest invoiceRequest) {
+        return invoiceService.updateInvoice(id, invoiceRequest);
     }
 
     @GetMapping
@@ -51,5 +43,10 @@ public class InvoiceController {
     @GetMapping("/{id}")
     public InvoiceResponse getById(@PathVariable Long id) {
         return invoiceService.getById(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        invoiceService.delete(id);
     }
 }

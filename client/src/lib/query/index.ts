@@ -81,7 +81,11 @@ export const getAllReceipts = async (filters: { customerId?: number | string; da
   if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
   if (filters.dateTo) params.set('dateTo', filters.dateTo)
   const query = params.toString()
-  return apiClient.get<Payment[]>(`/payments/receipts${query ? `?${query}` : ''}`)
+  return apiClient.get<Payment[]>(`/payments${query ? `?${query}` : ''}`)
+}
+
+export const getPaymentById = async (id: number | string) => {
+  return apiClient.get<Payment>(`/payments/${id}`)
 }
 
 export const getCustomerSummary = async (id: number | string) => {

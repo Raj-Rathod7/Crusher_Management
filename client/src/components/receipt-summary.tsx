@@ -7,7 +7,7 @@ type ReceiptSummaryForm = {
   amount: string
   paymentDate: string
   paymentMode: string
-  receiptNumber: string
+  externalRef: string
   notes: string
 }
 
@@ -16,11 +16,6 @@ type ReceiptSummaryProps = {
   customer: Customer | null
 }
 
-const inrConverter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-})
-
 export function ReceiptSummary({ form, customer }: ReceiptSummaryProps) {
   const amount = Number(form.amount || 0)
   const isReadyToSave = Boolean(form.customerId && form.paymentDate && amount > 0)
@@ -28,7 +23,6 @@ export function ReceiptSummary({ form, customer }: ReceiptSummaryProps) {
   const statusClassName = isReadyToSave
     ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
     : 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-  const currentAvailableCredit = customer?.availableCredit ?? 0
 
   return (
     <>
@@ -49,7 +43,7 @@ export function ReceiptSummary({ form, customer }: ReceiptSummaryProps) {
         <SummaryRow label="Date" value={form.paymentDate || 'Not set'} />
         <SummaryRow label="Customer" value={customer?.name || 'Not set'} />
         <SummaryRow label="Payment mode" value={form.paymentMode || 'Not set'} />
-        <SummaryRow label="Receipt no." value={form.receiptNumber.trim() || 'None'} />
+        <SummaryRow label="Reference" value={form.externalRef.trim() || 'None'} />
         <SummaryRow label="Notes" value={form.notes.trim() || 'None'} />
 
         <div className={`mt-4 rounded-lg border px-3 py-3 ${
@@ -73,16 +67,6 @@ export function ReceiptSummary({ form, customer }: ReceiptSummaryProps) {
           </div>
         </div>
 
-        {customer ? (
-          <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
-              Available credit after save
-            </div>
-            <div className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-              {inrConverter.format(currentAvailableCredit + amount)}
-            </div>
-          </div>
-        ) : null}
       </div>
     </>
   )

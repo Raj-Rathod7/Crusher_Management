@@ -1,5 +1,5 @@
 import { apiClient } from "../common/api";
-import type { AdvanceReceiptResponse, AuthResponse, CreateAdvanceReceiptPayload, CreateCustomerPayload, CreateExpensePayload, CreateInvoicePayload, CreateTruckEntryPayload, Customer, Expense, Invoice, RecordInvoicePaymentPayload, TruckEntry } from "../models";
+import type { AuthResponse, CreateCustomerPayload, CreateCustomerPaymentPayload, CreateExpensePayload, CreateInvoicePayload, CreateTruckEntryPayload, Customer, CustomerPaymentPayload, CustomerPaymentResponse, Expense, Invoice, TruckEntry } from "../models";
 
 export const login = async (username: string, password: string) => {
   return apiClient.post<AuthResponse>("/auth/login", {username, password}, {auth: false});
@@ -33,6 +33,10 @@ export const updateSale = async (id: number | string, payload: CreateInvoicePayl
   return apiClient.put<Invoice>(`/invoices/${id}`, payload);
 }
 
+export const deleteSale = async (id: number | string) => {
+  return apiClient.delete<void>(`/invoices/${id}`);
+}
+
 export const createExpense = async (payload: CreateExpensePayload) => {
   return apiClient.post<Expense>("/expenses", payload);
 }
@@ -45,18 +49,18 @@ export const deleteExpense = async (id: number | string) => {
   return apiClient.delete<void>(`/expenses/${id}`);
 }
 
-export const createAdvanceReceipt = async (payload: CreateAdvanceReceiptPayload) => {
-  return apiClient.post<AdvanceReceiptResponse>("/payments/advance", payload);
+export const createCustomerPayment = async (payload: CreateCustomerPaymentPayload) => {
+  return apiClient.post<CustomerPaymentResponse>(`/customers/${payload.customerId}/payments`, payload);
 }
 
-export const applyCreditToInvoice = async (invoiceId: number | string, creditToApply?: number) => {
-  return apiClient.post<Invoice>(`/invoices/${invoiceId}/apply-credit`, { creditToApply });
+export const recordCustomerPayment = async (customerId: number | string, payload: CustomerPaymentPayload) => {
+  return apiClient.post<CustomerPaymentResponse>(`/customers/${customerId}/payments`, payload);
 }
 
-export const recordInvoicePayment = async (invoiceId: number | string, payload: RecordInvoicePaymentPayload) => {
-  return apiClient.post<Invoice>(`/invoices/${invoiceId}/payments`, payload);
+export const updateCustomerPayment = async (id: number | string, payload: CustomerPaymentPayload) => {
+  return apiClient.put<CustomerPaymentResponse>(`/payments/${id}`, payload);
 }
 
-export const reverseReceipt = async (id: number | string, reason: string) => {
-  return apiClient.post<AdvanceReceiptResponse>(`/payments/${id}/reverse`, { reason });
+export const deleteCustomerPayment = async (id: number | string) => {
+  return apiClient.delete<void>(`/payments/${id}`);
 }

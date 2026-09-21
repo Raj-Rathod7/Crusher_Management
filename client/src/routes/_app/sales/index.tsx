@@ -1,4 +1,5 @@
 import { Badge } from '#/components/ui/badge'
+import { deleteSale } from '#/lib/mutation'
 import { ConfigurableDataTable } from '@/components/data-table'
 import { StatsCard } from '@/components/stats-card'
 import { getAllSales, salesKeys } from '#/lib/query'
@@ -6,22 +7,23 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
   IconCalendarStats,
-  IconCircleCheck,
-  IconCircleDashedCheck,
-  IconCircleLetterX,
+  IconCube,
   IconCurrencyRupee,
+  IconPencil,
   IconReceipt,
-  IconWallet,
+  IconTrash,
 } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_app/sales/')({
   component: RouteComponent,
 })
 
-type QuickFilter = 'all' | 'pending' | 'partial' | 'paid' | 'outstanding'
+type QuickFilter = 'all'
 
 type SalesRow = {
   id: number
@@ -29,10 +31,10 @@ type SalesRow = {
   invoiceDate: string
   customerName: string
   customerId: number | null
+  materialName: string
+  quantityBrass: string
+  rate: string
   totalAmount: string
-  amountPaid: string
-  balance: string
-  status: string
 }
 
 function formatCurrency(value: number) {
@@ -42,50 +44,12 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function getStatusVariant(status: string) {
-  const normalizedStatus = status.toUpperCase()
-
-  if (normalizedStatus === 'PAID') {
-    return 'default' as const
-  }
-
-  if (normalizedStatus === 'PARTIAL') {
-    return 'secondary' as const
-  }
-
-  return 'outline' as const
-}
-
-function getStatusClass(status: string){
-  const normalizedStatus = status.toUpperCase();
-  if (normalizedStatus === 'PAID') {
-    return 'text-green-700' as const
-  }
-
-  if (normalizedStatus === 'PARTIAL') {
-    return 'text-yellow-700' as const
-  }
-
-  return 'text-orange-700' as const
-}
-
-function getStatusIcon(status: string) {
-  const normalizedStatus = status.toUpperCase();
-  const className = `${getStatusClass(status)} mr-2`
-  if (normalizedStatus === 'PAID') {
-    return <IconCircleCheck className={className} />
-  }
-
-  if (normalizedStatus === 'PARTIAL') {
-    return <IconCircleDashedCheck className={className}/>
-  }
-
-  return <IconCircleLetterX className={className}/>
-}
-
 function RouteComponent() {
   const navigate = useNavigate()
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all')
+  const [saleToDelete, setSaleToDelete] = useState<SalesRow | null>(null)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: salesKeys.all,
     queryFn: getAllSales,
@@ -95,31 +59,27 @@ function RouteComponent() {
     refetchOnWindowFocus: false,
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteSale,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: salesKeys.all })
+      await router.invalidate()
+      setSaleToDelete(null)
+      toast.success('Sale deleted and reversed.')
+    },
+    onError: () => toast.error('Failed to delete sale.'),
+  })
+
   const quickFilterCounts = useMemo(() => {
     const invoices = data ?? []
     return {
       all: invoices.length,
-      pending: invoices.filter((invoice) => invoice.status.toLowerCase() === 'pending').length,
-      partial: invoices.filter((invoice) => invoice.status.toLowerCase() === 'partial').length,
-      paid: invoices.filter((invoice) => invoice.status.toLowerCase() === 'paid').length,
-      outstanding: invoices.filter((invoice) => invoice.balance > 0).length,
     }
   }, [data])
 
   const filteredInvoices = useMemo(() => {
     const invoices = data ?? []
-    switch (quickFilter) {
-      case 'pending':
-        return invoices.filter((invoice) => invoice.status.toLowerCase() === 'pending')
-      case 'partial':
-        return invoices.filter((invoice) => invoice.status.toLowerCase() === 'partial')
-      case 'paid':
-        return invoices.filter((invoice) => invoice.status.toLowerCase() === 'paid')
-      case 'outstanding':
-        return invoices.filter((invoice) => invoice.balance > 0)
-      default:
-        return invoices
-    }
+    return invoices
   }, [data, quickFilter])
 
   const salesRows: SalesRow[] = filteredInvoices.map((invoice) => ({
@@ -128,10 +88,14 @@ function RouteComponent() {
     invoiceDate: invoice.invoiceDate,
     customerName: invoice.customerName ?? '-',
     customerId: invoice.customerId,
+    materialName: invoice.invoiceItems[0]?.materialName ?? '-',
+    quantityBrass: invoice.invoiceItems[0]
+      ? `${invoice.invoiceItems[0].quantityBrass} brass`
+      : '-',
+    rate: invoice.invoiceItems[0]
+      ? formatCurrency(invoice.invoiceItems[0].rate)
+      : '-',
     totalAmount: formatCurrency(invoice.totalAmount),
-    amountPaid: formatCurrency(invoice.amountPaid),
-    balance: formatCurrency(invoice.balance),
-    status: invoice.status,
   })).sort((a, b) => b.invoiceNumber.localeCompare(a.invoiceNumber, undefined));
 
   const stats = useMemo(() => {
@@ -145,8 +109,6 @@ function RouteComponent() {
     return {
       invoicesToday: todayInvoices.length,
       billedToday: todayInvoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
-      collectedToday: todayInvoices.reduce((sum, invoice) => sum + invoice.amountPaid, 0),
-      outstanding: invoices.reduce((sum, invoice) => sum + invoice.balance, 0),
     }
   }, [data])
 
@@ -184,26 +146,15 @@ function RouteComponent() {
         />
 
         <StatsCard
-          icon={<IconWallet className="size-4" />}
-          title="Collected today"
-          value={formatCurrency(stats.collectedToday)}
-          footer="Amount paid on today&apos;s invoices."
-        />
-
-        <StatsCard
           icon={<IconCalendarStats className="size-4" />}
-          title="Outstanding balance"
-          value={formatCurrency(stats.outstanding)}
-          footer="Open balance across all invoices."
+          title="Sales record"
+          value={stats.invoicesToday}
+          footer="Sales are settled through customer payments."
         />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <QuickFilterChip label="All" count={quickFilterCounts.all} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
-        <QuickFilterChip label="Pending" count={quickFilterCounts.pending} active={quickFilter === 'pending'} onClick={() => setQuickFilter('pending')} />
-        <QuickFilterChip label="Partial" count={quickFilterCounts.partial} active={quickFilter === 'partial'} onClick={() => setQuickFilter('partial')} />
-        <QuickFilterChip label="Paid" count={quickFilterCounts.paid} active={quickFilter === 'paid'} onClick={() => setQuickFilter('paid')} />
-        <QuickFilterChip label="Outstanding balance" count={quickFilterCounts.outstanding} active={quickFilter === 'outstanding'} onClick={() => setQuickFilter('outstanding')} />
       </div>
 
       <ConfigurableDataTable
@@ -246,36 +197,67 @@ function RouteComponent() {
               ),
           },
           {
+            accessorKey: 'materialName',
+            header: 'Item',
+            meta: { filterable: true, filterPlaceholder: 'Filter item' },
+            cell: ({ row }) => (
+              <Badge variant="outline" className="gap-1.5 whitespace-nowrap">
+                <IconCube />
+                {row.original.materialName}
+              </Badge>
+            ),
+          },
+          {
+            accessorKey: 'quantityBrass',
+            header: 'Quantity',
+            cell: ({ row }) => (
+              <span className="tabular-nums text-muted-foreground">
+                {row.original.quantityBrass}
+              </span>
+            ),
+          },
+          {
+            accessorKey: 'rate',
+            header: 'Rate',
+            cell: ({ row }) => (
+              <span className="font-medium tabular-nums text-sky-700 dark:text-sky-300">
+                {row.original.rate}
+              </span>
+            ),
+          },
+          {
             accessorKey: 'totalAmount',
             header: 'Total',
-          },
-          {
-            accessorKey: 'amountPaid',
-            header: 'Paid',
-          },
-          {
-            accessorKey: 'balance',
-            header: 'Balance',
-          },
-          {
-            accessorKey: 'status',
-            header: 'Status',
-            meta: {
-              filterable: true,
-              filterType: 'select',
-              filterOptions: [
-                { label: 'Paid', value: 'PAID' },
-                { label: 'Partial', value: 'PARTIAL' },
-                { label: 'Pending', value: 'PENDING' },
-              ],
-            },
             cell: ({ row }) => (
-              <Badge 
-                variant='outline'
-                className={`capitalize border p-3 items-center justify-start font-bold`}>
-                  {getStatusIcon(row.original.status)}
-                  {row.original.status}
-              </Badge>
+              <span className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
+                {row.original.totalAmount}
+              </span>
+            ),
+          },
+          {
+            id: 'actions',
+            header: 'Actions',
+            meta: { sortable: false, searchable: false },
+            cell: ({ row }) => (
+              <div className="flex items-center gap-2">
+                <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
+                  <Link to="/sales/$saleId/edit" params={{ saleId: String(row.original.id) }}>
+                    <IconPencil />
+                    <span className="sr-only">Edit sale</span>
+                  </Link>
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="destructive"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setSaleToDelete(row.original)
+                  }}
+                >
+                  <IconTrash />
+                  <span className="sr-only">Delete sale</span>
+                </Button>
+              </div>
             ),
           },
         ]}
@@ -293,6 +275,23 @@ function RouteComponent() {
         addButtonText="Add Sale"
         onRowClick={(row) => navigate({ to: '/sales/$saleId', params: { saleId: String(row.id) } })}
       />
+
+      {saleToDelete ? (
+        <div className="mt-3 flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+          <span>Delete {saleToDelete.invoiceNumber}? It will be reversed in the ledger.</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSaleToDelete(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(saleToDelete.id)}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

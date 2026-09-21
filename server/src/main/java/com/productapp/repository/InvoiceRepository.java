@@ -37,21 +37,4 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 	@Query("select coalesce(sum(i.totalAmount), 0) from Invoice i")
 	BigDecimal sumTotalAmount();
 
-	@Query("select coalesce(sum(i.amountPaid), 0) from Invoice i")
-	BigDecimal sumAmountPaid();
-
-	@Query("select coalesce(sum(i.balance), 0) from Invoice i where i.balance > 0")
-	BigDecimal sumOutstandingBalance();
-
-	@Query("select coalesce(sum(i.balance), 0) from Invoice i "
-			+ "where i.customer.id = :customerId and i.balance > 0")
-	BigDecimal sumOutstandingBalanceByCustomerId(@Param("customerId") Long customerId);
-
-	@Query("select i.customer.id, coalesce(sum(i.balance), 0) from Invoice i "
-			+ "where i.isActive = true and i.customer is not null and i.balance > 0 group by i.customer.id")
-	List<Object[]> sumOutstandingBalanceByCustomer();
-
-	@Query("select i.customer.id, coalesce(sum(i.balance), 0) from Invoice i "
-			+ "where i.isActive = true and i.customer.id in :customerIds and i.balance > 0 group by i.customer.id")
-	List<Object[]> sumOutstandingBalanceByCustomerIds(@Param("customerIds") List<Long> customerIds);
 }

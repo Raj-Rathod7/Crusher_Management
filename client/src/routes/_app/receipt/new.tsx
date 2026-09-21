@@ -1,6 +1,6 @@
 import { ReceiptForm } from '#/components/receipt-form'
-import { createAdvanceReceipt } from '#/lib/mutation'
-import type { CreateAdvanceReceiptPayload } from '#/lib/models'
+import { recordCustomerPayment } from '#/lib/mutation'
+import type { CreateCustomerPaymentPayload } from '#/lib/models'
 import { customerKeys, receiptKeys } from '#/lib/query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
@@ -16,7 +16,10 @@ function RouteComponent() {
   const queryClient = useQueryClient()
 
   const createMutation = useMutation({
-    mutationFn: createAdvanceReceipt,
+    mutationFn: (payload: CreateCustomerPaymentPayload) => {
+      const { customerId, ...payment } = payload
+      return recordCustomerPayment(customerId, payment)
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: receiptKeys.all }),
@@ -24,22 +27,22 @@ function RouteComponent() {
       ])
       await router.invalidate(),
 
-      toast.success('Receipt recorded.')
+      toast.success('Customer payment recorded.')
       navigate({ to: '/receipt' })
     },
     onError: () => {
-      toast.error('Failed to record receipt.')
+      toast.error('Failed to record customer payment.')
     },
   })
 
   return (
     <ReceiptForm
-      title="New Receipt"
-      description="Record an advance payment received from a customer."
+      title="New payment"
+      description="Record a payment received from a customer."
       backLabel="Back to receipts"
-      submitLabel="Save receipt"
+      submitLabel="Save payment"
       isSubmitting={createMutation.isPending}
-      onSubmit={(payload: CreateAdvanceReceiptPayload) => createMutation.mutate(payload)}
+      onSubmit={(payload: CreateCustomerPaymentPayload) => createMutation.mutate(payload)}
     />
   )
 }

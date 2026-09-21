@@ -1,15 +1,12 @@
 package com.productapp.entity;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
-public class AdvanceReceiptRequest {
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
-    @NotNull
-    private Long customerId;
+public class CustomerPaymentRequest {
 
     @NotNull
     @DecimalMin(value = "0.01")
@@ -19,20 +16,9 @@ public class AdvanceReceiptRequest {
     private LocalDate paymentDate;
 
     private String paymentMode = "cash";
-
-    private String receiptNumber;
-
+    private String chequeNumber;
     private String externalRef;
-
     private String notes;
-
-    public Long getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(Long customerId) {
-        this.customerId = customerId;
-    }
 
     public BigDecimal getAmount() {
         return amount;
@@ -58,12 +44,12 @@ public class AdvanceReceiptRequest {
         this.paymentMode = paymentMode;
     }
 
-    public String getReceiptNumber() {
-        return receiptNumber;
+    public String getChequeNumber() {
+        return chequeNumber;
     }
 
-    public void setReceiptNumber(String receiptNumber) {
-        this.receiptNumber = receiptNumber;
+    public void setChequeNumber(String chequeNumber) {
+        this.chequeNumber = chequeNumber;
     }
 
     public String getExternalRef() {

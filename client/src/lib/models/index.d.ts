@@ -42,7 +42,6 @@ export type Customer = {
   address: string | null;
   notes: string | null;
   pendingBalance?: number;
-  availableCredit?: number;
   isActive: boolean | null;
   createdAt: string;
 }
@@ -54,19 +53,11 @@ export type Invoice = {
   customerName: string | null;
   customerId: number | null;
   totalAmount: number;
-  amountPaid: number;
-  balance: number;
-  status: string;
   remarks: string | null;
   createdByUsername: string | null;
   createdAt: string;
   updatedAt: string;
   invoiceItems: InvoiceItem[];
-  appliedReceipts: Payment[];
-  payments: Payment[];
-  creditApplied?: number;
-  cashPaid?: number;
-  customerAvailableCreditAfterTxn?: number;
 }
 
 export type InvoiceItem = {
@@ -83,15 +74,9 @@ export type CreateInvoicePayload = {
   invoiceNumber: string;
   invoiceDate: string;
   totalAmount: number;
-  amountPaid: number;
-  balance: number;
-  status: string;
   remarks?: string;
   customerId: number;
   invoiceItems: InvoiceItem[];
-  applyCredit?: boolean;
-  creditToApply?: number;
-  cashPaidNow?: number;
 }
 
 export type CreateCustomerPayload = {
@@ -129,8 +114,6 @@ export type CreateExpensePayload = {
 export type Payment = {
   id: number;
   paymentDate: string;
-  invoiceNumber: string | null;
-  invoiceId: number | null;
   customerName: string | null;
   customerId: number | null;
   amount: number;
@@ -138,27 +121,21 @@ export type Payment = {
   chequeNumber: string | null;
   notes: string | null;
   entryType: string | null;
-  direction: string | null;
-  receiptNumber: string | null;
   externalRef: string | null;
-  sourceReceiptId: number | null;
-  sourceReceiptNumber: string | null;
   createdByUsername: string | null;
 }
 
-export type CreateAdvanceReceiptPayload = {
+export type CreateCustomerPaymentPayload = {
   customerId: number;
   amount: number;
   paymentDate: string;
   paymentMode?: string;
-  receiptNumber?: string;
   externalRef?: string;
   notes?: string;
 }
 
-export type RecordInvoicePaymentPayload = {
+export type CustomerPaymentPayload = {
   amount: number;
-  creditToApply?: number;
   paymentDate: string;
   paymentMode?: string;
   chequeNumber?: string;
@@ -166,13 +143,21 @@ export type RecordInvoicePaymentPayload = {
   notes?: string;
 }
 
-export type AdvanceReceiptResponse = {
-  payment: Payment;
-  customerAvailableCredit: number;
-}
+export type CustomerPaymentResponse = Payment;
 
 export type CustomerSummaryResponse = {
   customer: Customer;
   recentPayments: Payment[];
   recentInvoices: Invoice[];
+  ledger: CustomerLedgerEntry[];
+}
+
+export type CustomerLedgerEntry = {
+  entryDate: string;
+  entryType: 'SALE' | 'CUSTOMER_PAYMENT' | string;
+  reference: string;
+  description: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
 }

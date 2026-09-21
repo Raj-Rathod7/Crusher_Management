@@ -107,15 +107,12 @@ This document details the database schema for the Crusher Management System (CMS
 | `invoice_date` | DATE | NOT NULL |
 | `customer_id` | INT | Foreign Key -> `customers(id)`, NOT NULL |
 | `total_amount` | DECIMAL(12, 2) | NOT NULL, CHECK >= 0 |
-| `amount_paid` | DECIMAL(12, 2) | NOT NULL, DEFAULT 0, CHECK >= 0 |
-| `balance` | DECIMAL(12, 2) | NOT NULL, CHECK >= 0 (total_amount - amount_paid) |
-| `status` | VARCHAR(20) | NOT NULL, ENUM: `'pending'`, `'partial'`, `'paid'` |
 | `remarks` | TEXT | NULLABLE |
 | `created_by` | INT | Foreign Key -> `users(id)`, NOT NULL |
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT `NOW()` |
 | `updated_at` | TIMESTAMP | NOT NULL, DEFAULT `NOW()` |
 
-* **Indexes:** `invoice_date`, `customer_id`, `status`, `invoice_number`
+* **Indexes:** `invoice_date`, `customer_id`, `invoice_number`
 
 ---
 
@@ -135,14 +132,13 @@ This document details the database schema for the Crusher Management System (CMS
 ---
 
 ### 1.9 `payments`
-**Purpose:** Log of payment receipts against invoices.
+**Purpose:** Operational records of payments received directly from customers.
 
 | Column | Type | Constraints / Description |
 | :--- | :--- | :--- |
 | `id` | SERIAL / INT | Primary Key |
 | `payment_date` | DATE | NOT NULL |
-| `invoice_id` | INT | Foreign Key -> `invoices(id)`, NOT NULL |
-| `customer_id` | INT | Foreign Key -> `customers(id)`, NOT NULL (Denormalized) |
+| `customer_id` | INT | Foreign Key -> `customers(id)`, NOT NULL |
 | `amount` | DECIMAL(12, 2) | NOT NULL, CHECK > 0 |
 | `payment_mode` | VARCHAR(20) | NOT NULL, ENUM: `'cash'`, `'upi'`, `'bank_transfer'`, `'cheque'` |
 | `cheque_number` | VARCHAR(30) | NULLABLE (REQUIRED if payment_mode is 'cheque') |
@@ -150,11 +146,37 @@ This document details the database schema for the Crusher Management System (CMS
 | `created_by` | INT | Foreign Key -> `users(id)`, NOT NULL |
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT `NOW()` |
 
-* **Indexes:** `payment_date`, `invoice_id`, `customer_id`
+* **Indexes:** `payment_date`, `customer_id`, `entry_type`
 
 ---
 
-### 1.10 `expenses`
+### 1.10 `customer_ledger`
+**Purpose:** Append-only financial entries for customer balances.
+
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | SERIAL / INT | Primary Key |
+| `entry_date` | DATE | NOT NULL |
+| `customer_id` | INT | Foreign Key -> `customers(id)`, NOT NULL |
+| `entry_type` | VARCHAR(30) | NOT NULL, for example `SALE` or `CUSTOMER_PAYMENT` |
+| `reference` | VARCHAR(80) | NOT NULL |
+| `description` | VARCHAR(255) | NOT NULL |
+| `debit` | DECIMAL(12, 2) | NOT NULL, DEFAULT 0 |
+| `credit` | DECIMAL(12, 2) | NOT NULL, DEFAULT 0 |
+| `source_type` | VARCHAR(30) | NOT NULL, for example `INVOICE` or `PAYMENT` |
+| `source_id` | INT | NOT NULL |
+| `is_active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `created_at` | TIMESTAMP | NOT NULL |
+| `updated_at` | TIMESTAMP | NOT NULL |
+
+* **Indexes:** `(customer_id, entry_date)`, `(source_type, source_id)`
+
+Customer balance is total active debit minus total active credit. Ledger rows
+are not deleted; corrections use reversal or adjustment entries.
+
+---
+
+### 1.11 `expenses`
 **Purpose:** Operating expenses (non-labor).
 
 | Column | Type | Constraints / Description |

@@ -1,18 +1,12 @@
 import { Badge } from '#/components/ui/badge'
-import { ConfigurableDataTable } from '@/components/data-table'
 import { FormPageLayout } from '#/components/form-page-layout'
-import { RecordPaymentForm, type RecordPaymentFormValues } from '#/components/record-payment-form'
 import { Button } from '#/components/ui/button'
 import { Separator } from '#/components/ui/separator'
-import { customerKeys, getCustomerById, getSaleById, salesKeys } from '#/lib/query'
-import { recordInvoicePayment } from '#/lib/mutation'
-import type { Payment } from '#/lib/models'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getSaleById, salesKeys } from '#/lib/query'
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { IconCircleCheck, IconCircleDashedCheck, IconCircleLetterX, IconPencil } from '@tabler/icons-react'
+import { IconPencil } from '@tabler/icons-react'
 import { Truck } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_app/sales/$saleId/')({
   component: RouteComponent,
@@ -25,80 +19,13 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function getStatusClass(status: string) {
-  const normalizedStatus = status.toUpperCase()
-  if (normalizedStatus === 'PAID') {
-    return 'text-green-700' as const
-  }
-  if (normalizedStatus === 'PARTIAL') {
-    return 'text-yellow-700' as const
-  }
-  return 'text-orange-700' as const
-}
-
-function getStatusIcon(status: string) {
-  const normalizedStatus = status.toUpperCase()
-  const className = `${getStatusClass(status)} mr-2`
-  if (normalizedStatus === 'PAID') {
-    return <IconCircleCheck className={className} />
-  }
-  if (normalizedStatus === 'PARTIAL') {
-    return <IconCircleDashedCheck className={className} />
-  }
-  return <IconCircleLetterX className={className} />
-}
-
-function formatPaymentType(payment: Payment) {
-  if (payment.entryType === 'CREDIT_APPLIED') {
-    return 'Credit applied'
-  }
-  if (payment.notes === 'Recorded at invoice creation') {
-    return 'Initial payment'
-  }
-  return 'Direct payment'
-}
-
-function formatPaymentDetails(payment: Payment) {
-  if (payment.entryType === 'CREDIT_APPLIED') {
-    return payment.sourceReceiptNumber ? `From receipt ${payment.sourceReceiptNumber}` : 'Pooled credit'
-  }
-  const mode = payment.paymentMode ?? 'cash'
-  return payment.chequeNumber ? `${mode} (cheque #${payment.chequeNumber})` : mode
-}
-
 function RouteComponent() {
   const { saleId } = Route.useParams()
-  const queryClient = useQueryClient()
 
   const saleQuery = useQuery({
     queryKey: salesKeys.detail(saleId),
     queryFn: () => getSaleById(saleId),
     retry: false,
-  })
-
-  const customerQuery = useQuery({
-    queryKey: customerKeys.detail(saleQuery.data?.customerId ?? 0),
-    queryFn: () => getCustomerById(saleQuery.data!.customerId!),
-    enabled: Boolean(saleQuery.data?.customerId),
-    retry: false,
-  })
-
-  const recordPaymentMutation = useMutation({
-    mutationFn: (payload: RecordPaymentFormValues) => recordInvoicePayment(saleId, payload),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: salesKeys.all }),
-        queryClient.invalidateQueries({ queryKey: salesKeys.detail(saleId) }),
-        ...(saleQuery.data?.customerId
-          ? [queryClient.invalidateQueries({ queryKey: customerKeys.detail(saleQuery.data.customerId) })]
-          : []),
-      ])
-      toast.success('Payment recorded.')
-    },
-    onError: (mutationError: unknown) => {
-      const message = mutationError instanceof Error ? mutationError.message : 'Failed to record payment.'
-      toast.error(message)
-    },
   })
 
   const sale = saleQuery.data
@@ -136,21 +63,10 @@ function RouteComponent() {
               value={sale.customerName ?? '-'}
               linkTo={sale.customerId ? { to: '/customer/$customerId', params: { customerId: String(sale.customerId) } } : undefined}
             />
-            <DetailField label="Status" isBadge value={sale.status} />
             <DetailField label="Created by" value={sale.createdByUsername ?? '-'} />
             <DetailField label="Total" value={formatCurrency(sale.totalAmount)} />
-            <DetailField label="Paid" value={formatCurrency(sale.amountPaid)} />
-            <DetailField label="Balance" value={formatCurrency(sale.balance)} />
             <DetailField label="Remarks" value={sale.remarks || '-'} />
           </dl>
-          {sale.balance > 0 && (
-            <RecordPaymentSection
-              balance={sale.balance}
-              availableCredit={customerQuery.data?.availableCredit ?? 0}
-              isSubmitting={recordPaymentMutation.isPending}
-              onSubmit={(payload) => recordPaymentMutation.mutate(payload)}
-            />
-          )}
           <Separator />
           <div className="space-y-3">
             <div>
@@ -200,59 +116,6 @@ function RouteComponent() {
               </div>
             )}
           </div>
-          <Separator />
-          <div className="space-y-3">
-            <div>
-              <h3 className="text-sm font-medium">Payments</h3>
-              <p className="text-sm text-muted-foreground">
-                Every payment recorded against this invoice, including credit applied and direct payments.
-              </p>
-            </div>
-            {sale.payments.length === 0 ? (
-              <div className="rounded-md border px-4 py-8 text-center text-sm text-muted-foreground">
-                No payments have been recorded for this invoice.
-              </div>
-            ) : (
-              <ConfigurableDataTable
-                data={sale.payments}
-                columns={[
-                  {
-                    accessorKey: 'paymentDate',
-                    header: 'Date',
-                  },
-                  {
-                    id: 'type',
-                    header: 'Type',
-                    cell: ({ row }) => (
-                      <Badge variant="outline" className="capitalize">
-                        {formatPaymentType(row.original)}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    accessorKey: 'amount',
-                    header: 'Amount',
-                    cell: ({ row }) => formatCurrency(row.original.amount),
-                  },
-                  {
-                    id: 'details',
-                    header: 'Details',
-                    cell: ({ row }) => formatPaymentDetails(row.original),
-                  },
-                ]}
-                getRowId={(row) => `${row.id ?? 'initial'}-${row.paymentDate}-${row.amount}`}
-                enableColumnVisibility={false}
-                enablePagination={false}
-                enableSorting={false}
-                className="w-full"
-              />
-            )}
-            {sale.payments.length > 0 && (
-              <div className="flex justify-end text-sm font-medium">
-                Total paid: {formatCurrency(sale.payments.reduce((sum, payment) => sum + payment.amount, 0))}
-              </div>
-            )}
-          </div>
         </div>
       )}
     </FormPageLayout>
@@ -260,68 +123,16 @@ function RouteComponent() {
   )
 }
 
-function RecordPaymentSection({
-  balance,
-  availableCredit,
-  isSubmitting,
-  onSubmit,
-}: {
-  balance: number
-  availableCredit: number
-  isSubmitting: boolean
-  onSubmit: (payload: RecordPaymentFormValues) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  if (!isOpen) {
-    return (
-      <div className="flex items-center justify-between rounded-md border border-dashed p-4">
-        <p className="text-sm text-muted-foreground">Outstanding balance of {formatCurrency(balance)}.</p>
-        <Button size="sm" onClick={() => setIsOpen(true)}>
-          Record payment
-        </Button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-4 rounded-md border p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">Record payment</p>
-      </div>
-      <RecordPaymentForm
-        balance={balance}
-        availableCredit={availableCredit}
-        isSubmitting={isSubmitting}
-        onCancel={() => setIsOpen(false)}
-        onSubmit={(payload) => {
-          onSubmit(payload)
-          setIsOpen(false)
-        }}
-      />
-    </div>
-  )
-}
-
 function DetailField({
   label,
   value,
-  isBadge = false,
   linkTo,
 }: {
   label: string
   value: string
-  isBadge?: boolean
   linkTo?: { to: string; params: Record<string, string> }
 }) {
-  const content = isBadge ? (
-    <Badge variant="outline" className={`capitalize border p-3 items-center justify-start font-bold`}>
-      {getStatusIcon(value)}
-      {value}
-    </Badge>
-  ) : (
-    <>{value}</>
-  )
+  const content = <>{value}</>
 
   return (
     <div className="min-w-0">

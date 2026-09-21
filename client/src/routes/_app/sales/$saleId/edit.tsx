@@ -54,12 +54,11 @@ function RouteComponent() {
   })
 
   const customerId = React.useMemo(() => {
+    if (sale?.customerId) return String(sale.customerId)
     if (!sale?.customerName || customers.length === 0) return ''
-    const customer = customers.find(
-      (c) => c.name.toLowerCase() === sale.customerName?.toLowerCase()
-    )
+    const customer = customers.find((c) => c.name.toLowerCase() === sale.customerName?.toLowerCase())
     return customer ? String(customer.id) : ''
-  }, [sale?.customerName, customers])
+  }, [sale?.customerId, sale?.customerName, customers])
 
   if (!sale) {
     return null
@@ -68,7 +67,7 @@ function RouteComponent() {
   return (
     <SalesForm
       title="Edit Sale"
-      description="Update invoice details, customer, amount, payment, and status."
+      description="Update the customer, material, truck, quantity, and sale total."
       backLabel="Back to sales"
       submitLabel="Update sale"
       isSubmitting={updateMutation.isPending}
@@ -77,9 +76,17 @@ function RouteComponent() {
         invoiceDate: sale.invoiceDate,
         customerId,
         totalAmount: String(sale.totalAmount),
-        amountPaid: String(sale.amountPaid),
         remarks: sale.remarks || '',
       }}
+      initialInvoiceItems={sale.invoiceItems.map((item) => ({
+        id: String(item.id),
+        materialTypeId: String(item.materialTypeId ?? ''),
+        quantityBrass: String(item.quantityBrass),
+        rate: String(item.rate),
+        amount: String(item.amount),
+        materialName: item.materialName ?? '',
+        truckNumber: item.truckNumber ?? '',
+      }))}
       onSubmit={updateMutation.mutate}
       showSummary={true}
       variant="page"

@@ -41,15 +41,6 @@ public class Invoice extends AuditableEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal amountPaid = BigDecimal.ZERO;
-
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal balance;
-
-    @Column(nullable = false, length = 20)
-    private String status;
-
     @Column(columnDefinition = "TEXT")
     private String remarks;
 

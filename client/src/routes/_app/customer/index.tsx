@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_app/customer/")({
 
 type CustomerRow = Omit<Customer, "createdAt" | "isActive">;
 
-type QuickFilter = "all" | "pendingBalance" | "hasCredit" | "settled";
+type QuickFilter = "all" | "pendingBalance" | "settled";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -40,10 +40,7 @@ function RouteComponent() {
     return {
       all: customers.length,
       pendingBalance: customers.filter((customer) => (customer.pendingBalance ?? 0) > 0).length,
-      hasCredit: customers.filter((customer) => (customer.availableCredit ?? 0) > 0).length,
-      settled: customers.filter(
-        (customer) => (customer.pendingBalance ?? 0) === 0 && (customer.availableCredit ?? 0) === 0,
-      ).length,
+      settled: customers.filter((customer) => (customer.pendingBalance ?? 0) === 0).length,
     };
   }, [data]);
 
@@ -52,12 +49,8 @@ function RouteComponent() {
     switch (quickFilter) {
       case "pendingBalance":
         return customers.filter((customer) => (customer.pendingBalance ?? 0) > 0);
-      case "hasCredit":
-        return customers.filter((customer) => (customer.availableCredit ?? 0) > 0);
       case "settled":
-        return customers.filter(
-          (customer) => (customer.pendingBalance ?? 0) === 0 && (customer.availableCredit ?? 0) === 0,
-        );
+        return customers.filter((customer) => (customer.pendingBalance ?? 0) === 0);
       default:
         return customers;
     }
@@ -71,7 +64,6 @@ function RouteComponent() {
       address: customer.address ?? "-",
       notes: customer.notes ?? "-",
       pendingBalance: customer.pendingBalance ?? 0,
-      availableCredit: customer.availableCredit ?? 0,
     };
   });
 
@@ -94,12 +86,6 @@ function RouteComponent() {
           count={quickFilterCounts.pendingBalance}
           active={quickFilter === "pendingBalance"}
           onClick={() => setQuickFilter("pendingBalance")}
-        />
-        <QuickFilterChip
-          label="Has credit"
-          count={quickFilterCounts.hasCredit}
-          active={quickFilter === "hasCredit"}
-          onClick={() => setQuickFilter("hasCredit")}
         />
         <QuickFilterChip
           label="Settled"
@@ -144,21 +130,20 @@ function RouteComponent() {
             accessorKey: "pendingBalance",
             header: "Pending Balance",
             meta: { filterable: true, filterType: "number" },
-            cell: ({ row }) => (
-              <span className="font-medium text-amber-700 dark:text-amber-400">
-                {currency.format(Number(row.original.pendingBalance ?? 0))}
-              </span>
-            ),
-          },
-          {
-            accessorKey: "availableCredit",
-            header: "Available Credit",
-            meta: { filterable: true, filterType: "number" },
-            cell: ({ row }) => (
-              <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                {currency.format(Number(row.original.availableCredit ?? 0))}
-              </span>
-            ),
+            cell: ({ row }) => {
+              const balance = Number(row.original.pendingBalance ?? 0)
+              return (
+                <span className={`font-medium tabular-nums ${
+                  balance < 0
+                    ? "text-destructive"
+                    : balance > 0
+                      ? "text-amber-700 dark:text-amber-400"
+                      : "text-muted-foreground"
+                }`}>
+                  {currency.format(balance)}
+                </span>
+              )
+            },
           },
           {
             id: "actions",

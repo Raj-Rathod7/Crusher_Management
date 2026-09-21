@@ -1,8 +1,5 @@
-import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
-import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
-import { Checkbox } from '#/components/ui/checkbox'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger } from '#/components/ui/combobox'
 import {
   Dialog,
@@ -28,7 +25,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { createCustomer } from '#/lib/mutation'
-import type { CreateInvoicePayload, Customer, Invoice, InvoiceItem } from '#/lib/models'
+import type { CreateInvoicePayload, Customer, Invoice } from '#/lib/models'
 import { customerKeys, getAllCustomers, getAllMaterials, getAllSales, materialKeys, salesKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -43,11 +40,7 @@ type FormState = {
   invoiceDate: string
   customerId: string
   totalAmount: string
-  amountPaid: string
   remarks: string
-  applyCredit: boolean
-  creditToApply: string
-  cashPaidNow: string
 }
 
 type InvoiceItemEntry = {
@@ -89,11 +82,7 @@ const initialFormState: FormState = {
   invoiceDate: new Date().toISOString().slice(0, 10),
   customerId: '',
   totalAmount: '',
-  amountPaid: '',
   remarks: '',
-  applyCredit: false,
-  creditToApply: '',
-  cashPaidNow: '',
 }
 
 const initialInvoiceItemForm: InvoiceItemFormState = {
@@ -147,85 +136,7 @@ function validateForm(form: FormState) {
     errors.totalAmount = 'Total amount must be greater than 0.'
   }
 
-  if (form.applyCredit) {
-    if (form.cashPaidNow.trim() && Number(form.cashPaidNow) < 0) {
-      errors.cashPaidNow = 'Cash received cannot be negative.'
-    }
-    if (form.creditToApply.trim() && Number(form.creditToApply) < 0) {
-      errors.creditToApply = 'Credit cap cannot be negative.'
-    }
-  } else {
-    if (form.amountPaid.trim() && Number(form.amountPaid) < 0) {
-      errors.amountPaid = 'Paid amount cannot be negative.'
-    }
-
-    // if (form.totalAmount.trim() && form.amountPaid.trim() && Number(form.amountPaid) > Number(form.totalAmount)) {
-    //   errors.amountPaid = 'Paid amount cannot exceed total amount.'
-    // }
-  }
-
   return errors
-}
-
-function deriveInvoiceStatus(totalAmount: number, amountPaid: number) {
-  if (totalAmount <= 0) {
-    return 'pending'
-  }
-
-  if (amountPaid === 0) {
-    return 'pending'
-  }
-
-  if (amountPaid >= totalAmount) {
-    return 'paid'
-  }
-
-  return 'partial'
-}
-
-function getPaymentStatusBadge(status: string) {
-  if (status === 'paid') {
-    return {
-      label: 'Paid',
-      className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-    }
-  }
-
-  if (status === 'partial') {
-    return {
-      label: 'Partial',
-      className: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-    }
-  }
-
-  return {
-    label: 'Pending',
-    className: 'border-border bg-muted text-muted-foreground',
-  }
-}
-
-function getBalanceTone(status: string) {
-  if (status === 'paid') {
-    return {
-      container: 'border-emerald-500/20 bg-emerald-500/5',
-      label: 'text-emerald-700/80 dark:text-emerald-300/80',
-      value: 'text-emerald-800 dark:text-emerald-200',
-    }
-  }
-
-  if (status === 'partial') {
-    return {
-      container: 'border-amber-500/20 bg-amber-500/5',
-      label: 'text-amber-700/80 dark:text-amber-300/80',
-      value: 'text-amber-800 dark:text-amber-200',
-    }
-  }
-
-  return {
-    container: 'border-border bg-muted/40',
-    label: 'text-muted-foreground',
-    value: 'text-foreground',
-  }
 }
 
 const inrConverter = new Intl.NumberFormat('en-IN', {
@@ -247,7 +158,6 @@ export function SalesForm({
 }: SalesFormProps) {
   const queryClient = useQueryClient()
   const shouldAutoGenerateInvoiceNumber = !initialValues?.invoiceNumber;
-  console.log(shouldAutoGenerateInvoiceNumber);
   const [form, setForm] = React.useState<FormState>({ ...initialFormState, ...initialValues })
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
@@ -312,10 +222,6 @@ export function SalesForm({
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
-  const handleApplyCreditToggle = (checked: boolean) => {
-    setForm((current) => ({ ...current, applyCredit: checked }))
-  }
-
   const totalAmount = Number(form.totalAmount || 0)
 
   const selectedCustomer = React.useMemo(
@@ -331,42 +237,11 @@ export function SalesForm({
     return selectedCustomer.pendingBalance ?? 0
   }, [selectedCustomer])
 
-  const selectedCustomerAvailableCredit = React.useMemo(() => {
-    if (!selectedCustomer) {
-      return 0
-    }
-
-    return selectedCustomer.availableCredit ?? 0
-  }, [selectedCustomer])
-
-  const creditAppliedPreview = React.useMemo(() => {
-    if (!form.applyCredit) {
-      return 0
-    }
-
-    let credit = selectedCustomerAvailableCredit
-    if (form.creditToApply.trim()) {
-      credit = Math.min(credit, Number(form.creditToApply))
-    }
-    credit = Math.min(credit, totalAmount)
-
-    return Math.max(credit, 0)
-  }, [form.applyCredit, form.creditToApply, selectedCustomerAvailableCredit, totalAmount])
-
-  const effectiveAmountPaid = form.applyCredit
-    ? creditAppliedPreview + Number(form.cashPaidNow || 0)
-    : Number(form.amountPaid || 0)
-
-  const computedPaymentStatus = React.useMemo(
-    () => deriveInvoiceStatus(totalAmount, effectiveAmountPaid),
-    [totalAmount, effectiveAmountPaid]
-  )
 
   React.useEffect(() => {
     if (!shouldAutoGenerateInvoiceNumber) {
       return
     }
-    console.log('in useeffeect', sales);
     setForm((current) => {
       const invoiceNumber = buildNextInvoiceNumber(sales, new Date().getFullYear());
       if(current.invoiceNumber.trim() === invoiceNumber.trim()){
@@ -379,11 +254,6 @@ export function SalesForm({
       }
     })
   }, [sales, shouldAutoGenerateInvoiceNumber])
-
-  const amountPaid = effectiveAmountPaid
-  const balance = Math.max(totalAmount - amountPaid, 0)
-  const paymentStatusBadge = getPaymentStatusBadge(computedPaymentStatus)
-  const balanceTone = getBalanceTone(computedPaymentStatus)
 
   const handleInvoiceItemFieldChange = (field: keyof InvoiceItemFormState, value: string) => {
     setInvoiceItemForm((current) => ({ ...current, [field]: value }))
@@ -445,16 +315,11 @@ export function SalesForm({
       return
     }
 
-    // if (!form.applyCredit && Number(form.amountPaid || 0) > totalAmount) {
-    //   nextErrors.amountPaid = 'Paid amount cannot exceed total amount.'
-    // }
-
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
     }
 
-    const invoiceStatus = deriveInvoiceStatus(totalAmount, amountPaid)
     const invoiceItem = buildInvoiceItem()
 
     const payload: CreateInvoicePayload = {
@@ -462,13 +327,7 @@ export function SalesForm({
       invoiceDate: form.invoiceDate,
       customerId: Number(form.customerId),
       totalAmount,
-      amountPaid,
-      balance,
-      status: invoiceStatus,
       remarks: form.remarks.trim() || undefined,
-      applyCredit: form.applyCredit,
-      creditToApply: form.applyCredit && form.creditToApply.trim() ? Number(form.creditToApply) : undefined,
-      cashPaidNow: form.applyCredit ? Number(form.cashPaidNow || 0) : undefined,
       invoiceItems: [
         {
           ...invoiceItem,
@@ -495,9 +354,6 @@ export function SalesForm({
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Invoice review</p>
           <h2 className="mt-1 text-lg font-semibold tracking-normal">Sales summary</h2>
         </div>
-        <Badge variant="outline" className={paymentStatusBadge.className}>
-          {paymentStatusBadge.label}
-        </Badge>
       </div>
 
       <div className="mt-4 border-l-2 border-primary bg-primary/5 py-3 pr-3 pl-4">
@@ -513,25 +369,6 @@ export function SalesForm({
             1 item
           </span>
         </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 divide-x divide-border/80 border-y border-border/80 py-3">
-          <div className="pr-3">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
-              Paid
-            </div>
-            <div className="mt-1 text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">
-              {inrConverter.format(amountPaid)}
-            </div>
-          </div>
-          <div className="pl-3">
-            <div className={`text-[11px] font-medium uppercase tracking-wide ${balanceTone.label}`}>
-              Balance
-            </div>
-            <div className={`mt-1 text-sm font-semibold tabular-nums ${balanceTone.value}`}>
-              {inrConverter.format(balance)}
-            </div>
-          </div>
       </div>
 
       <div className="mt-5 space-y-4">
@@ -558,14 +395,6 @@ export function SalesForm({
                 <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
                   Pending: {inrConverter.format(selectedCustomerPendingBalance)}
                 </p>
-                <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-300">
-                  Available credit: {inrConverter.format(selectedCustomerAvailableCredit)}
-                </p>
-                {form.applyCredit ? (
-                  <p className="mt-0.5 text-xs text-primary">
-                    Credit to apply: {inrConverter.format(creditAppliedPreview)}
-                  </p>
-                ) : null}
               </>
             ) : null}
           </div>
@@ -640,9 +469,6 @@ export function SalesForm({
                                     <span className="text-amber-700 dark:text-amber-300">
                                       {inrConverter.format(customer.pendingBalance ?? 0)} pending
                                     </span>
-                                    <span className="text-emerald-700 dark:text-emerald-300">
-                                      {inrConverter.format(customer.availableCredit ?? 0)} credit
-                                    </span>
                                   </span>
                                 </div>
                               </ComboboxItem>
@@ -708,81 +534,6 @@ export function SalesForm({
                 </FieldContent>
               </Field>
 
-              <Field className="md:col-span-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="applyCredit"
-                    checked={form.applyCredit}
-                    onCheckedChange={(checked) => handleApplyCreditToggle(checked === true)}
-                    disabled={!selectedCustomer || selectedCustomerAvailableCredit <= 0}
-                  />
-                  <FieldLabel htmlFor="applyCredit" className="font-normal">
-                    Apply available credit
-                    {selectedCustomer ? ` (${inrConverter.format(selectedCustomerAvailableCredit)} available)` : ''}
-                  </FieldLabel>
-                </div>
-              </Field>
-
-              {form.applyCredit ? (
-                <>
-                  <Field>
-                    <FieldLabel htmlFor="creditToApply">Credit cap (optional)</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="creditToApply"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.creditToApply}
-                        onChange={(event) => handleChange('creditToApply', event.target.value)}
-                        placeholder={`Up to ${selectedCustomerAvailableCredit.toFixed(2)}`}
-                      />
-                      <FieldError>{errors.creditToApply}</FieldError>
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="cashPaidNow">Cash received now</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="cashPaidNow"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.cashPaidNow}
-                        onChange={(event) => handleChange('cashPaidNow', event.target.value)}
-                        placeholder="0.00"
-                        className="font-semibold tabular-nums"
-                      />
-                      <FieldError>{errors.cashPaidNow}</FieldError>
-                    </FieldContent>
-                  </Field>
-
-                  <Field className="md:col-span-2">
-                    <p className="text-xs text-muted-foreground">
-                      Credit to apply: <span className="font-semibold text-foreground">{inrConverter.format(creditAppliedPreview)}</span>
-                      {' '}&middot; Total paid: <span className="font-semibold text-foreground">{inrConverter.format(effectiveAmountPaid)}</span>
-                    </p>
-                  </Field>
-                </>
-              ) : (
-                <Field>
-                  <FieldLabel htmlFor="amountPaid">Amount paid</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="amountPaid"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.amountPaid}
-                      onChange={(event) => handleChange('amountPaid', event.target.value)}
-                      placeholder="0.00"
-                      className="font-semibold tabular-nums"
-                    />
-                    <FieldError>{errors.amountPaid}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
           </div>
         </div>
 
@@ -914,7 +665,7 @@ export function SalesForm({
   return (
     <FormPageLayout
       title={title || 'New Sale'}
-      description={description || 'Create invoice with customer, amount, payment, and status.'}
+      description={description || 'Record the customer, material, truck, quantity, and sale total.'}
       backLabel={backLabel || 'Back to sales'}
       backTo={backTo}
       badge="Sales entry"

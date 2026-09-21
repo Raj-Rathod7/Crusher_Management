@@ -15,18 +15,8 @@ import jakarta.validation.constraints.DecimalMin;
 
 public class InvoiceRequest {
 
-
     @NotNull
     private Long customerId;
-
-    @NotNull
-    @DecimalMin(value = "0.00")
-    private BigDecimal amountPaid;
-
-    @NotNull
-    private BigDecimal balance;
-
-    private String status;
 
     @NotBlank
     private String invoiceNumber;
@@ -34,38 +24,22 @@ public class InvoiceRequest {
     @NotNull
     private LocalDate invoiceDate;
 
-    private BigDecimal totalAmount; 
-    
+    @NotNull
+    @DecimalMin(value = "0.01")
+    private BigDecimal totalAmount;
+
     private String remarks;
 
-    private Boolean applyCredit = false;
+    @NotEmpty
+    @Valid
+    private List<InvoiceItemRequest> invoiceItems;
 
-    private BigDecimal creditToApply;
-
-    private BigDecimal cashPaidNow;
-
-    public Boolean getApplyCredit() {
-        return applyCredit;
+    public Long getCustomerId() {
+        return customerId;
     }
 
-    public void setApplyCredit(Boolean applyCredit) {
-        this.applyCredit = applyCredit;
-    }
-
-    public BigDecimal getCreditToApply() {
-        return creditToApply;
-    }
-
-    public void setCreditToApply(BigDecimal creditToApply) {
-        this.creditToApply = creditToApply;
-    }
-
-    public BigDecimal getCashPaidNow() {
-        return cashPaidNow;
-    }
-
-    public void setCashPaidNow(BigDecimal cashPaidNow) {
-        this.cashPaidNow = cashPaidNow;
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
     }
 
     public LocalDate getInvoiceDate() {
@@ -84,43 +58,12 @@ public class InvoiceRequest {
         this.invoiceNumber = invoiceNumber;
     }
 
-   
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
-    }
-
-    public BigDecimal getBalance() {
-        return balance;
-    }
-
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
-    }
-
-    @NotEmpty
-    @Valid
-    private List<InvoiceItemRequest> invoiceItems;
-
-    
-
-    public Long getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(Long customerId) {
-        this.customerId = customerId;
-    }
-
-    public BigDecimal getAmountPaid() {
-        return amountPaid;
-    }
-
-    public void setAmountPaid(BigDecimal amountPaid) {
-        this.amountPaid = amountPaid;
     }
 
     public List<InvoiceItemRequest> getInvoiceItems() {
@@ -138,14 +81,4 @@ public class InvoiceRequest {
     public void setRemarks(String remarks) {
         this.remarks = remarks;
     }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    
 }

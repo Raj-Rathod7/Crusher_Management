@@ -7,15 +7,17 @@ public class CustomerSummaryResponse {
     private CustomerResponse customer;
     private List<PaymentResponse> recentPayments;
     private List<InvoiceResponse> recentInvoices;
+    private List<CustomerLedgerEntry> ledger;
 
     public CustomerSummaryResponse() {
     }
 
     public CustomerSummaryResponse(CustomerResponse customer, List<PaymentResponse> recentPayments,
-                                    List<InvoiceResponse> recentInvoices) {
+                                    List<InvoiceResponse> recentInvoices, List<CustomerLedgerEntry> ledger) {
         this.customer = customer;
         this.recentPayments = recentPayments;
         this.recentInvoices = recentInvoices;
+        this.ledger = ledger;
     }
 
     public CustomerResponse getCustomer() {
@@ -40,5 +42,13 @@ public class CustomerSummaryResponse {
 
     public void setRecentInvoices(List<InvoiceResponse> recentInvoices) {
         this.recentInvoices = recentInvoices;
+    }
+
+    public List<CustomerLedgerEntry> getLedger() {
+        return ledger;
+    }
+
+    public void setLedger(List<CustomerLedgerEntry> ledger) {
+        this.ledger = ledger;
     }
 }

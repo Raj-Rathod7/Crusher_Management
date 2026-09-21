@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select'
-import type { Customer, CreateAdvanceReceiptPayload } from '#/lib/models'
+import type { Customer, CreateCustomerPaymentPayload } from '#/lib/models'
 import { customerKeys, getAllCustomers } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -29,7 +29,6 @@ export type ReceiptFormValues = {
   amount: string
   paymentDate: string
   paymentMode: string
-  receiptNumber: string
   externalRef: string
   notes: string
 }
@@ -42,7 +41,8 @@ type ReceiptFormProps = {
   backLabel: string
   submitLabel: string
   isSubmitting?: boolean
-  onSubmit: (payload: CreateAdvanceReceiptPayload) => void
+  initialValues?: Partial<ReceiptFormValues>
+  onSubmit: (payload: CreateCustomerPaymentPayload) => void
 }
 
 const defaultFormValues: ReceiptFormValues = {
@@ -50,7 +50,6 @@ const defaultFormValues: ReceiptFormValues = {
   amount: '',
   paymentDate: new Date().toISOString().slice(0, 10),
   paymentMode: 'cash',
-  receiptNumber: '',
   externalRef: '',
   notes: '',
 }
@@ -73,21 +72,17 @@ function validateForm(form: ReceiptFormValues) {
   return errors
 }
 
-const inrConverter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-})
-
 export function ReceiptForm({
   title,
   description,
   backLabel,
   submitLabel,
   isSubmitting = false,
+  initialValues,
   onSubmit,
 }: ReceiptFormProps) {
   const navigate = useNavigate()
-  const [form, setForm] = React.useState<ReceiptFormValues>(defaultFormValues)
+  const [form, setForm] = React.useState<ReceiptFormValues>({ ...defaultFormValues, ...initialValues })
   const [errors, setErrors] = React.useState<FormErrors>({})
 
   const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
@@ -103,6 +98,12 @@ export function ReceiptForm({
     () => customers.find((customer) => String(customer.id) === form.customerId) ?? null,
     [customers, form.customerId]
   )
+
+  React.useEffect(() => {
+    if (initialValues) {
+      setForm((current) => ({ ...current, ...initialValues }))
+    }
+  }, [initialValues])
 
   const handleChange = (field: keyof ReceiptFormValues, value: string) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -127,7 +128,6 @@ export function ReceiptForm({
       amount: Number(form.amount),
       paymentDate: form.paymentDate,
       paymentMode: form.paymentMode,
-      receiptNumber: form.receiptNumber.trim() || undefined,
       externalRef: form.externalRef.trim() || undefined,
       notes: form.notes.trim() || undefined,
     })
@@ -152,7 +152,7 @@ export function ReceiptForm({
                     disabled={isLoadingCustomers}
                   >
                     {selectedCustomer
-                      ? `${selectedCustomer.name} (${inrConverter.format(selectedCustomer.availableCredit ?? 0)} credit)`
+                      ? selectedCustomer.name
                       : (isLoadingCustomers ? 'Loading customers...' : 'Select a customer')}
                   </Button>
                 }
@@ -163,12 +163,7 @@ export function ReceiptForm({
                 <ComboboxList>
                   {(customer) => (
                     <ComboboxItem key={customer.id} value={customer}>
-                      <div className="flex w-full items-center justify-between gap-3">
-                        <span>{customer.name}</span>
-                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                          {inrConverter.format(customer.availableCredit ?? 0)}
-                        </span>
-                      </div>
+                      <span>{customer.name}</span>
                     </ComboboxItem>
                   )}
                 </ComboboxList>
@@ -224,18 +219,6 @@ export function ReceiptForm({
                 <SelectItem value="cheque">Cheque</SelectItem>
               </SelectContent>
             </Select>
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="receiptNumber">Receipt number</FieldLabel>
-          <FieldContent>
-            <Input
-              id="receiptNumber"
-              value={form.receiptNumber}
-              onChange={(event) => handleChange('receiptNumber', event.target.value)}
-              placeholder="Optional"
-            />
           </FieldContent>
         </Field>
 

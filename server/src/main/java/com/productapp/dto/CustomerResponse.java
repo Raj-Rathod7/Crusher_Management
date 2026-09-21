@@ -14,7 +14,6 @@ public class CustomerResponse {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private BigDecimal pendingBalance;
-    private BigDecimal availableCredit;
 
     public CustomerResponse() {
     }
@@ -25,11 +24,6 @@ public class CustomerResponse {
 
     public CustomerResponse(Long id, String name, String phone, String address, String notes, Boolean isActive,
                             LocalDateTime createdAt, BigDecimal pendingBalance) {
-        this(id, name, phone, address, notes, isActive, createdAt, pendingBalance, BigDecimal.ZERO);
-    }
-
-    public CustomerResponse(Long id, String name, String phone, String address, String notes, Boolean isActive,
-                            LocalDateTime createdAt, BigDecimal pendingBalance, BigDecimal availableCredit) {
         this.id = id;
         this.name = name;
         this.phone = phone;
@@ -37,7 +31,6 @@ public class CustomerResponse {
         this.notes = notes;
         this.isActive = isActive;
         this.pendingBalance = pendingBalance == null ? BigDecimal.ZERO : pendingBalance;
-        this.availableCredit = availableCredit == null ? BigDecimal.ZERO : availableCredit;
         this.createdAt = createdAt;
     }
 
@@ -54,16 +47,11 @@ public class CustomerResponse {
                 customer.getNotes(),
                 customer.getIsActive(),
                 customer.getCreatedAt(),
-                BigDecimal.ZERO,
                 BigDecimal.ZERO
         );
     }
 
     public static CustomerResponse fromEntity(Customer customer, BigDecimal pendingBalance) {
-        return fromEntity(customer, pendingBalance, BigDecimal.ZERO);
-    }
-
-    public static CustomerResponse fromEntity(Customer customer, BigDecimal pendingBalance, BigDecimal availableCredit) {
         if (customer == null) {
             return null;
         }
@@ -76,8 +64,7 @@ public class CustomerResponse {
                 customer.getNotes(),
                 customer.getIsActive(),
                 customer.getCreatedAt(),
-                pendingBalance,
-                availableCredit
+                pendingBalance
         );
     }
 
@@ -96,10 +83,6 @@ public class CustomerResponse {
     public BigDecimal getPendingBalance() { return pendingBalance; }
     public void setPendingBalance(BigDecimal pendingBalance) {
         this.pendingBalance = pendingBalance == null ? BigDecimal.ZERO : pendingBalance;
-    }
-    public BigDecimal getAvailableCredit() { return availableCredit; }
-    public void setAvailableCredit(BigDecimal availableCredit) {
-        this.availableCredit = availableCredit == null ? BigDecimal.ZERO : availableCredit;
     }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -15,35 +15,24 @@ public class InvoiceResponse {
     private String customerName;
     private Long customerId;
     private BigDecimal totalAmount;
-    private BigDecimal amountPaid;
-    private BigDecimal balance;
-    private String status;
     private String remarks;
     
     private String createdByUsername;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<InvoiceItemResponse> invoiceItems;
-    private List<PaymentResponse> appliedReceipts = List.of();
-    private List<PaymentResponse> payments = List.of();
-    private BigDecimal creditApplied;
-    private BigDecimal cashPaid;
-    private BigDecimal customerAvailableCreditAfterTxn;
 
     public InvoiceResponse() {
     }
 
     public InvoiceResponse(Long id, String invoiceNumber, LocalDate invoiceDate, String customerName,
-                           BigDecimal totalAmount, BigDecimal amountPaid, BigDecimal balance,
-                           String status, String remarks,Long customerId, List<InvoiceItemResponse> invoiceItems ) {
+                           BigDecimal totalAmount, String remarks, Long customerId,
+                           List<InvoiceItemResponse> invoiceItems) {
         this.id = id;
         this.invoiceNumber = invoiceNumber;
         this.invoiceDate = invoiceDate;
         this.customerName = customerName;
         this.totalAmount = totalAmount;
-        this.amountPaid = amountPaid;
-        this.balance = balance;
-        this.status = status;
         this.remarks = remarks;
         this.customerId = customerId;
         this.invoiceItems = invoiceItems;
@@ -64,9 +53,6 @@ public class InvoiceResponse {
                 invoice.getInvoiceDate(),
                 invoice.getCustomer() != null ? invoice.getCustomer().getName() : null,
                 invoice.getTotalAmount(),
-                invoice.getAmountPaid(),
-                invoice.getBalance(),
-                invoice.getStatus(),
                 invoice.getRemarks(),
                 invoice.getCustomer() != null ? invoice.getCustomer().getId() : null,
                 itemResponses
@@ -89,30 +75,12 @@ public class InvoiceResponse {
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    public BigDecimal getAmountPaid() { return amountPaid; }
-    public void setAmountPaid(BigDecimal amountPaid) { this.amountPaid = amountPaid; }
-    public BigDecimal getBalance() { return balance; }
-    public void setBalance(BigDecimal balance) { this.balance = balance; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
     public String getCreatedByUsername() { return createdByUsername; }
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
     public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }
     public void setInvoiceItems(List<InvoiceItemResponse> invoiceItems) { this.invoiceItems = invoiceItems; }
-    public List<PaymentResponse> getAppliedReceipts() { return appliedReceipts; }
-    public void setAppliedReceipts(List<PaymentResponse> appliedReceipts) { this.appliedReceipts = appliedReceipts; }
-    public List<PaymentResponse> getPayments() { return payments; }
-    public void setPayments(List<PaymentResponse> payments) { this.payments = payments; }
-    public BigDecimal getCreditApplied() { return creditApplied; }
-    public void setCreditApplied(BigDecimal creditApplied) { this.creditApplied = creditApplied; }
-    public BigDecimal getCashPaid() { return cashPaid; }
-    public void setCashPaid(BigDecimal cashPaid) { this.cashPaid = cashPaid; }
-    public BigDecimal getCustomerAvailableCreditAfterTxn() { return customerAvailableCreditAfterTxn; }
-    public void setCustomerAvailableCreditAfterTxn(BigDecimal customerAvailableCreditAfterTxn) {
-        this.customerAvailableCreditAfterTxn = customerAvailableCreditAfterTxn;
-    }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     // public LocalDateTime getUpdatedAt() { return updatedAt; }

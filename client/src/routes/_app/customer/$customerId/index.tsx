@@ -12,10 +12,10 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
-import type { Customer, Invoice, Payment } from '#/lib/models'
-import { applyCreditToInvoice, recordInvoicePayment } from '#/lib/mutation'
-import { customerKeys, customerSummaryKeys, getCustomerById, getCustomerSummary, receiptKeys } from '#/lib/query'
-import { IconPencil } from '@tabler/icons-react'
+import type { Customer, CustomerLedgerEntry, Invoice, Payment } from '#/lib/models'
+import { recordCustomerPayment } from '#/lib/mutation'
+import { customerKeys, customerSummaryKeys, getCustomerById, getCustomerSummary } from '#/lib/query'
+import { IconArrowDown, IconArrowUp, IconCash, IconPencil } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -34,7 +34,7 @@ const currency = new Intl.NumberFormat('en-IN', {
 function RouteComponent() {
   const { customerId } = Route.useParams()
   const navigate = useNavigate()
-  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const queryClient = useQueryClient()
 
   const customerQuery = useQuery({
@@ -49,25 +49,9 @@ function RouteComponent() {
     retry: false,
   })
 
-  const applyCreditMutation = useMutation({
-    mutationFn: ({ invoiceId }: { invoiceId: number }) => applyCreditToInvoice(invoiceId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: customerKeys.all }),
-        queryClient.invalidateQueries({ queryKey: customerKeys.detail(customerId) }),
-        queryClient.invalidateQueries({ queryKey: customerSummaryKeys.detail(customerId) }),
-        queryClient.invalidateQueries({ queryKey: receiptKeys.all }),
-      ])
-      toast.success('Credit applied to invoice.')
-    },
-    onError: () => {
-      toast.error('Failed to apply credit to invoice.')
-    },
-  })
-
   const recordPaymentMutation = useMutation({
-    mutationFn: ({ invoiceId, payload }: { invoiceId: number; payload: RecordPaymentFormValues }) =>
-      recordInvoicePayment(invoiceId, payload),
+    mutationFn: ({ customerId, payload }: { customerId: number; payload: RecordPaymentFormValues }) =>
+      recordCustomerPayment(customerId, payload),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: customerKeys.all }),
@@ -75,7 +59,7 @@ function RouteComponent() {
         queryClient.invalidateQueries({ queryKey: customerSummaryKeys.detail(customerId) }),
       ])
       toast.success('Payment recorded.')
-      setPaymentInvoice(null)
+      setIsPaymentDialogOpen(false)
     },
     onError: (mutationError: unknown) => {
       const message = mutationError instanceof Error ? mutationError.message : 'Failed to record payment.'
@@ -86,16 +70,13 @@ function RouteComponent() {
   const customer = customerQuery.data
   const invoices = summaryQuery.data?.recentInvoices ?? []
   const payments = summaryQuery.data?.recentPayments ?? []
-  const receipts = payments.filter(
-    (payment) => payment.entryType === 'ADVANCE_RECEIPT' || payment.entryType === 'CREDIT_ADJUSTMENT',
-  )
-  const creditUsage = payments.filter((payment) => payment.entryType === 'CREDIT_APPLIED')
-  const currentAvailableCredit = summaryQuery.data?.customer.availableCredit ?? customer?.availableCredit ?? 0
+  const receipts = payments.filter((payment) => payment.entryType === 'CUSTOMER_PAYMENT')
+  const ledger = summaryQuery.data?.ledger ?? []
 
   return (
     <FormPageLayout
       title={customer?.name ?? 'Customer'}
-      description="Invoices, receipts, and credit usage"
+      description="Invoices, payments, and customer ledger"
       backLabel="Back to customers"
       backTo="/customer"
       badge="Customer"
@@ -104,12 +85,18 @@ function RouteComponent() {
         <div className="flex items-start justify-between gap-4">
           {customer ? <CustomerDetailsPanel customer={customer} /> : null}
           {customer ? (
-            <Button asChild size="sm" variant="outline">
-              <Link to="/customer/$customerId/edit" params={{ customerId }}>
-                <IconPencil />
-                Edit
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
+                <IconCash />
+                Record payment
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/customer/$customerId/edit" params={{ customerId }}>
+                  <IconPencil />
+                  Edit
+                </Link>
+              </Button>
+            </div>
           ) : null}
         </div>
 
@@ -124,10 +111,14 @@ function RouteComponent() {
         ) : (
           <Tabs defaultValue="invoices">
             <TabsList>
+              <TabsTrigger value="ledger">Ledger ({ledger.length})</TabsTrigger>
               <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
-              <TabsTrigger value="receipts">Receipts ({receipts.length})</TabsTrigger>
-              <TabsTrigger value="credit-usage">Credit usage ({creditUsage.length})</TabsTrigger>
+              <TabsTrigger value="payments">Payments ({receipts.length})</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="ledger">
+              <CustomerLedgerTable entries={ledger} />
+            </TabsContent>
 
             <TabsContent value="invoices">
               {invoices.length ? (
@@ -135,10 +126,6 @@ function RouteComponent() {
                   <CustomerInvoiceSummary invoices={invoices} />
                   <ExpandableInvoiceTable
                     invoices={invoices}
-                    availableCredit={currentAvailableCredit}
-                    onApplyCredit={(invoiceId) => applyCreditMutation.mutate({ invoiceId })}
-                    isApplyingCredit={applyCreditMutation.isPending}
-                    onRecordPayment={(invoice) => setPaymentInvoice(invoice)}
                     onOpenInvoice={(invoiceId) =>
                       navigate({ to: '/sales/$saleId', params: { saleId: String(invoiceId) } })
                     }
@@ -153,42 +140,146 @@ function RouteComponent() {
               )}
             </TabsContent>
 
-            <TabsContent value="receipts">
+            <TabsContent value="payments">
               <ReceiptsTable receipts={receipts} />
-            </TabsContent>
-
-            <TabsContent value="credit-usage">
-              <CreditUsageTable
-                entries={creditUsage}
-                onOpenInvoice={(invoiceId) =>
-                  navigate({ to: '/sales/$saleId', params: { saleId: String(invoiceId) } })
-                }
-              />
             </TabsContent>
           </Tabs>
         )}
       </div>
 
-      <Dialog open={paymentInvoice !== null} onOpenChange={(open) => !open && setPaymentInvoice(null)}>
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Record payment</DialogTitle>
             <DialogDescription>
-              {paymentInvoice ? `Invoice ${paymentInvoice.invoiceNumber} — outstanding ${currency.format(paymentInvoice.balance)}.` : null}
+              Record a payment against {customer?.name ?? 'this customer'}.
             </DialogDescription>
           </DialogHeader>
-          {paymentInvoice ? (
-            <RecordPaymentForm
-              balance={paymentInvoice.balance}
-              availableCredit={currentAvailableCredit}
-              isSubmitting={recordPaymentMutation.isPending}
-              onCancel={() => setPaymentInvoice(null)}
-              onSubmit={(payload) => recordPaymentMutation.mutate({ invoiceId: paymentInvoice.id, payload })}
-            />
-          ) : null}
+          <RecordPaymentForm
+            isSubmitting={recordPaymentMutation.isPending}
+            onCancel={() => setIsPaymentDialogOpen(false)}
+            onSubmit={(payload) => recordPaymentMutation.mutate({ customerId: Number(customerId), payload })}
+          />
         </DialogContent>
       </Dialog>
     </FormPageLayout>
+  )
+}
+
+function CustomerLedgerTable({ entries }: { entries: CustomerLedgerEntry[] }) {
+  const totals = entries.reduce(
+    (summary, entry) => ({
+      debit: summary.debit + entry.debit,
+      credit: summary.credit + entry.credit,
+    }),
+    { debit: 0, credit: 0 },
+  )
+  const finalBalance = entries.at(-1)?.runningBalance ?? 0
+
+  return entries.length ? (
+    <div className="space-y-4">
+      <ConfigurableDataTable
+        data={entries}
+        columns={[
+          { accessorKey: 'entryDate', header: 'Date' },
+          {
+            accessorKey: 'entryType',
+            header: 'Entry',
+            cell: ({ row }) => {
+              const isPayment = row.original.entryType === 'CUSTOMER_PAYMENT'
+              return (
+                <Badge
+                  variant={isPayment ? 'default' : 'secondary'}
+                  className="gap-1.5 whitespace-nowrap"
+                >
+                  {isPayment ? <IconArrowDown /> : <IconArrowUp />}
+                  {isPayment ? 'Payment' : 'Sale'}
+                </Badge>
+              )
+            },
+          },
+          { accessorKey: 'reference', header: 'Reference' },
+          { accessorKey: 'description', header: 'Description' },
+          {
+            accessorKey: 'debit',
+            header: 'Sale debit',
+            cell: ({ row }) => row.original.debit ? (
+              <span className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
+                {currency.format(row.original.debit)}
+              </span>
+            ) : '-',
+          },
+          {
+            accessorKey: 'credit',
+            header: 'Payment credit',
+            cell: ({ row }) => row.original.credit ? (
+              <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                {currency.format(row.original.credit)}
+              </span>
+            ) : '-',
+          },
+          {
+            accessorKey: 'runningBalance',
+            header: 'Running balance',
+            cell: ({ row }) => (
+              <span className={`font-semibold tabular-nums ${
+                row.original.runningBalance < 0
+                  ? 'text-destructive'
+                  : 'text-amber-700 dark:text-amber-400'
+              }`}>
+                {currency.format(row.original.runningBalance)}
+              </span>
+            ),
+          },
+        ]}
+        getRowId={(row) => `${row.entryDate}-${row.reference}`}
+        enableColumnVisibility={false}
+        enablePagination
+        enableSorting
+        className="w-full"
+      />
+
+      <div className="grid gap-3 border-t border-border/80 pt-4 sm:grid-cols-3">
+        <LedgerTotal label="Total sales" value={totals.debit} tone="debit" />
+        <LedgerTotal label="Total payments" value={totals.credit} tone="credit" />
+        <LedgerTotal label="Final balance" value={finalBalance} emphasized />
+      </div>
+    </div>
+  ) : (
+    <Card>
+      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+        No ledger entries recorded for this customer.
+      </CardContent>
+    </Card>
+  )
+}
+
+function LedgerTotal({
+  label,
+  value,
+  tone,
+  emphasized = false,
+}: {
+  label: string
+  value: number
+  tone?: 'debit' | 'credit'
+  emphasized?: boolean
+}) {
+  const valueClassName = value < 0
+    ? 'text-destructive'
+    : tone === 'credit'
+      ? 'text-emerald-700 dark:text-emerald-400'
+      : tone === 'debit' || emphasized
+        ? 'text-amber-700 dark:text-amber-400'
+        : ''
+
+  return (
+    <div className={emphasized ? 'rounded-md bg-muted/50 px-3 py-2.5' : 'px-3 py-2.5'}>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-base font-semibold tabular-nums ${valueClassName}`}>
+        {currency.format(value)}
+      </p>
+    </div>
   )
 }
 
@@ -204,12 +295,6 @@ function CustomerDetailsPanel({ customer }: { customer: Customer }) {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending balance</p>
           <p className="mt-1 text-base font-semibold text-amber-700 dark:text-amber-400">
             {currency.format(customer.pendingBalance ?? 0)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Available credit</p>
-          <p className="mt-1 text-base font-semibold text-green-700 dark:text-green-400">
-            {currency.format(customer.availableCredit ?? 0)}
           </p>
         </div>
         <div>
@@ -233,19 +318,15 @@ function CustomerInvoiceSummary({ invoices }: { invoices: Invoice[] }) {
   const consolidated = invoices.reduce(
     (acc, invoice) => {
       acc.totalAmount += invoice.totalAmount
-      acc.amountPaid += invoice.amountPaid
-      acc.pendingBalance += Math.max(invoice.balance, 0)
       return acc
     },
     {
       totalAmount: 0,
-      amountPaid: 0,
-      pendingBalance: 0,
     },
   )
 
   return (
-    <div className="mb-4 grid gap-3 md:grid-cols-4">
+    <div className="mb-4 grid gap-3 md:grid-cols-2">
       <Card>
         <CardContent className="p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Invoices</p>
@@ -258,39 +339,15 @@ function CustomerInvoiceSummary({ invoices }: { invoices: Invoice[] }) {
           <p className="mt-1 text-lg font-semibold">{currency.format(consolidated.totalAmount)}</p>
         </CardContent>
       </Card>
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Collected</p>
-          <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-            {currency.format(consolidated.amountPaid)}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending balance</p>
-          <p className="mt-1 text-lg font-semibold text-amber-700 dark:text-amber-400">
-            {currency.format(consolidated.pendingBalance)}
-          </p>
-        </CardContent>
-      </Card>
     </div>
   )
 }
 
 function ExpandableInvoiceTable({
   invoices,
-  availableCredit = 0,
-  onApplyCredit,
-  isApplyingCredit = false,
-  onRecordPayment,
   onOpenInvoice,
 }: {
   invoices: Invoice[]
-  availableCredit?: number
-  onApplyCredit?: (invoiceId: number) => void
-  isApplyingCredit?: boolean
-  onRecordPayment?: (invoice: Invoice) => void
   onOpenInvoice?: (invoiceId: number) => void
 }) {
   return (
@@ -300,75 +357,9 @@ function ExpandableInvoiceTable({
         { accessorKey: 'invoiceNumber', header: 'Invoice' },
         { accessorKey: 'invoiceDate', header: 'Date' },
         {
-          accessorKey: 'status',
-          header: 'Status',
-          cell: ({ row }) => (
-            <Badge
-              variant={
-                row.original.status === 'paid'
-                  ? 'default'
-                  : row.original.status === 'partial'
-                    ? 'secondary'
-                    : 'outline'
-              }
-            >
-              {row.original.status}
-            </Badge>
-          ),
-        },
-        {
           accessorKey: 'totalAmount',
           header: 'Total',
           cell: ({ row }) => currency.format(row.original.totalAmount),
-        },
-        {
-          accessorKey: 'balance',
-          header: 'Balance',
-          cell: ({ row }) => (
-            <span
-              className={
-                row.original.balance > 0
-                  ? 'font-medium text-amber-700 dark:text-amber-400'
-                  : 'font-medium text-emerald-700 dark:text-emerald-400'
-              }
-            >
-              {currency.format(row.original.balance)}
-            </span>
-          ),
-        },
-        {
-          id: 'credit-action',
-          header: 'Pending balance',
-          meta: { sortable: false, searchable: false },
-          cell: ({ row }) =>
-            row.original.balance > 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {onApplyCredit && availableCredit > 0 ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isApplyingCredit}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onApplyCredit(row.original.id)
-                    }}
-                  >
-                    Apply credit
-                  </Button>
-                ) : null}
-                {onRecordPayment ? (
-                  <Button
-                    size="sm"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onRecordPayment(row.original)
-                    }}
-                  >
-                    Record payment
-                  </Button>
-                ) : null}
-              </div>
-            ) : null,
         },
       ]}
       getRowId={(row) => row.id.toString()}
@@ -387,7 +378,7 @@ function ReceiptsTable({ receipts }: { receipts: Payment[] }) {
     return (
       <Card>
         <CardContent className="p-8 text-center text-sm text-muted-foreground">
-          No advance receipts recorded for this customer.
+          No customer payments recorded for this customer.
         </CardContent>
       </Card>
     )
@@ -401,29 +392,20 @@ function ReceiptsTable({ receipts }: { receipts: Payment[] }) {
         {
           accessorKey: 'entryType',
           header: 'Type',
-          cell: ({ row }) => (
-            <Badge variant={row.original.entryType === 'CREDIT_ADJUSTMENT' ? 'outline' : 'default'}>
-              {row.original.entryType === 'CREDIT_ADJUSTMENT' ? 'Reversal' : 'Advance receipt'}
-            </Badge>
-          ),
+          cell: () => <Badge variant="default">Customer payment</Badge>,
         },
         {
           accessorKey: 'amount',
           header: 'Amount',
           cell: ({ row }) => (
             <span
-              className={
-                row.original.entryType === 'CREDIT_ADJUSTMENT'
-                  ? 'font-medium text-amber-700 dark:text-amber-400'
-                  : 'font-medium text-emerald-700 dark:text-emerald-400'
-              }
+              className="font-medium text-emerald-700 dark:text-emerald-400"
             >
-              {row.original.entryType === 'CREDIT_ADJUSTMENT' ? '-' : ''}
               {currency.format(row.original.amount)}
             </span>
           ),
         },
-        { accessorKey: 'receiptNumber', header: 'Receipt #' },
+        { accessorKey: 'externalRef', header: 'Reference' },
         { accessorKey: 'paymentMode', header: 'Mode' },
         { accessorKey: 'notes', header: 'Notes' },
       ]}
@@ -432,60 +414,7 @@ function ReceiptsTable({ receipts }: { receipts: Payment[] }) {
       enablePagination={false}
       enableSorting={false}
       enableGlobalSearch={false}
-      emptyMessage="No advance receipts recorded for this customer."
-    />
-  )
-}
-
-function CreditUsageTable({
-  entries,
-  onOpenInvoice,
-}: {
-  entries: Payment[]
-  onOpenInvoice?: (invoiceId: number) => void
-}) {
-  if (!entries.length) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center text-sm text-muted-foreground">
-          No credit has been applied to invoices for this customer yet.
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <ConfigurableDataTable
-      data={entries}
-      columns={[
-        { accessorKey: 'paymentDate', header: 'Date' },
-        {
-          accessorKey: 'invoiceNumber',
-          header: 'Invoice',
-          cell: ({ row }) => row.original.invoiceNumber ?? '-',
-        },
-        {
-          accessorKey: 'sourceReceiptNumber',
-          header: 'Funded by receipt',
-          cell: ({ row }) => row.original.sourceReceiptNumber ?? 'Pooled credit',
-        },
-        {
-          accessorKey: 'amount',
-          header: 'Amount applied',
-          cell: ({ row }) => (
-            <span className="font-medium text-primary">{currency.format(row.original.amount)}</span>
-          ),
-        },
-      ]}
-      getRowId={(row) => row.id.toString()}
-      enableColumnVisibility={false}
-      enablePagination={false}
-      enableSorting={false}
-      enableGlobalSearch={false}
-      onRowClick={
-        onOpenInvoice ? (entry) => entry.invoiceId && onOpenInvoice(entry.invoiceId) : undefined
-      }
-      emptyMessage="No credit usage recorded for this customer."
+      emptyMessage="No customer payments recorded for this customer."
     />
   )
 }

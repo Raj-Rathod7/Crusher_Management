@@ -1,6 +1,7 @@
 import { ConfigurableDataTable } from '#/components/data-table'
 import { StatsCard } from '#/components/stats-card'
 import { Button } from '#/components/ui/button'
+import { Badge } from '#/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import { deleteExpense } from '#/lib/mutation'
 import { getAllExpenses, expenseKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
+import { IconCategory, IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -146,10 +147,21 @@ function RouteComponent() {
             accessorKey: 'categoryName',
             header: 'Category',
             meta: { filterable: true, filterPlaceholder: 'Filter category' },
+            cell: ({ row }) => (
+              <Badge variant="outline" className="gap-1.5">
+                <IconCategory />
+                {row.original.categoryName}
+              </Badge>
+            ),
           },
           {
             accessorKey: 'amount',
             header: 'Amount',
+            cell: ({ row }) => (
+              <span className="font-medium tabular-nums text-destructive">
+                {row.original.amount}
+              </span>
+            ),
           },
           {
             accessorKey: 'notes',
