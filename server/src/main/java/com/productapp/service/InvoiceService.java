@@ -93,7 +93,7 @@ public class InvoiceService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
         postSaleLedgerEntry(savedInvoice, customer, savedInvoice.getTotalAmount(), BigDecimal.ZERO,
-            "SALE", "Sale " + savedInvoice.getInvoiceNumber());
+            "SALE", saleDescription(savedInvoice));
 
         InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
         return response;
@@ -113,6 +113,7 @@ public class InvoiceService {
 
             Customer previousCustomer = existingInvoice.getCustomer();
             BigDecimal previousTotalAmount = existingInvoice.getTotalAmount();
+            String previousSaleDescription = saleDescription(existingInvoice);
             Optional<CustomerLedger> existingLedger = customerLedgerRepository
                 .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", existingInvoice.getId());
 
@@ -154,11 +155,22 @@ public class InvoiceService {
         Invoice savedInvoice = invoiceRepository.save(existingInvoice);
         if (existingLedger.isPresent()) {
             postSaleLedgerEntry(savedInvoice, previousCustomer, BigDecimal.ZERO, previousTotalAmount,
-                "SALE_REVERSAL", "Reversal of sale " + savedInvoice.getInvoiceNumber());
+                "SALE_REVERSAL", "Reversal of " + previousSaleDescription);
         }
         postSaleLedgerEntry(savedInvoice, savedInvoice.getCustomer(), savedInvoice.getTotalAmount(), BigDecimal.ZERO,
-            "SALE", "Sale " + savedInvoice.getInvoiceNumber());
+            "SALE", saleDescription(savedInvoice));
         return InvoiceResponse.fromEntity(savedInvoice);
+    }
+
+    private String saleDescription(Invoice invoice) {
+        if (invoice.getInvoiceItems() == null || invoice.getInvoiceItems().isEmpty()) {
+            return "Sale " + invoice.getInvoiceNumber();
+        }
+
+        InvoiceItem item = invoice.getInvoiceItems().get(0);
+        String materialName = item.getMaterialType() == null ? "Unknown material" : item.getMaterialType().getName();
+        return "Sale " + invoice.getInvoiceNumber() + " - " + materialName
+            + " - " + item.getQuantityBrass() + " brass @ " + item.getRate();
     }
 
         private void postSaleLedgerEntry(Invoice invoice, Customer customer, BigDecimal debit,
@@ -201,7 +213,7 @@ public class InvoiceService {
                 .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
         postSaleLedgerEntry(invoice, invoice.getCustomer(), BigDecimal.ZERO, invoice.getTotalAmount(),
-                "SALE_REVERSAL", "Reversal of deleted sale " + invoice.getInvoiceNumber());
+            "SALE_REVERSAL", "Reversal of " + saleDescription(invoice));
         invoice.setIsActive(false);
         invoiceRepository.save(invoice);
     }

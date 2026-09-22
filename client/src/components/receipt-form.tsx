@@ -72,6 +72,11 @@ function validateForm(form: ReceiptFormValues) {
   return errors
 }
 
+const inrConverter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+})
+
 export function ReceiptForm({
   title,
   description,
@@ -152,7 +157,7 @@ export function ReceiptForm({
                     disabled={isLoadingCustomers}
                   >
                     {selectedCustomer
-                      ? selectedCustomer.name
+                      ? `${selectedCustomer.name} (${inrConverter.format(selectedCustomer.pendingBalance ?? 0)} pending)`
                       : (isLoadingCustomers ? 'Loading customers...' : 'Select a customer')}
                   </Button>
                 }
@@ -163,7 +168,12 @@ export function ReceiptForm({
                 <ComboboxList>
                   {(customer) => (
                     <ComboboxItem key={customer.id} value={customer}>
-                      <span>{customer.name}</span>
+                      <div className="flex w-full items-center justify-between gap-3">
+                        <span>{customer.name}</span>
+                        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                          {inrConverter.format(customer.pendingBalance ?? 0)} pending
+                        </span>
+                      </div>
                     </ComboboxItem>
                   )}
                 </ComboboxList>

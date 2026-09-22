@@ -45,7 +45,14 @@ public class DashboardService {
                                 invoice.getInvoiceNumber(),
                                 invoice.getInvoiceDate(),
                                 invoice.getCustomer() == null ? null : invoice.getCustomer().getName(),
-                                invoice.getTotalAmount()))
+                                invoice.getTotalAmount(),
+                                invoice.getInvoiceItems() == null || invoice.getInvoiceItems().isEmpty()
+                                    || invoice.getInvoiceItems().get(0).getMaterialType() == null
+                                    ? null : invoice.getInvoiceItems().get(0).getMaterialType().getName(),
+                                invoice.getInvoiceItems() == null || invoice.getInvoiceItems().isEmpty()
+                                    ? null : invoice.getInvoiceItems().get(0).getQuantityBrass(),
+                                invoice.getInvoiceItems() == null || invoice.getInvoiceItems().isEmpty()
+                                    ? null : invoice.getInvoiceItems().get(0).getRate()))
                         .toList());
     }
 }

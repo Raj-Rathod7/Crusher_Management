@@ -253,6 +253,21 @@ function RouteComponent() {
                       year: "numeric",
                     }),
                 },
+                {
+                  accessorKey: "materialName",
+                  header: "Item",
+                  cell: ({ row }) => row.original.materialName ?? "-",
+                },
+                {
+                  accessorKey: "quantityBrass",
+                  header: "Quantity",
+                  cell: ({ row }) => row.original.quantityBrass == null ? "-" : `${row.original.quantityBrass} brass`,
+                },
+                {
+                  accessorKey: "rate",
+                  header: "Rate",
+                  cell: ({ row }) => row.original.rate == null ? "-" : currency.format(row.original.rate),
+                },
               ]}
               getRowId={(row) => row.id.toString()}
               enableColumnVisibility={false}
@@ -282,6 +297,9 @@ type DashboardData = {
     invoiceDate: string;
     customerName: string | null;
     totalAmount: number;
+    materialName: string | null;
+    quantityBrass: number | null;
+    rate: number | null;
   }>;
 };
 

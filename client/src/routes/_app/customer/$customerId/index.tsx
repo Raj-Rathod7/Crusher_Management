@@ -357,6 +357,25 @@ function ExpandableInvoiceTable({
         { accessorKey: 'invoiceNumber', header: 'Invoice' },
         { accessorKey: 'invoiceDate', header: 'Date' },
         {
+          id: 'item',
+          header: 'Item',
+          cell: ({ row }) => row.original.invoiceItems[0]?.materialName ?? '-',
+        },
+        {
+          id: 'quantity',
+          header: 'Quantity',
+          cell: ({ row }) => row.original.invoiceItems[0]
+            ? `${row.original.invoiceItems[0].quantityBrass} brass`
+            : '-',
+        },
+        {
+          id: 'rate',
+          header: 'Rate',
+          cell: ({ row }) => row.original.invoiceItems[0]
+            ? currency.format(row.original.invoiceItems[0].rate)
+            : '-',
+        },
+        {
           accessorKey: 'totalAmount',
           header: 'Total',
           cell: ({ row }) => currency.format(row.original.totalAmount),

@@ -47,11 +47,6 @@ WHERE c.phone='+91 98765 10002'
 	AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id=c.id AND p.entry_type='CUSTOMER_PAYMENT' AND p.amount=30000.00);
 
 INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
-SELECT i.invoice_date,i.customer_id,'SALE',i.invoice_number,CONCAT('Sale ',i.invoice_number),i.total_amount,0.00,'INVOICE',i.id,TRUE,NOW(),NOW()
-FROM invoices i
-WHERE NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='INVOICE' AND l.source_id=i.id);
-
-INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
 SELECT p.payment_date,p.customer_id,'CUSTOMER_PAYMENT',CONCAT('PAYMENT-',p.id),COALESCE(p.notes,'Customer payment'),0.00,p.amount,'PAYMENT',p.id,TRUE,NOW(),NOW()
 FROM payments p
 WHERE p.entry_type='CUSTOMER_PAYMENT'
@@ -59,6 +54,16 @@ WHERE p.entry_type='CUSTOMER_PAYMENT'
 
 INSERT INTO invoice_items (invoice_id,material_type_id,truck_number,quantity_brass,rate,amount,is_active,created_at,updated_at)
 SELECT i.id,m.id,'MH15AB1234',25.00,2100.00,52500.00,TRUE,NOW(),NOW() FROM invoices i JOIN material_types m ON m.name='20mm' WHERE i.invoice_number='INV-2026-0001' AND NOT EXISTS (SELECT 1 FROM invoice_items WHERE invoice_id=i.id AND truck_number='MH15AB1234');
+
+INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
+SELECT i.invoice_date,i.customer_id,'SALE',i.invoice_number,
+	CONCAT('Sale ',i.invoice_number,
+		CASE WHEN item.id IS NULL THEN '' ELSE CONCAT(' - ',material.name,' - ',item.quantity_brass,' brass @ ',item.rate) END),
+	i.total_amount,0.00,'INVOICE',i.id,TRUE,NOW(),NOW()
+FROM invoices i
+LEFT JOIN invoice_items item ON item.invoice_id=i.id AND item.is_active=TRUE
+LEFT JOIN material_types material ON material.id=item.material_type_id
+WHERE NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='INVOICE' AND l.source_id=i.id);
 
 INSERT INTO expenses (expense_date,category_id,amount,notes,created_by,is_active,created_at,updated_at)
 SELECT '2026-08-18',c.id,12500.00,'Diesel stock refill',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Diesel' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-18' AND notes='Diesel stock refill');
