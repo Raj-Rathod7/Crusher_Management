@@ -9,27 +9,19 @@ import com.productapp.dto.PaymentResponse;
 import com.productapp.service.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-
-import java.util.List;
-import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
 
     private final CustomerService customerService;
-    private final com.productapp.service.CustomerLedgerExportService customerLedgerExportService;
 
-    public CustomerController(CustomerService customerService,
-                              com.productapp.service.CustomerLedgerExportService customerLedgerExportService) {
+    public CustomerController(CustomerService customerService) {
         this.customerService = customerService;
-        this.customerLedgerExportService = customerLedgerExportService;
     }
 
     @PostMapping
@@ -55,31 +47,6 @@ public class CustomerController {
     @GetMapping("/{id}/summary")
     public CustomerSummaryResponse getSummary(@PathVariable Long id) {
         return customerService.getSummary(id);
-    }
-
-    @GetMapping("/{id}/ledger/export.xlsx")
-    public ResponseEntity<byte[]> exportLedgerExcel(@PathVariable Long id,
-                                                     @RequestParam(required = false) LocalDate dateFrom,
-                                                     @RequestParam(required = false) LocalDate dateTo) {
-        byte[] content = customerLedgerExportService.exportExcel(id, dateFrom, dateTo);
-        return exportResponse(content, "customer-ledger-" + id + ".xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    }
-
-    @GetMapping("/{id}/ledger/export.pdf")
-    public ResponseEntity<byte[]> exportLedgerPdf(@PathVariable Long id,
-                                                   @RequestParam(required = false) LocalDate dateFrom,
-                                                   @RequestParam(required = false) LocalDate dateTo) {
-        byte[] content = customerLedgerExportService.exportPdf(id, dateFrom, dateTo);
-        return exportResponse(content, "customer-ledger-" + id + ".pdf", MediaType.APPLICATION_PDF_VALUE);
-    }
-
-    private ResponseEntity<byte[]> exportResponse(byte[] content, String filename, String contentType) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(contentType));
-        headers.setContentDisposition(ContentDisposition.attachment().filename(filename).build());
-        headers.setContentLength(content.length);
-        return ResponseEntity.ok().headers(headers).body(content);
     }
 
     @PostMapping("/{id}/payments")

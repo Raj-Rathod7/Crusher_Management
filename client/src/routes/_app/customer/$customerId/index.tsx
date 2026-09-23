@@ -12,11 +12,10 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '#/components/ui/tooltip'
 import type { Customer, CustomerLedgerEntry, Invoice, Payment } from '#/lib/models'
 import { recordCustomerPayment } from '#/lib/mutation'
-import { customerKeys, customerSummaryKeys, downloadCustomerLedger, getCustomerById, getCustomerSummary } from '#/lib/query'
-import { IconArrowDown, IconArrowUp, IconCash, IconFileSpreadsheet, IconFileText, IconPencil } from '@tabler/icons-react'
+import { customerKeys, customerSummaryKeys, getCustomerById, getCustomerSummary } from '#/lib/query'
+import { IconArrowDown, IconArrowUp, IconCash, IconPencil } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -36,7 +35,6 @@ function RouteComponent() {
   const { customerId } = Route.useParams()
   const navigate = useNavigate()
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [exportingFormat, setExportingFormat] = useState<'xlsx' | 'pdf' | null>(null)
   const queryClient = useQueryClient()
 
   const customerQuery = useQuery({
@@ -75,19 +73,6 @@ function RouteComponent() {
   const receipts = payments.filter((payment) => payment.entryType === 'CUSTOMER_PAYMENT')
   const ledger = summaryQuery.data?.ledger ?? []
 
-  const handleLedgerExport = async (format: 'xlsx' | 'pdf') => {
-    setExportingFormat(format)
-    try {
-      await downloadCustomerLedger(customerId, format)
-      toast.success(`${format === 'xlsx' ? 'Excel' : 'PDF'} ledger downloaded.`)
-    } catch (exportError) {
-      const message = exportError instanceof Error ? exportError.message : 'Failed to export ledger.'
-      toast.error(message)
-    } finally {
-      setExportingFormat(null)
-    }
-  }
-
   return (
     <FormPageLayout
       title={customer?.name ?? 'Customer'}
@@ -101,7 +86,6 @@ function RouteComponent() {
           {customer ? <CustomerDetailsPanel customer={customer} /> : null}
           {customer ? (
             <div className="flex gap-2">
-              <LedgerExportActions exportingFormat={exportingFormat} onExport={handleLedgerExport} />
               <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
                 <IconCash />
                 Record payment
@@ -133,9 +117,8 @@ function RouteComponent() {
             </TabsList>
 
             <TabsContent value="ledger">
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3">
                 <p className="text-sm text-muted-foreground">Account activity and running balance</p>
-                <LedgerExportActions exportingFormat={exportingFormat} onExport={handleLedgerExport} />
               </div>
               <CustomerLedgerTable entries={ledger} />
             </TabsContent>
@@ -183,51 +166,6 @@ function RouteComponent() {
         </DialogContent>
       </Dialog>
     </FormPageLayout>
-  )
-}
-
-function LedgerExportActions({
-  exportingFormat,
-  onExport,
-}: {
-  exportingFormat: 'xlsx' | 'pdf' | null
-  onExport: (format: 'xlsx' | 'pdf') => void
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="outline"
-            disabled={Boolean(exportingFormat)}
-            aria-label="Export ledger to Excel"
-            onClick={() => onExport('xlsx')}
-          >
-            <IconFileSpreadsheet />
-            <span className="sr-only">Export ledger to Excel</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Export Excel</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="outline"
-            disabled={Boolean(exportingFormat)}
-            aria-label="Export ledger to PDF"
-            onClick={() => onExport('pdf')}
-          >
-            <IconFileText />
-            <span className="sr-only">Export ledger to PDF</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Export PDF</TooltipContent>
-      </Tooltip>
-    </div>
   )
 }
 

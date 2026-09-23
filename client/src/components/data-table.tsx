@@ -13,6 +13,7 @@ import {
   IconSearch,
   IconTable,
   IconFilter,
+  IconDownload,
   IconX
 } from "@tabler/icons-react"
 import {
@@ -36,6 +37,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -58,6 +60,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Link } from "@tanstack/react-router"
+import { exportTableToExcel, exportTableToPdf, type TableExportColumn } from "@/lib/table-export"
 
 export const schema = z.object({
   id: z.number(),
@@ -76,17 +79,20 @@ type FilterOption = {
   value: string
 }
 
-type ColumnMetaConfig = {
+type ColumnMetaConfig<TData = unknown> = {
   sortable?: boolean
   filterable?: boolean
   filterType?: FilterType
   filterPlaceholder?: string
   filterOptions?: FilterOption[]
   searchable?: boolean
+  exportable?: boolean
+  exportLabel?: string
+  exportValue?: (row: TData) => unknown
 }
 
 type DataTableColumnDef<TData> = ColumnDef<TData, unknown> & {
-  meta?: ColumnMetaConfig
+  meta?: ColumnMetaConfig<TData>
 }
 
 type DataTableProps<TData> = {
@@ -111,6 +117,8 @@ type DataTableProps<TData> = {
   addButtonText?: string
   onRowClick?: (row: TData) => void
   renderExpandedRow?: (row: TData) => React.ReactNode
+  enableExport?: boolean
+  exportFileName?: string
 }
 
 function getColumnValue<TData>(row: TData, column: DataTableColumnDef<TData>) {
@@ -243,6 +251,8 @@ export function ConfigurableDataTable<TData>({
   enableAddButton = false,
   onRowClick,
   renderExpandedRow,
+  enableExport = true,
+  exportFileName = "table-export",
 }: DataTableProps<TData>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -290,8 +300,37 @@ export function ConfigurableDataTable<TData>({
   })
 
   const filterableColumns = table.getAllLeafColumns().filter(
-    (column) => (column.columnDef.meta as ColumnMetaConfig | undefined)?.filterable
+    (column) => (column.columnDef.meta as ColumnMetaConfig<TData> | undefined)?.filterable
   )
+
+  const exportColumns = table.getVisibleLeafColumns().filter((column) => {
+    const meta = column.columnDef.meta as ColumnMetaConfig<TData> | undefined
+
+    return meta?.exportable !== false &&
+      (typeof meta?.exportValue === "function" ||
+        typeof column.accessorFn === "function" ||
+        typeof (column.columnDef as DataTableColumnDef<TData>).accessorKey === "string")
+  })
+
+  const exportHeaders = exportColumns.map((column) => {
+    const meta = column.columnDef.meta as ColumnMetaConfig<TData> | undefined
+    const header = column.columnDef.header
+
+    return meta?.exportLabel ?? (typeof header === "string" ? header : column.id)
+  })
+
+  const exportRows = table.getSortedRowModel().rows.map((row) =>
+    exportColumns.map((column): TableExportColumn => {
+      const meta = column.columnDef.meta as ColumnMetaConfig<TData> | undefined
+      const value = meta?.exportValue
+        ? meta.exportValue(row.original)
+        : getColumnValue(row.original, column.columnDef as DataTableColumnDef<TData>)
+
+      return { header: column.id, value }
+    })
+  )
+
+  const canExport = enableExport && !isLoading && exportRows.length > 0 && exportColumns.length > 0
 
   return (
     <div className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
@@ -390,6 +429,27 @@ export function ConfigurableDataTable<TData>({
               </Link>
             </Button>
           )}
+          {enableExport ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5" disabled={!canExport}>
+                  <IconDownload />
+                  <span className="hidden lg:inline">Export</span>
+                  <IconChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => exportTableToExcel(exportHeaders, exportRows, exportFileName)}>
+                  <IconDownload />
+                  Export to Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportTableToPdf(exportHeaders, exportRows, exportFileName)}>
+                  <IconDownload />
+                  Export to PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
 

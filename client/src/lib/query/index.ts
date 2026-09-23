@@ -100,23 +100,6 @@ export const getCustomerSummary = async (id: number | string) => {
   return apiClient.get<CustomerSummaryResponse>(`/customers/${id}/summary`)
 }
 
-export const downloadCustomerLedger = async (
-  id: number | string,
-  format: 'xlsx' | 'pdf',
-  filters: { dateFrom?: string; dateTo?: string } = {},
-) => {
-  const blob = await apiClient.get<Blob>(`/customers/${id}/ledger/export.${format}`, {
-    params: filters,
-    responseType: 'blob',
-  })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `customer-ledger-${id}.${format}`
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
-
 export const customerSummaryKeys = {
   detail: (id: number | string) => ['customer-summary', String(id)] as const,
 }
