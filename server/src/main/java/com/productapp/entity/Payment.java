@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 @Table(name = "payments", indexes = {
     @Index(name = "idx_payments_date", columnList = "payment_date"),
     @Index(name = "idx_payments_customer", columnList = "customer_id"),
-    @Index(name = "idx_payments_entry_type", columnList = "entry_type")
+    @Index(name = "idx_payments_entry_type", columnList = "entry_type"),
+    @Index(name = "idx_payments_invoice", columnList = "invoice_id", unique = true)
 })
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE payments SET is_active = false WHERE id = ?")
@@ -34,6 +35,10 @@ public class Payment extends AuditableEntity {
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
+
+    @OneToOne
+    @JoinColumn(name = "invoice_id", unique = true)
+    private Invoice invoice;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;

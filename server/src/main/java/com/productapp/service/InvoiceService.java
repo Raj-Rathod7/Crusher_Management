@@ -138,6 +138,11 @@ public class InvoiceService {
         existingInvoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
         existingInvoice.setRemarks(invoiceRequest.getRemarks());
 
+        if (invoiceRequest.getPaymentAmount() != null
+                && invoiceRequest.getPaymentAmount().signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero");
+        }
+
         List<InvoiceItem> invoiceItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
@@ -170,6 +175,10 @@ public class InvoiceService {
         }
         postSaleLedgerEntry(savedInvoice, savedInvoice.getCustomer(), savedInvoice.getTotalAmount(), BigDecimal.ZERO,
             "SALE", saleDescription(savedInvoice));
+
+        if (invoiceRequest.getPaymentAmount() != null) {
+            updatePayment(existingInvoice, invoiceRequest.getPaymentAmount());
+        }
         return InvoiceResponse.fromEntity(savedInvoice);
     }
 
@@ -188,6 +197,7 @@ public class InvoiceService {
         Payment payment = new Payment();
         payment.setPaymentDate(invoice.getInvoiceDate());
         payment.setCustomer(customer);
+        payment.setInvoice(invoice);
         payment.setAmount(amount);
         payment.setPaymentMode("cash");
         payment.setEntryType("CUSTOMER_PAYMENT");
@@ -195,6 +205,7 @@ public class InvoiceService {
         payment.setCreatedBy(createdBy);
 
         Payment savedPayment = paymentRepository.save(payment);
+    invoice.setPayment(savedPayment);
         customerLedgerRepository.save(CustomerLedger.builder()
             .entryDate(savedPayment.getPaymentDate())
             .customer(customer)
@@ -206,6 +217,49 @@ public class InvoiceService {
             .sourceType("PAYMENT")
             .sourceId(savedPayment.getId())
             .build());
+    }
+
+    private void updatePayment(Invoice invoice, BigDecimal amount) {
+        Payment payment = paymentRepository.findByInvoiceIdAndIsActiveTrue(invoice.getId())
+                .orElse(null);
+        if (payment == null) {
+            postPayment(invoice, invoice.getCustomer(), amount, getCurrentUser());
+            return;
+        }
+
+        postPaymentLedgerReversal(payment);
+        payment.setAmount(amount);
+        payment.setPaymentDate(invoice.getInvoiceDate());
+        Payment savedPayment = paymentRepository.save(payment);
+        postPaymentLedgerEntry(savedPayment);
+    }
+
+    private void postPaymentLedgerReversal(Payment payment) {
+        customerLedgerRepository.save(CustomerLedger.builder()
+                .entryDate(payment.getPaymentDate())
+                .customer(payment.getCustomer())
+                .entryType("CUSTOMER_PAYMENT_REVERSAL")
+                .reference("PAYMENT-" + payment.getId() + "-REVERSAL")
+                .description("Reversal of customer payment")
+                .debit(payment.getAmount())
+                .credit(BigDecimal.ZERO)
+                .sourceType("PAYMENT")
+                .sourceId(payment.getId())
+                .build());
+    }
+
+    private void postPaymentLedgerEntry(Payment payment) {
+        customerLedgerRepository.save(CustomerLedger.builder()
+                .entryDate(payment.getPaymentDate())
+                .customer(payment.getCustomer())
+                .entryType("CUSTOMER_PAYMENT")
+                .reference("PAYMENT-" + payment.getId())
+                .description(payment.getNotes())
+                .debit(BigDecimal.ZERO)
+                .credit(payment.getAmount())
+                .sourceType("PAYMENT")
+                .sourceId(payment.getId())
+                .build());
     }
 
         private void postSaleLedgerEntry(Invoice invoice, Customer customer, BigDecimal debit,
@@ -247,6 +301,11 @@ public class InvoiceService {
         Invoice invoice = invoiceRepository.findById(id)
                 .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
+            paymentRepository.findByInvoiceIdAndIsActiveTrue(invoice.getId()).ifPresent(payment -> {
+                postPaymentLedgerReversal(payment);
+                payment.setIsActive(false);
+                paymentRepository.save(payment);
+            });
         postSaleLedgerEntry(invoice, invoice.getCustomer(), BigDecimal.ZERO, invoice.getTotalAmount(),
             "SALE_REVERSAL", "Reversal of " + saleDescription(invoice));
         invoice.setIsActive(false);

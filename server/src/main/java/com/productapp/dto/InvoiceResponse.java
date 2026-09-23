@@ -21,6 +21,7 @@ public class InvoiceResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<InvoiceItemResponse> invoiceItems;
+    private PaymentResponse payment;
 
     public InvoiceResponse() {
     }
@@ -60,6 +61,7 @@ public class InvoiceResponse {
             response.createdByUsername = invoice.getCreatedBy() != null ? invoice.getCreatedBy().getUsername() : null;
             response.createdAt = invoice.getCreatedAt();
             response.updatedAt = invoice.getUpdatedAt();
+            response.payment = PaymentResponse.fromEntity(invoice.getPayment());
             return response;
     }
 
@@ -81,6 +83,8 @@ public class InvoiceResponse {
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
     public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }
     public void setInvoiceItems(List<InvoiceItemResponse> invoiceItems) { this.invoiceItems = invoiceItems; }
+    public PaymentResponse getPayment() { return payment; }
+    public void setPayment(PaymentResponse payment) { this.payment = payment; }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     // public LocalDateTime getUpdatedAt() { return updatedAt; }

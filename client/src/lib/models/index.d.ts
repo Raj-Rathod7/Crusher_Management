@@ -58,6 +58,7 @@ export type Invoice = {
   createdAt: string;
   updatedAt: string;
   invoiceItems: InvoiceItem[];
+  payment: Payment | null;
 }
 
 export type InvoiceItem = {
@@ -132,6 +133,8 @@ export type Payment = {
   entryType: string | null;
   externalRef: string | null;
   createdByUsername: string | null;
+  invoiceId: number | null;
+  invoiceNumber: string | null;
 }
 
 export type CreateCustomerPaymentPayload = {

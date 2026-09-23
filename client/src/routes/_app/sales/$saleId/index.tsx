@@ -65,8 +65,27 @@ function RouteComponent() {
             />
             <DetailField label="Created by" value={sale.createdByUsername ?? '-'} />
             <DetailField label="Total" value={formatCurrency(sale.totalAmount)} />
+            <DetailField label="Payment received" value={sale.payment ? formatCurrency(sale.payment.amount) : 'Not received'} />
             <DetailField label="Remarks" value={sale.remarks || '-'} />
           </dl>
+          <Separator />
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-sm font-medium">Linked receipt</h3>
+              <p className="text-sm text-muted-foreground">Receipt recorded with this invoice.</p>
+            </div>
+            {sale.payment ? (
+              <div className="grid gap-4 rounded-md border p-4 sm:grid-cols-3">
+                <DetailField label="Receipt date" value={sale.payment.paymentDate} />
+                <DetailField label="Amount" value={formatCurrency(sale.payment.amount)} />
+                <DetailField label="Payment mode" value={sale.payment.paymentMode ?? '-'} />
+              </div>
+            ) : (
+              <div className="rounded-md border px-4 py-8 text-center text-sm text-muted-foreground">
+                No payment received for this invoice.
+              </div>
+            )}
+          </div>
           <Separator />
           <div className="space-y-3">
             <div>

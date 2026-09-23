@@ -52,6 +52,10 @@ public class Invoice extends AuditableEntity {
         orphanRemoval = true
     )
     private List<InvoiceItem> invoiceItems;
+
+    @OneToOne(mappedBy = "invoice")
+    private Payment payment;
+
     @ManyToOne
     @JoinColumn(name = "created_by")
     private User createdBy;

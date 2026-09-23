@@ -32,15 +32,13 @@ public class PaymentService {
     }
 
     public List<PaymentResponse> getAll() {
-        return paymentRepository.findAll().stream()
-                .filter(payment -> Boolean.TRUE.equals(payment.getIsActive()))
+        return paymentRepository.findAllByIsActiveTrue().stream()
                 .map(PaymentResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public PaymentResponse getById(Long id) {
-        Payment payment = paymentRepository.findById(id)
-            .filter(foundPayment -> Boolean.TRUE.equals(foundPayment.getIsActive()))
+        Payment payment = paymentRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id : " + id));
         return PaymentResponse.fromEntity(payment);
     }

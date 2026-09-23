@@ -16,17 +16,17 @@ import java.util.Optional;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
-	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType"})
+	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType", "payment"})
 	Optional<Invoice> findById(Long id);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select i from Invoice i where i.id = :id")
 	Optional<Invoice> findByIdForUpdate(@Param("id") Long id);
 
-	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType"})
+	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType", "payment"})
 	List<Invoice> findAllByIsActiveTrue();
 
-	@EntityGraph(attributePaths = {"customer", "createdBy"})
+	@EntityGraph(attributePaths = {"customer", "createdBy", "payment"})
 	Page<Invoice> findAllByIsActiveTrue(Pageable pageable);
 
 	List<Invoice> findTop5ByIsActiveTrueOrderByInvoiceDateDesc();

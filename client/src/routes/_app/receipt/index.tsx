@@ -19,6 +19,8 @@ type ReceiptRow = {
   paymentDate: string
   customerName: string
   customerId: number | null
+  invoiceId: number | null
+  invoiceNumber: string | null
   amount: string
   entryType: string
   paymentMode: string
@@ -79,6 +81,8 @@ function RouteComponent() {
     paymentDate: payment.paymentDate,
     customerName: payment.customerName ?? '-',
     customerId: payment.customerId,
+    invoiceId: payment.invoiceId,
+    invoiceNumber: payment.invoiceNumber,
     amount: formatCurrency(payment.amount),
     entryType: formatEntryType(payment.entryType ?? ''),
     paymentMode: payment.paymentMode ?? '-',
@@ -163,6 +167,22 @@ function RouteComponent() {
             accessorKey: 'customerName',
             header: 'Customer',
             meta: { filterable: true, filterPlaceholder: 'Filter customer' },
+          },
+          {
+            accessorKey: 'invoiceNumber',
+            header: 'Invoice',
+            cell: ({ row }) => row.original.invoiceId ? (
+              <Link
+                to="/sales/$saleId"
+                params={{ saleId: String(row.original.invoiceId) }}
+                className="text-primary hover:underline"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {row.original.invoiceNumber ?? 'View invoice'}
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">Standalone</span>
+            ),
           },
           {
             accessorKey: 'amount',

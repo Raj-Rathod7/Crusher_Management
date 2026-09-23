@@ -76,6 +76,7 @@ function RouteComponent() {
         invoiceDate: sale.invoiceDate,
         customerId,
         totalAmount: String(sale.totalAmount),
+        paymentAmount: sale.payment ? String(sale.payment.amount) : '',
         remarks: sale.remarks || '',
       }}
       initialInvoiceItems={sale.invoiceItems.map((item) => ({

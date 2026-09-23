@@ -11,6 +11,8 @@ public class PaymentResponse {
     private LocalDate paymentDate;
     private String customerName;
     private Long customerId;
+    private Long invoiceId;
+    private String invoiceNumber;
     private BigDecimal amount;
     private String paymentMode;
     private String chequeNumber;
@@ -54,6 +56,8 @@ public class PaymentResponse {
                 payment.getCreatedAt()
         );
         response.customerId = payment.getCustomer() != null ? payment.getCustomer().getId() : null;
+        response.invoiceId = payment.getInvoice() != null ? payment.getInvoice().getId() : null;
+        response.invoiceNumber = payment.getInvoice() != null ? payment.getInvoice().getInvoiceNumber() : null;
         response.entryType = payment.getEntryType();
         response.externalRef = payment.getExternalRef();
         return response;
@@ -77,6 +81,10 @@ public class PaymentResponse {
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
+    public Long getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(Long invoiceId) { this.invoiceId = invoiceId; }
+    public String getInvoiceNumber() { return invoiceNumber; }
+    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
     public String getEntryType() { return entryType; }
     public void setEntryType(String entryType) { this.entryType = entryType; }
     public String getExternalRef() { return externalRef; }

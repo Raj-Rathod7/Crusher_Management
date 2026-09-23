@@ -106,6 +106,7 @@ This document details the database schema for the Crusher Management System (CMS
 | `invoice_number` | VARCHAR(30) | UNIQUE, NOT NULL |
 | `invoice_date` | DATE | NOT NULL |
 | `customer_id` | INT | Foreign Key -> `customers(id)`, NOT NULL |
+| `invoice_id` | INT | Nullable unique Foreign Key -> `invoices(id)` for the optional receipt created with an invoice |
 | `total_amount` | DECIMAL(12, 2) | NOT NULL, CHECK >= 0 |
 | `remarks` | TEXT | NULLABLE |
 | `created_by` | INT | Foreign Key -> `users(id)`, NOT NULL |
@@ -146,7 +147,7 @@ This document details the database schema for the Crusher Management System (CMS
 | `created_by` | INT | Foreign Key -> `users(id)`, NOT NULL |
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT `NOW()` |
 
-* **Indexes:** `payment_date`, `customer_id`, `entry_type`
+* **Indexes:** `payment_date`, `customer_id`, `entry_type`, unique `invoice_id`
 
 ---
 

@@ -326,7 +326,7 @@ export function SalesForm({
       invoiceDate: form.invoiceDate,
       customerId: Number(form.customerId),
       totalAmount,
-      ...(shouldAutoGenerateInvoiceNumber && form.paymentAmount.trim()
+      ...(form.paymentAmount.trim()
         ? { paymentAmount: Number(form.paymentAmount) }
         : {}),
       remarks: form.remarks.trim() || undefined,
@@ -371,6 +371,13 @@ export function SalesForm({
             1 item
           </span>
         </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between border-b border-border/80 pb-4 text-sm">
+        <span className="text-muted-foreground">Payment received</span>
+        <span className="font-semibold tabular-nums">
+          {form.paymentAmount.trim() ? inrConverter.format(Number(form.paymentAmount)) : 'Not received'}
+        </span>
       </div>
 
       <div className="mt-5 space-y-4">
@@ -535,8 +542,7 @@ export function SalesForm({
                 </FieldContent>
               </Field>
 
-              {shouldAutoGenerateInvoiceNumber ? (
-                <Field>
+              <Field>
                   <FieldLabel htmlFor="paymentAmount">Payment received (optional)</FieldLabel>
                   <FieldContent>
                     <Input
@@ -551,8 +557,7 @@ export function SalesForm({
                     />
                     <FieldError>{errors.paymentAmount}</FieldError>
                   </FieldContent>
-                </Field>
-              ) : null}
+              </Field>
 
           </div>
         </div>
