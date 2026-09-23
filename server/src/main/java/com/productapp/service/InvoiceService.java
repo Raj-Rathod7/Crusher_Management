@@ -15,6 +15,8 @@ import com.productapp.entity.User;
 import com.productapp.repository.UserRepository;
 import com.productapp.entity.CustomerLedger;
 import com.productapp.repository.CustomerLedgerRepository;
+import com.productapp.repository.PaymentRepository;
+import com.productapp.entity.Payment;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +25,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,15 +39,17 @@ public class InvoiceService {
     private final MaterialRepository materialRepository;
     private final UserRepository userRepository;
     private final CustomerLedgerRepository customerLedgerRepository;
+    private final PaymentRepository paymentRepository;
 
     public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository,
                           MaterialRepository materialRepository, UserRepository userRepository,
-                          CustomerLedgerRepository customerLedgerRepository) {
+                          CustomerLedgerRepository customerLedgerRepository, PaymentRepository paymentRepository) {
         this.invoiceRepository = invoiceRepository;
         this.customerRepository = customerRepository;
         this.materialRepository = materialRepository;
         this.userRepository = userRepository;
         this.customerLedgerRepository = customerLedgerRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     @Transactional
@@ -58,6 +61,10 @@ public class InvoiceService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Customer not found"));
+        if (invoiceRequest.getPaymentAmount() != null
+            && invoiceRequest.getPaymentAmount().signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero");
+        }
         invoice.setCustomer(customer);
         invoice.setInvoiceDate(invoiceRequest.getInvoiceDate());
         invoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
@@ -94,6 +101,10 @@ public class InvoiceService {
         Invoice savedInvoice = invoiceRepository.save(invoice);
         postSaleLedgerEntry(savedInvoice, customer, savedInvoice.getTotalAmount(), BigDecimal.ZERO,
             "SALE", saleDescription(savedInvoice));
+
+        if (invoiceRequest.getPaymentAmount() != null) {
+            postPayment(savedInvoice, customer, invoiceRequest.getPaymentAmount(), createdBy);
+        }
 
         InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
         return response;
@@ -171,6 +182,30 @@ public class InvoiceService {
         String materialName = item.getMaterialType() == null ? "Unknown material" : item.getMaterialType().getName();
         return "Sale " + invoice.getInvoiceNumber() + " - " + materialName
             + " - " + item.getQuantityBrass() + " brass @ " + item.getRate();
+    }
+
+    private void postPayment(Invoice invoice, Customer customer, BigDecimal amount, User createdBy) {
+        Payment payment = new Payment();
+        payment.setPaymentDate(invoice.getInvoiceDate());
+        payment.setCustomer(customer);
+        payment.setAmount(amount);
+        payment.setPaymentMode("cash");
+        payment.setEntryType("CUSTOMER_PAYMENT");
+        payment.setNotes("Payment for invoice " + invoice.getInvoiceNumber());
+        payment.setCreatedBy(createdBy);
+
+        Payment savedPayment = paymentRepository.save(payment);
+        customerLedgerRepository.save(CustomerLedger.builder()
+            .entryDate(savedPayment.getPaymentDate())
+            .customer(customer)
+            .entryType("CUSTOMER_PAYMENT")
+            .reference("PAYMENT-" + savedPayment.getId())
+            .description(savedPayment.getNotes())
+            .debit(BigDecimal.ZERO)
+            .credit(savedPayment.getAmount())
+            .sourceType("PAYMENT")
+            .sourceId(savedPayment.getId())
+            .build());
     }
 
         private void postSaleLedgerEntry(Invoice invoice, Customer customer, BigDecimal debit,

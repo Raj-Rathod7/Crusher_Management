@@ -1,11 +1,15 @@
 import { ConfigurableDataTable } from "#/components/data-table";
+import { FilterChip } from "#/components/stats-card";
 import { Button } from "#/components/ui/button";
 import { Badge } from "#/components/ui/badge";
 import type { Customer } from "#/lib/models";
 import { customerKeys, getAllCustomers } from "#/lib/query";
 import {
+  IconCash,
   IconPencil,
   IconTrash,
+  IconUsers,
+  IconWallet,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -80,16 +84,24 @@ function RouteComponent() {
         </div>
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <QuickFilterChip label="All" count={quickFilterCounts.all} active={quickFilter === "all"} onClick={() => setQuickFilter("all")} />
-        <QuickFilterChip
-          label="Pending balance"
-          count={quickFilterCounts.pendingBalance}
+        <FilterChip
+          icon={<IconUsers className="size-4" />}
+          title="All customers"
+          value={quickFilterCounts.all}
+          active={quickFilter === "all"}
+          onClick={() => setQuickFilter("all")}
+        />
+        <FilterChip
+          icon={<IconWallet className="size-4" />}
+          title="Pending balance"
+          value={quickFilterCounts.pendingBalance}
           active={quickFilter === "pendingBalance"}
           onClick={() => setQuickFilter("pendingBalance")}
         />
-        <QuickFilterChip
-          label="Settled"
-          count={quickFilterCounts.settled}
+        <FilterChip
+          icon={<IconCash className="size-4" />}
+          title="Settled"
+          value={quickFilterCounts.settled}
           active={quickFilter === "settled"}
           onClick={() => setQuickFilter("settled")}
         />
@@ -193,27 +205,6 @@ function RouteComponent() {
         }}
       />
     </div>
-  );
-}
-
-function QuickFilterChip({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <Button type="button" size="sm" variant={active ? "default" : "outline"} onClick={onClick} className="gap-2">
-      {label}
-      <Badge variant={active ? "secondary" : "outline"} className="px-1.5 font-mono">
-        {count}
-      </Badge>
-    </Button>
   );
 }
 

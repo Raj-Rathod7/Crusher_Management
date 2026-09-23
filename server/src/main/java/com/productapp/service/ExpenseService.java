@@ -13,6 +13,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
+import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +48,7 @@ public class ExpenseService {
                 .expenseDate(expenseRequest.getExpenseDate())
             .category(category)
                 .amount(expenseRequest.getAmount())
+                .truckNumber(normalizeTruckNumber(expenseRequest.getTruckNumber()))
                 .notes(expenseRequest.getNotes())
                 .createdBy(user)
                 .build();
@@ -73,6 +76,7 @@ public class ExpenseService {
         expense.setExpenseDate(expenseRequest.getExpenseDate());
         expense.setCategory(category);
         expense.setAmount(expenseRequest.getAmount());
+        expense.setTruckNumber(normalizeTruckNumber(expenseRequest.getTruckNumber()));
         expense.setNotes(expenseRequest.getNotes());
         return ExpenseResponse.fromEntity(expenseRepository.save(expense));
     }
@@ -95,5 +99,23 @@ public class ExpenseService {
             .filter(foundExpense -> Boolean.TRUE.equals(foundExpense.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id : " + id));
         return ExpenseResponse.fromEntity(expense);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExpenseVehicleSummaryResponse> summarizeByTruckNumber(LocalDate dateFrom, LocalDate dateTo) {
+        return expenseRepository.summarizeByTruckNumber(dateFrom, dateTo).stream()
+                .map(row -> new ExpenseVehicleSummaryResponse(
+                        (String) row[0],
+                        (BigDecimal) row[1],
+                        ((Number) row[2]).longValue()))
+                .toList();
+    }
+
+    private String normalizeTruckNumber(String truckNumber) {
+        if (truckNumber == null) {
+            return null;
+        }
+        String trimmed = truckNumber.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

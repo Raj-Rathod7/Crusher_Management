@@ -20,7 +20,6 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +36,7 @@ class CustomerServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
 
     @InjectMocks
     private CustomerService customerService;
@@ -68,4 +68,5 @@ class CustomerServiceTest {
         assertThrows(IllegalArgumentException.class, () -> customerService.recordPayment(10L, request));
         SecurityContextHolder.clearContext();
     }
+
 }

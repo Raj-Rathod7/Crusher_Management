@@ -12,15 +12,10 @@ public class InvoiceItemRequest {
     @NotNull
     private Long materialTypeId;
 
-    @NotNull
-    @DecimalMin(value = "0.01")
     private BigDecimal quantityBrass;
 
-    @NotNull
-    @DecimalMin(value = "0.01")
     private BigDecimal rate;
 
-     @NotNull
     private BigDecimal amount;
 
     

@@ -30,6 +30,9 @@ an invoice.
 - `PUT /invoices/{id}`
 
 Creating or editing a sale posts its financial effect to the customer ledger.
+When creating a sale, the optional `paymentAmount` request field records a cash
+payment dated on the invoice date and posts the corresponding customer-ledger
+credit in the same transaction. Editing a sale does not create a payment.
 
 ## Payments
 

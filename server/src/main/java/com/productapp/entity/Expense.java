@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "expenses", indexes = {
     @Index(name = "idx_expenses_date", columnList = "expense_date"),
-    @Index(name = "idx_expenses_category", columnList = "category_id")
+    @Index(name = "idx_expenses_category", columnList = "category_id"),
+    @Index(name = "idx_expenses_truck_number", columnList = "truck_number")
 })
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE expenses SET is_active = false WHERE id = ?")
@@ -36,6 +37,9 @@ public class Expense extends AuditableEntity {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
+
+    @Column(name = "truck_number", length = 20)
+    private String truckNumber;
 
     @Column(columnDefinition = "TEXT")
     private String notes;

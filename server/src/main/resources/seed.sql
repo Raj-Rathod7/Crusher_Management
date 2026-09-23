@@ -65,9 +65,9 @@ LEFT JOIN invoice_items item ON item.invoice_id=i.id AND item.is_active=TRUE
 LEFT JOIN material_types material ON material.id=item.material_type_id
 WHERE NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='INVOICE' AND l.source_id=i.id);
 
-INSERT INTO expenses (expense_date,category_id,amount,notes,created_by,is_active,created_at,updated_at)
-SELECT '2026-08-18',c.id,12500.00,'Diesel stock refill',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Diesel' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-18' AND notes='Diesel stock refill');
-INSERT INTO expenses (expense_date,category_id,amount,notes,created_by,is_active,created_at,updated_at)
-SELECT '2026-08-19',c.id,6800.00,'Machine maintenance',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Machine Maintenance' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-19' AND notes='Machine maintenance');
+INSERT INTO expenses (expense_date,category_id,amount,truck_number,notes,created_by,is_active,created_at,updated_at)
+SELECT '2026-08-18',c.id,12500.00,'MH15AB1234','Diesel stock refill',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Diesel' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-18' AND notes='Diesel stock refill');
+INSERT INTO expenses (expense_date,category_id,amount,truck_number,notes,created_by,is_active,created_at,updated_at)
+SELECT '2026-08-19',c.id,6800.00,NULL,'Machine maintenance',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Machine Maintenance' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-19' AND notes='Machine maintenance');
 
 COMMIT;

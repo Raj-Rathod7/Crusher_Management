@@ -24,6 +24,11 @@ customer balances.
 - Sales require an active customer, invoice number, date, total amount, and at
   least one invoice item.
 - The total amount is entered by the operator.
+- Invoice creation may include an optional payment amount. When supplied, it
+  creates a cash customer payment dated on the invoice date and posts a credit
+  ledger entry atomically with the sale.
+- Invoice creation payments are customer-level credits and may exceed the
+  invoice total.
 - Editing a sale reverses the previous ledger sale and posts a replacement
   entry.
 - Invoice and payment deletion endpoints are intentionally unavailable so

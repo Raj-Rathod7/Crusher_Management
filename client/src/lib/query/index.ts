@@ -1,5 +1,5 @@
 import { apiClient } from "../common/api"
-import type { Customer, CustomerSummaryResponse, Expense, ExpenseCategory, Invoice, Material, Payment, TruckEntry } from "../models"
+import type { Customer, CustomerSummaryResponse, Expense, ExpenseCategory, ExpenseVehicleSummary, Invoice, Material, Payment, TruckEntry } from "../models"
 
 export const truckEntryKeys = {
   all: ['truck-entries'] as const,
@@ -69,6 +69,14 @@ export const getAllExpenseCategories = async () => {
   return apiClient.get<ExpenseCategory[]>('/expenses/categories')
 }
 
+export const getExpenseVehicleSummary = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get<ExpenseVehicleSummary[]>(`/expenses/vehicle-summary${query ? `?${query}` : ''}`)
+}
+
 export const receiptKeys = {
   all: ['receipts'] as const,
   list: (filters: { customerId?: number | string; dateFrom?: string; dateTo?: string }) =>
@@ -90,6 +98,23 @@ export const getPaymentById = async (id: number | string) => {
 
 export const getCustomerSummary = async (id: number | string) => {
   return apiClient.get<CustomerSummaryResponse>(`/customers/${id}/summary`)
+}
+
+export const downloadCustomerLedger = async (
+  id: number | string,
+  format: 'xlsx' | 'pdf',
+  filters: { dateFrom?: string; dateTo?: string } = {},
+) => {
+  const blob = await apiClient.get<Blob>(`/customers/${id}/ledger/export.${format}`, {
+    params: filters,
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `customer-ledger-${id}.${format}`
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 
 export const customerSummaryKeys = {

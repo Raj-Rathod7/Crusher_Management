@@ -1,8 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfigurableDataTable } from "@/components/data-table";
-import { StatsCard } from "@/components/stats-card";
+import { FilterChip } from "@/components/stats-card";
 import { Button } from "#/components/ui/button";
 import {
   Dialog,
@@ -23,7 +22,7 @@ import {
   IconTruck,
 } from "@tabler/icons-react";
 import { Badge } from "#/components/ui/badge";
-import { Truck, TruckIcon } from "lucide-react";
+import { Truck } from "lucide-react";
 
 export const Route = createFileRoute("/_app/truck-entry/")({
   component: RouteComponent,
@@ -42,6 +41,7 @@ function RouteComponent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null);
+  const [quickFilter, setQuickFilter] = useState<"all" | "today">("all");
   const { data, isLoading, isError, error } = useQuery({
     queryKey: truckEntryKeys.all,
     queryFn: getAllTruckEntries,
@@ -51,7 +51,18 @@ function RouteComponent() {
     refetchOnWindowFocus: false,
   });
 
-  const truckRows: TruckRow[] = (data ?? []).map((entry) => ({
+  const quickFilterData = useMemo(() => {
+    if (quickFilter !== "today") {
+      return data ?? [];
+    }
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+      today.getDate(),
+    ).padStart(2, "0")}`;
+    return (data ?? []).filter((entry) => entry.entryDate === todayKey);
+  }, [data, quickFilter]);
+
+  const truckRows: TruckRow[] = quickFilterData.map((entry) => ({
     id: entry.id,
     truckNo: entry.truckNumber,
     entryDate: entry.entryDate,
@@ -88,28 +99,32 @@ function RouteComponent() {
     const todayEntries = entries.filter(
       (entry) => entry.entryDate === todayKey,
     );
-    const quantityToday = todayEntries.reduce(
+    const selectedEntries = quickFilter === "today" ? todayEntries : entries;
+    const quantityToday = selectedEntries.reduce(
       (sum, entry) => sum + entry.quantityBrass,
       0,
     );
     const uniqueSuppliersToday = new Set(
-      todayEntries
+      selectedEntries
         .map((entry) => entry.supplierName?.trim())
         .filter((supplier): supplier is string => Boolean(supplier)),
     ).size;
     const uniqueMaterialsToday = new Set(
-      todayEntries
+      selectedEntries
         .map((entry) => entry.materialName?.trim())
         .filter((material): material is string => Boolean(material)),
     ).size;
 
     return {
-      entriesToday: todayEntries.length,
+      entriesToday: selectedEntries.length,
       quantityToday,
       uniqueSuppliersToday,
       uniqueMaterialsToday,
+      allEntries: entries.length,
+      todayEntries: todayEntries.length,
+      allQuantity: entries.reduce((sum, entry) => sum + entry.quantityBrass, 0),
     };
-  }, [data]);
+  }, [data, quickFilter]);
 
   useEffect(() => {
     if (isError) {
@@ -125,20 +140,22 @@ function RouteComponent() {
           <p className="text-sm text-muted-foreground">All purchase entries.</p>
         </div>
       </div>
-      <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatsCard
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FilterChip
           icon={<IconTruck className="size-4" />}
-          title="Purchase entries today"
-          value={stats.entriesToday}
-          footer="Entries recorded for today"
+          title="All purchases"
+          value={stats.allEntries}
+          active={quickFilter === "all"}
+          onClick={() => setQuickFilter("all")}
         />
-
-        <StatsCard
+        <FilterChip
           icon={<IconCube className="size-4" />}
-          title="Quantity today"
-          value={stats.quantityToday.toFixed(2)}
-          footer="Total quantity recorded today."
+          title="Purchases today"
+          value={stats.todayEntries}
+          active={quickFilter === "today"}
+          onClick={() => setQuickFilter("today")}
         />
+        <span className="text-xs text-muted-foreground">Quantity: {(quickFilter === "today" ? stats.quantityToday : stats.allQuantity).toFixed(2)}</span>
       </div>
 
       <ConfigurableDataTable

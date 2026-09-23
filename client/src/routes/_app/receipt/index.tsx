@@ -1,12 +1,12 @@
 import { ConfigurableDataTable } from '#/components/data-table'
-import { StatsCard } from '#/components/stats-card'
+import { FilterChip } from '#/components/stats-card'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { deleteCustomerPayment } from '#/lib/mutation'
 import { getAllReceipts, receiptKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
-import { IconCash, IconCreditCard, IconCurrencyRupee, IconPencil, IconReceipt, IconTrash } from '@tabler/icons-react'
+import { IconCreditCard, IconCurrencyRupee, IconPencil, IconReceipt, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -44,6 +44,7 @@ function RouteComponent() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [paymentToDelete, setPaymentToDelete] = useState<ReceiptRow | null>(null)
+  const [quickFilter, setQuickFilter] = useState<'all' | 'today'>('all')
   const { data, isLoading, isError, error } = useQuery({
     queryKey: receiptKeys.list({}),
     queryFn: () => getAllReceipts(),
@@ -64,7 +65,16 @@ function RouteComponent() {
     onError: () => toast.error('Failed to delete payment.'),
   })
 
-  const receiptRows: ReceiptRow[] = (data ?? []).map((payment) => ({
+  const filteredPayments = useMemo(() => {
+    if (quickFilter === 'all') return data ?? []
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate()
+    ).padStart(2, '0')}`
+    return (data ?? []).filter((payment) => payment.paymentDate === todayKey)
+  }, [data, quickFilter])
+
+  const receiptRows: ReceiptRow[] = filteredPayments.map((payment) => ({
     id: payment.id,
     paymentDate: payment.paymentDate,
     customerName: payment.customerName ?? '-',
@@ -110,26 +120,34 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatsCard
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FilterChip
+          icon={<IconReceipt className="size-4" />}
+          title="All receipts"
+          value={(data ?? []).length}
+          active={quickFilter === 'all'}
+          onClick={() => setQuickFilter('all')}
+        />
+        <FilterChip
           icon={<IconReceipt className="size-4" />}
           title="Receipts today"
           value={stats.receiptsToday}
-          footer="Customer payments recorded today."
+          active={quickFilter === 'today'}
+          onClick={() => setQuickFilter('today')}
         />
-
-        <StatsCard
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="Amount today"
           value={formatCurrency(stats.totalToday)}
-          footer="Total customer payments received today."
+          active={quickFilter === 'today'}
+          onClick={() => setQuickFilter('today')}
         />
-
-        <StatsCard
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="Total receipts"
           value={formatCurrency(stats.totalOverall)}
-          footer="All customer payments combined."
+          active={quickFilter === 'all'}
+          onClick={() => setQuickFilter('all')}
         />
       </div>
 

@@ -13,6 +13,7 @@ public class ExpenseResponse {
     private Long categoryId;
     private String categoryName;
     private BigDecimal amount;
+    private String truckNumber;
     private String notes;
     private String createdByUsername;
     private LocalDateTime createdAt;
@@ -22,13 +23,15 @@ public class ExpenseResponse {
     }
 
     public ExpenseResponse(Long id, LocalDate expenseDate, Long categoryId, String categoryName, BigDecimal amount,
-                           String notes, String createdByUsername, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                           String truckNumber, String notes, String createdByUsername, LocalDateTime createdAt,
+                           LocalDateTime updatedAt) {
         this.id = id;
         this.expenseDate = expenseDate;
         this.categoryId = categoryId;
         this.categoryName = categoryName;
 
         this.amount = amount;
+        this.truckNumber = truckNumber;
         this.notes = notes;
         this.createdByUsername = createdByUsername;
         this.createdAt = createdAt;
@@ -46,6 +49,7 @@ public class ExpenseResponse {
                 expense.getCategory() != null ? expense.getCategory().getId() : null,
                 expense.getCategory() != null ? expense.getCategory().getName() : null,
                 expense.getAmount(),
+                expense.getTruckNumber(),
                 expense.getNotes(),
                 expense.getCreatedBy() != null ? expense.getCreatedBy().getUsername() : null,
                 expense.getCreatedAt(),
@@ -61,6 +65,8 @@ public class ExpenseResponse {
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public String getTruckNumber() { return truckNumber; }
+    public void setTruckNumber(String truckNumber) { this.truckNumber = truckNumber; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     public String getCreatedByUsername() { return createdByUsername; }

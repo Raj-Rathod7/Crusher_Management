@@ -16,7 +16,7 @@ type ApiRequestOptions = {
   signal?: AbortSignal
   timeout?: number
   auth?: boolean
-  responseType?: 'json' | 'text'
+  responseType?: 'json' | 'text' | 'blob'
 }
 
 type ApiClientConfig = {
@@ -100,13 +100,17 @@ function buildUrl(baseUrl: string, path: string, params?: ApiRequestOptions['par
   return url
 }
 
-function parseResponseBody(response: Response, responseText: string, responseType: ApiRequestOptions['responseType']): unknown {
+async function parseResponseBody(response: Response, responseText: string, responseType: ApiRequestOptions['responseType']): Promise<unknown> {
   if (response.status === 204 || responseText.length === 0) {
     return undefined
   }
 
   if (responseType === 'text') {
     return responseText
+  }
+
+  if (responseType === 'blob') {
+    return response.blob()
   }
 
   const contentType = response.headers.get('content-type') ?? ''
@@ -172,8 +176,8 @@ export function createApiClient(config: ApiClientConfig = {}) {
         credentials: 'include',
       })
 
-      const responseText = await response.text()
-      const data = parseResponseBody(response, responseText, options.responseType ?? 'json')
+      const responseText = options.responseType === 'blob' ? '' : await response.text()
+      const data = await parseResponseBody(response, responseText, options.responseType ?? 'json')
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {

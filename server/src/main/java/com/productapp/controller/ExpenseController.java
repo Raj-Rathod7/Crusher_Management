@@ -2,13 +2,14 @@ package com.productapp.controller;
 
 import com.productapp.dto.ExpenseRequest;
 import com.productapp.dto.ExpenseResponse;
-import com.productapp.entity.Expense;
+import com.productapp.dto.ExpenseVehicleSummaryResponse;
 import com.productapp.entity.Categories;
 import com.productapp.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.util.List;
+import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -40,6 +41,13 @@ public class ExpenseController {
     @GetMapping("/page")
     public Page<ExpenseResponse> getPage(Pageable pageable) {
         return expenseService.getPage(pageable);
+    }
+
+    @GetMapping("/vehicle-summary")
+    public List<ExpenseVehicleSummaryResponse> getVehicleSummary(
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo) {
+        return expenseService.summarizeByTruckNumber(dateFrom, dateTo);
     }
 
     @GetMapping("/{id}")

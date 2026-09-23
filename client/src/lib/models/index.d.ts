@@ -74,6 +74,7 @@ export type CreateInvoicePayload = {
   invoiceNumber: string;
   invoiceDate: string;
   totalAmount: number;
+  paymentAmount?: number;
   remarks?: string;
   customerId: number;
   invoiceItems: InvoiceItem[];
@@ -98,6 +99,7 @@ export type Expense = {
   categoryId: number;
   categoryName: string | null;
   amount: number;
+  truckNumber: string | null;
   notes: string | null;
   createdByUsername: string | null;
   createdAt: string;
@@ -108,7 +110,14 @@ export type CreateExpensePayload = {
   expenseDate: string;
   categoryId: number;
   amount: number;
+  truckNumber?: string;
   notes?: string;
+}
+
+export type ExpenseVehicleSummary = {
+  truckNumber: string;
+  totalAmount: number;
+  expenseCount: number;
 }
 
 export type Payment = {

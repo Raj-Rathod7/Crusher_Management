@@ -28,6 +28,9 @@ public class InvoiceRequest {
     @DecimalMin(value = "0.01")
     private BigDecimal totalAmount;
 
+    @DecimalMin(value = "0.01")
+    private BigDecimal paymentAmount;
+
     private String remarks;
 
     @NotEmpty
@@ -64,6 +67,14 @@ public class InvoiceRequest {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public BigDecimal getPaymentAmount() {
+        return paymentAmount;
+    }
+
+    public void setPaymentAmount(BigDecimal paymentAmount) {
+        this.paymentAmount = paymentAmount;
     }
 
     public List<InvoiceItemRequest> getInvoiceItems() {

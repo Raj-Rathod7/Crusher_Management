@@ -40,6 +40,7 @@ type FormState = {
   invoiceDate: string
   customerId: string
   totalAmount: string
+  paymentAmount: string
   remarks: string
 }
 
@@ -82,6 +83,7 @@ const initialFormState: FormState = {
   invoiceDate: new Date().toISOString().slice(0, 10),
   customerId: '',
   totalAmount: '',
+  paymentAmount: '',
   remarks: '',
 }
 
@@ -134,6 +136,10 @@ function validateForm(form: FormState) {
 
   if (!form.totalAmount.trim() || Number(form.totalAmount) <= 0) {
     errors.totalAmount = 'Total amount must be greater than 0.'
+  }
+
+  if (form.paymentAmount.trim() && Number(form.paymentAmount) <= 0) {
+    errors.paymentAmount = 'Payment amount must be greater than 0.'
   }
 
   return errors
@@ -237,7 +243,6 @@ export function SalesForm({
     return selectedCustomer.pendingBalance ?? 0
   }, [selectedCustomer])
 
-
   React.useEffect(() => {
     if (!shouldAutoGenerateInvoiceNumber) {
       return
@@ -271,13 +276,7 @@ export function SalesForm({
       nextErrors.quantityBrass = 'Quantity required.'
     } else if (Number(invoiceItemForm.quantityBrass) <= 0) {
       nextErrors.quantityBrass = 'Quantity must be greater than 0.'
-    }
-
-    if (!invoiceItemForm.rate.trim()) {
-      nextErrors.rate = 'Rate required.'
-    } else if (Number(invoiceItemForm.rate) <= 0) {
-      nextErrors.rate = 'Rate must be greater than 0.'
-    }
+    } 
 
     if (!invoiceItemForm.truckNumber.trim()) {
       nextErrors.truckNumber = 'Truck Number required.'
@@ -289,7 +288,7 @@ export function SalesForm({
   const buildInvoiceItem = (): InvoiceItemEntry => {
     const material = materials.find((entry) => String(entry.id) === invoiceItemForm.materialTypeId)
     const quantity = Number(invoiceItemForm.quantityBrass)
-    const rate = Number(invoiceItemForm.rate)
+    const rate = Number(invoiceItemForm.rate) ?? 1;
     const amount = quantity * rate
 
     return {
@@ -327,6 +326,9 @@ export function SalesForm({
       invoiceDate: form.invoiceDate,
       customerId: Number(form.customerId),
       totalAmount,
+      ...(shouldAutoGenerateInvoiceNumber && form.paymentAmount.trim()
+        ? { paymentAmount: Number(form.paymentAmount) }
+        : {}),
       remarks: form.remarks.trim() || undefined,
       invoiceItems: [
         {
@@ -391,14 +393,13 @@ export function SalesForm({
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Customer</p>
             <p className="mt-1 truncate text-sm font-semibold">{selectedCustomer?.name ?? 'Not set'}</p>
             {selectedCustomer ? (
-              <>
                 <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
                   Pending: {inrConverter.format(selectedCustomerPendingBalance)}
                 </p>
-              </>
             ) : null}
           </div>
         </div>
+
       </div>
     </>
   ) : undefined
@@ -533,6 +534,25 @@ export function SalesForm({
                   <FieldError>{errors.totalAmount}</FieldError>
                 </FieldContent>
               </Field>
+
+              {shouldAutoGenerateInvoiceNumber ? (
+                <Field>
+                  <FieldLabel htmlFor="paymentAmount">Payment received (optional)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="paymentAmount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={form.paymentAmount}
+                      onChange={(event) => handleChange('paymentAmount', event.target.value)}
+                      placeholder="0.00"
+                      className="font-semibold tabular-nums"
+                    />
+                    <FieldError>{errors.paymentAmount}</FieldError>
+                  </FieldContent>
+                </Field>
+              ) : null}
 
           </div>
         </div>

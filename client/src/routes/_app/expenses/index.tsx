@@ -1,5 +1,5 @@
 import { ConfigurableDataTable } from '#/components/data-table'
-import { StatsCard } from '#/components/stats-card'
+import { FilterChip } from '#/components/stats-card'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 import {
@@ -26,6 +26,7 @@ type ExpenseRow = {
   id: number
   expenseDate: string
   categoryName: string
+  truckNumber: string
   amount: string
   notes: string
 }
@@ -43,6 +44,8 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseRow | null>(null)
+  const [selectedVehicle, setSelectedVehicle] = useState('all')
+  const [quickFilter, setQuickFilter] = useState<'all' | 'today'>('all')
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: expenseKeys.all,
@@ -53,10 +56,34 @@ function RouteComponent() {
     refetchOnWindowFocus: false,
   })
 
-  const expenseRows: ExpenseRow[] = (data ?? []).map((expense) => ({
+  const vehicleOptions = useMemo(
+    () =>
+      Array.from(new Set((data ?? []).map((expense) => expense.truckNumber).filter(Boolean))).sort((left, right) =>
+        left.localeCompare(right)
+      ),
+    [data]
+  )
+
+  const vehicleExpenses = useMemo(() => {
+    if (selectedVehicle === 'all') return data ?? []
+    if (selectedVehicle === 'unassigned') return (data ?? []).filter((expense) => !expense.truckNumber)
+    return (data ?? []).filter((expense) => expense.truckNumber === selectedVehicle)
+  }, [data, selectedVehicle])
+
+  const selectedExpenses = useMemo(() => {
+    if (quickFilter === 'all') return vehicleExpenses
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate()
+    ).padStart(2, '0')}`
+    return vehicleExpenses.filter((expense) => expense.expenseDate === todayKey)
+  }, [quickFilter, vehicleExpenses])
+
+  const expenseRows: ExpenseRow[] = selectedExpenses.map((expense) => ({
     id: expense.id,
     expenseDate: expense.expenseDate,
     categoryName: expense.categoryName ?? '-',
+    truckNumber: expense.truckNumber ?? '-',
     amount: formatCurrency(expense.amount),
     notes: expense.notes ?? '-',
   }))
@@ -78,7 +105,7 @@ function RouteComponent() {
   })
 
   const stats = useMemo(() => {
-    const expenses = data ?? []
+    const expenses = vehicleExpenses
     const today = new Date()
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
       today.getDate()
@@ -92,7 +119,7 @@ function RouteComponent() {
       totalToday,
       totalOverall,
     }
-  }, [data])
+  }, [vehicleExpenses])
 
   useEffect(() => {
     if (isError) {
@@ -112,26 +139,47 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatsCard
+      <div className="mb-4 flex items-center gap-3">
+        <label htmlFor="vehicleFilter" className="text-sm font-medium">
+          Vehicle
+        </label>
+        <select
+          id="vehicleFilter"
+          value={selectedVehicle}
+          onChange={(event) => setSelectedVehicle(event.target.value)}
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="all">All vehicles</option>
+          <option value="unassigned">Unassigned</option>
+          {vehicleOptions.map((vehicle) => (
+            <option key={vehicle} value={vehicle}>
+              {vehicle}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FilterChip
+          icon={<IconCurrencyRupee className="size-4" />}
+          title="All expenses"
+          value={vehicleExpenses.length}
+          active={quickFilter === 'all'}
+          onClick={() => setQuickFilter('all')}
+        />
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="Expenses today"
           value={stats.expensesToday}
-          footer="Expenses recorded for today."
+          active={quickFilter === 'today'}
+          onClick={() => setQuickFilter('today')}
         />
-
-        <StatsCard
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="Amount today"
           value={formatCurrency(stats.totalToday)}
-          footer="Total expense amount today."
-        />
-
-        <StatsCard
-          icon={<IconCurrencyRupee className="size-4" />}
-          title="Total expenses"
-          value={formatCurrency(stats.totalOverall)}
-          footer="All expenses combined."
+          active={quickFilter === 'today'}
+          onClick={() => setQuickFilter('today')}
         />
       </div>
 
@@ -162,6 +210,11 @@ function RouteComponent() {
                 {row.original.amount}
               </span>
             ),
+          },
+          {
+            accessorKey: 'truckNumber',
+            header: 'Vehicle number',
+            meta: { filterable: true, filterPlaceholder: 'Filter vehicle' },
           },
           {
             accessorKey: 'notes',

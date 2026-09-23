@@ -27,6 +27,7 @@ export type ExpenseFormValues = {
   expenseDate: string
   categoryId: string
   amount: string
+  truckNumber: string
   notes: string
 }
 
@@ -46,6 +47,7 @@ const defaultFormValues: ExpenseFormValues = {
   expenseDate: new Date().toISOString().slice(0, 10),
   categoryId: '',
   amount: '',
+  truckNumber: '',
   notes: '',
 }
 
@@ -62,6 +64,10 @@ function validateForm(form: ExpenseFormValues) {
 
   if (!form.amount.trim() || Number(form.amount) <= 0) {
     errors.amount = 'Amount must be greater than 0.'
+  }
+
+  if (form.truckNumber.trim().length > 20) {
+    errors.truckNumber = 'Vehicle number must be 20 characters or fewer.'
   }
 
   return errors
@@ -116,6 +122,7 @@ export function ExpenseForm({
       expenseDate: form.expenseDate,
       categoryId: Number(form.categoryId),
       amount: Number(form.amount),
+      truckNumber: form.truckNumber.trim() || undefined,
       notes: form.notes.trim() || undefined,
     })
   }
@@ -172,6 +179,20 @@ export function ExpenseForm({
               placeholder="0.00"
             />
             <FieldError>{errors.amount}</FieldError>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="truckNumber">Vehicle number</FieldLabel>
+          <FieldContent>
+            <Input
+              id="truckNumber"
+              value={form.truckNumber}
+              onChange={(event) => handleChange('truckNumber', event.target.value)}
+              placeholder="Optional vehicle number"
+              maxLength={20}
+            />
+            <FieldError>{errors.truckNumber}</FieldError>
           </FieldContent>
         </Field>
 

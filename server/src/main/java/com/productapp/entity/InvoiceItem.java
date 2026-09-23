@@ -39,7 +39,7 @@ public class InvoiceItem extends AuditableEntity {
     @Column(name = "quantity_brass", nullable = false, precision = 10, scale = 2)
     private BigDecimal quantityBrass;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = true, precision = 10, scale = 2)
     private BigDecimal rate;
 
     @Column(nullable = false, precision = 12, scale = 2)

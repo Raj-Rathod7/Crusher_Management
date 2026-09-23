@@ -1,10 +1,10 @@
 import { Badge } from '#/components/ui/badge'
 import { deleteSale } from '#/lib/mutation'
 import { ConfigurableDataTable } from '@/components/data-table'
-import { StatsCard } from '@/components/stats-card'
+import { FilterChip } from '@/components/stats-card'
 import { getAllSales, salesKeys } from '#/lib/query'
-import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import {
   IconCalendarStats,
   IconCube,
@@ -16,14 +16,12 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_app/sales/')({
   component: RouteComponent,
 })
 
-type QuickFilter = 'all'
+type QuickFilter = 'all' | 'today'
 
 type SalesRow = {
   id: number
@@ -72,13 +70,25 @@ function RouteComponent() {
 
   const quickFilterCounts = useMemo(() => {
     const invoices = data ?? []
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate()
+    ).padStart(2, '0')}`
     return {
       all: invoices.length,
+      today: invoices.filter((invoice) => invoice.invoiceDate === todayKey).length,
     }
   }, [data])
 
   const filteredInvoices = useMemo(() => {
     const invoices = data ?? []
+    if (quickFilter === 'today') {
+      const today = new Date()
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+        today.getDate()
+      ).padStart(2, '0')}`
+      return invoices.filter((invoice) => invoice.invoiceDate === todayKey)
+    }
     return invoices
   }, [data, quickFilter])
 
@@ -107,8 +117,8 @@ function RouteComponent() {
     const todayInvoices = invoices.filter((invoice) => invoice.invoiceDate === todayKey)
 
     return {
-      invoicesToday: todayInvoices.length,
-      billedToday: todayInvoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
+      allAmount: invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
+      todayAmount: todayInvoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
     }
   }, [data])
 
@@ -130,31 +140,28 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatsCard
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FilterChip
           icon={<IconReceipt className="size-4" />}
-          title="Sales today"
-          value={stats.invoicesToday}
-          footer="Invoices created for today."
+          title="All sales"
+          value={quickFilterCounts.all}
+          active={quickFilter === 'all'}
+          onClick={() => setQuickFilter('all')}
         />
-
-        <StatsCard
+        <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="Sales today"
+          value={quickFilterCounts.today}
+          active={quickFilter === 'today'}
+          onClick={() => setQuickFilter('today')}
+        />
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="Billed today"
-          value={formatCurrency(stats.billedToday)}
-          footer="Total amount from today&apos;s sales."
+          value={formatCurrency(stats.todayAmount)}
+          active={quickFilter === 'today'}
+          onClick={() => setQuickFilter('today')}
         />
-
-        <StatsCard
-          icon={<IconCalendarStats className="size-4" />}
-          title="Sales record"
-          value={stats.invoicesToday}
-          footer="Sales are settled through customer payments."
-        />
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <QuickFilterChip label="All" count={quickFilterCounts.all} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
       </div>
 
       <ConfigurableDataTable
@@ -296,29 +303,3 @@ function RouteComponent() {
   )
 }
 
-function QuickFilterChip({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string
-  count: number
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <Button
-      type="button"
-      size="sm"
-      variant={active ? 'default' : 'outline'}
-      onClick={onClick}
-      className="gap-2"
-    >
-      {label}
-      <Badge variant={active ? 'secondary' : 'outline'} className="px-1.5 font-mono">
-        {count}
-      </Badge>
-    </Button>
-  )
-}
