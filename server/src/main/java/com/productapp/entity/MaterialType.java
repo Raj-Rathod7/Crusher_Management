@@ -25,6 +25,10 @@ public class MaterialType extends AuditableEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'SALE'")
+    private MaterialUsageType type;
+
     public Long getId() {
 		return id;
 	}

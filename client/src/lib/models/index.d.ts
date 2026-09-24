@@ -22,6 +22,7 @@ export type TruckEntry = {
 export type Material = {
   id: number;
   name: string;
+  type: 'PURCHASE' | 'SALE';
   isActive: boolean | null;
   createdAt: string;
 }
@@ -172,4 +173,34 @@ export type CustomerLedgerEntry = {
   debit: number;
   credit: number;
   runningBalance: number;
+}
+
+export type SalesPoint = {
+  date: string;
+  invoiceCount: number;
+  totalAmount: number;
+}
+
+export type ExpenseCategoryPoint = {
+  category: string;
+  totalAmount: number;
+}
+
+export type InwardPoint = {
+  date: string;
+  truckCount: number;
+  totalQtyBrass: number;
+}
+
+export type MaterialSalesPoint = {
+  material: string;
+  quantityBrass: number;
+  totalRevenue: number;
+}
+
+export type DashboardChartsResponse = {
+  salesByDate: SalesPoint[];
+  expensesByCategory: ExpenseCategoryPoint[];
+  truckInwardByDate: InwardPoint[];
+  materialWiseSales: MaterialSalesPoint[];
 }

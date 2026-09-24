@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   ArrowUpRight,
   Boxes,
@@ -18,8 +19,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiClient } from "@/lib/common/api";
 import { motion } from "motion/react"
+import { DateRangePicker, type DateRangeValue } from "@/components/date-range-picker";
+import {
+  ExpenseCategoryChart,
+  MaterialSalesChart,
+  SalesTrendChart,
+  TruckInwardChart,
+} from "@/components/dashboard-charts";
+import { dashboardKeys, getDashboardCharts, getDashboardSummary } from "@/lib/query";
+
+function defaultDateRange(): DateRangeValue {
+  const to = new Date();
+  to.setHours(0, 0, 0, 0);
+  const from = new Date(to);
+  from.setDate(from.getDate() - 29);
+  return { from, to };
+}
+
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
 export const Route = createFileRoute("/_app/")({
   component: RouteComponent,
@@ -27,9 +47,17 @@ export const Route = createFileRoute("/_app/")({
 
 function RouteComponent() {
   const navigate = useNavigate();
+  const [dateRange, setDateRange] = useState<DateRangeValue>(defaultDateRange);
+  const dateFrom = toIsoDate(dateRange.from);
+  const dateTo = toIsoDate(dateRange.to);
   const dashboard = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => apiClient.get<DashboardData>("/dashboard"),
+    queryKey: dashboardKeys.summary({ dateFrom, dateTo }),
+    queryFn: () => getDashboardSummary({ dateFrom, dateTo }) as Promise<DashboardData>,
+    staleTime: 30_000,
+  });
+  const charts = useQuery({
+    queryKey: dashboardKeys.charts({ dateFrom, dateTo }),
+    queryFn: () => getDashboardCharts({ dateFrom, dateTo }),
     staleTime: 30_000,
   });
 
@@ -94,14 +122,9 @@ function RouteComponent() {
               crusher.
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => dashboard.refetch()}
-            disabled={dashboard.isFetching}
-          >
-            <RefreshCw className={dashboard.isFetching ? "animate-spin" : ""} />
-            Refresh figures
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
+          </div>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -222,6 +245,47 @@ function RouteComponent() {
               </p>
             </CardContent>
           </Card>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Trends
+            </p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight">
+              Charts &amp; breakdowns
+            </h2>
+          </div>
+          {charts.isError ? (
+            <Card className="border-destructive/30">
+              <CardHeader>
+                <CardDescription>Charts unavailable</CardDescription>
+                <CardTitle className="mt-1 text-xl">
+                  Could not load chart data for this range
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => charts.refetch()}>
+                  <RefreshCw />
+                  Try again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : charts.isLoading || !charts.data ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Skeleton className="aspect-video w-full" />
+              <Skeleton className="aspect-video w-full" />
+              <Skeleton className="aspect-video w-full" />
+              <Skeleton className="aspect-video w-full" />
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SalesTrendChart data={charts.data.salesByDate} />
+              <ExpenseCategoryChart data={charts.data.expensesByCategory} />
+              <TruckInwardChart data={charts.data.truckInwardByDate} />
+              <MaterialSalesChart data={charts.data.materialWiseSales} />
+            </div>
+          )}
         </section>
 
         <Card>

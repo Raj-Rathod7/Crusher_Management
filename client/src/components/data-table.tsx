@@ -119,6 +119,7 @@ type DataTableProps<TData> = {
   renderExpandedRow?: (row: TData) => React.ReactNode
   enableExport?: boolean
   exportFileName?: string
+  exportTitle?: string
 }
 
 function getColumnValue<TData>(row: TData, column: DataTableColumnDef<TData>) {
@@ -253,6 +254,7 @@ export function ConfigurableDataTable<TData>({
   renderExpandedRow,
   enableExport = true,
   exportFileName = "table-export",
+  exportTitle,
 }: DataTableProps<TData>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -401,7 +403,7 @@ export function ConfigurableDataTable<TData>({
                   <IconChevronDown />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" >
+              <DropdownMenuContent className="w-[240px]" align="end" >
                 {table
                   .getAllColumns()
                   .filter(
@@ -439,11 +441,11 @@ export function ConfigurableDataTable<TData>({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => exportTableToExcel(exportHeaders, exportRows, exportFileName)}>
+                <DropdownMenuItem onSelect={() => exportTableToExcel(exportHeaders, exportRows, exportFileName, exportTitle)}>
                   <IconDownload />
                   Export to Excel
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportTableToPdf(exportHeaders, exportRows, exportFileName)}>
+                <DropdownMenuItem onSelect={() => exportTableToPdf(exportHeaders, exportRows, exportFileName, exportTitle)}>
                   <IconDownload />
                   Export to PDF
                 </DropdownMenuItem>

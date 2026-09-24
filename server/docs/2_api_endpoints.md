@@ -49,6 +49,9 @@ Payment creation is intentionally customer-scoped through
 - `GET|POST|PUT /materials`
 - `GET|POST|PUT /users`
 - `GET /dashboard`
+- `GET /dashboard/charts?dateFrom=&dateTo=` — date-ranged chart series for the dashboard
+  (`salesByDate`, `expensesByCategory`, `truckInwardByDate`, `materialWiseSales`); both
+  params are optional `LocalDate` values, omitting them returns all-time data.
 
 Exact request and response fields are defined by the Java request and DTO
 classes in `server/src/main/java/com/productapp`.

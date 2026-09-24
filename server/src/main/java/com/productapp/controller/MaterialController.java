@@ -2,6 +2,7 @@ package com.productapp.controller;
 
 import com.productapp.dto.MaterialResponse;
 import com.productapp.entity.MaterialType;
+import com.productapp.entity.MaterialUsageType;
 import com.productapp.service.MaterialService;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,8 +26,8 @@ public class MaterialController {
     }
 
     @GetMapping
-    public List<MaterialResponse> getAll() {
-        return materialService.getAll();
+    public List<MaterialResponse> getAll(@RequestParam(required = false) MaterialUsageType type) {
+        return materialService.getAll(type);
     }
 
     @GetMapping("/page")

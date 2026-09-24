@@ -15,7 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import type { Customer, CustomerLedgerEntry, Invoice, Payment } from '#/lib/models'
 import { recordCustomerPayment } from '#/lib/mutation'
 import { customerKeys, customerSummaryKeys, getCustomerById, getCustomerSummary } from '#/lib/query'
-import { IconArrowDown, IconArrowUp, IconCash, IconPencil } from '@tabler/icons-react'
+import { exportCustomerReportToExcel } from '#/lib/table-export'
+import { IconArrowDown, IconArrowUp, IconCash, IconDownload, IconPencil } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -82,10 +83,22 @@ function RouteComponent() {
       badge="Customer"
     >
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          {customer ? <CustomerDetailsPanel customer={customer} /> : null}
+        <div>
           {customer ? (
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  exportCustomerReportToExcel(
+                    { customer, ledger, invoices, payments: receipts },
+                    `customer-${customer.name}-report`
+                  )
+                }
+              >
+                <IconDownload />
+                Export report
+              </Button>
               <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
                 <IconCash />
                 Record payment
@@ -99,6 +112,9 @@ function RouteComponent() {
             </div>
           ) : null}
         </div>
+        <div className="flex items-start justify-between gap-4">
+          {customer ? <CustomerDetailsPanel customer={customer} /> : null}   
+        </div>
 
         {summaryQuery.isLoading ? (
           <InvoiceModalSkeleton />
@@ -109,7 +125,7 @@ function RouteComponent() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="invoices">
+          <Tabs defaultValue="ledger">
             <TabsList>
               <TabsTrigger value="ledger">Ledger ({ledger.length})</TabsTrigger>
               <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>

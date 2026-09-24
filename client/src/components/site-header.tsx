@@ -158,7 +158,7 @@ export function SiteHeader() {
                   return (
                     <CommandItem
                       key={link.path}
-                      value={link.label}
+                      value={link.path}
                       onSelect={() => handleOnCommandClick(link)}
                     >
                       {Icon && <Icon />} 
@@ -183,7 +183,7 @@ export function SiteHeader() {
                       {Icon && <Icon />}
                       <span className="flex-1">{link.label}</span>
                       {link.shortcut && (
-                        <CommandShortcut>{link.shortcut}</CommandShortcut>
+                        <CommandShortcut className="capitalize">{link.shortcut}</CommandShortcut>
                       )}
                     </CommandItem>
                   );

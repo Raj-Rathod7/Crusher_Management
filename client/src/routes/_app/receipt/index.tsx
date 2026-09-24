@@ -4,9 +4,10 @@ import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { deleteCustomerPayment } from '#/lib/mutation'
 import { getAllReceipts, receiptKeys } from '#/lib/query'
+import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
-import { IconCreditCard, IconCurrencyRupee, IconPencil, IconReceipt, IconTrash } from '@tabler/icons-react'
+import { IconCalendarStats, IconCreditCard, IconCurrencyRupee, IconPencil, IconReceipt, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -46,7 +47,7 @@ function RouteComponent() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [paymentToDelete, setPaymentToDelete] = useState<ReceiptRow | null>(null)
-  const [quickFilter, setQuickFilter] = useState<'all' | 'today'>('all')
+  const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
   const { data, isLoading, isError, error } = useQuery({
     queryKey: receiptKeys.list({}),
     queryFn: () => getAllReceipts(),
@@ -67,14 +68,10 @@ function RouteComponent() {
     onError: () => toast.error('Failed to delete payment.'),
   })
 
-  const filteredPayments = useMemo(() => {
-    if (quickFilter === 'all') return data ?? []
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-      today.getDate()
-    ).padStart(2, '0')}`
-    return (data ?? []).filter((payment) => payment.paymentDate === todayKey)
-  }, [data, quickFilter])
+  const filteredPayments = useMemo(
+    () => (data ?? []).filter((payment) => matchesPeriod(payment.paymentDate, quickFilter)),
+    [data, quickFilter]
+  )
 
   const receiptRows: ReceiptRow[] = filteredPayments.map((payment) => ({
     id: payment.id,
@@ -90,22 +87,17 @@ function RouteComponent() {
     notes: payment.notes ?? '-',
   }))
 
-  const stats = useMemo(() => {
-    const payments = data ?? []
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-      today.getDate()
-    ).padStart(2, '0')}`
-    const customerPayments = payments.filter((payment) => payment.entryType === 'CUSTOMER_PAYMENT')
-    const todayReceipts = customerPayments.filter((payment) => payment.paymentDate === todayKey)
-    const totalToday = todayReceipts.reduce((sum, payment) => sum + payment.amount, 0)
-    const totalOverall = customerPayments.reduce((sum, payment) => sum + payment.amount, 0)
-
-    return {
-      receiptsToday: todayReceipts.length,
-      totalToday,
-      totalOverall,
+  const periodStats = useMemo(() => {
+    const customerPayments = (data ?? []).filter((payment) => payment.entryType === 'CUSTOMER_PAYMENT')
+    const stats = {} as Record<QuickPeriod, { count: number; total: number }>
+    for (const period of QUICK_PERIODS) {
+      const matched = customerPayments.filter((payment) => matchesPeriod(payment.paymentDate, period))
+      stats[period] = {
+        count: matched.length,
+        total: matched.reduce((sum, payment) => sum + payment.amount, 0),
+      }
     }
+    return stats
   }, [data])
 
   useEffect(() => {
@@ -128,30 +120,37 @@ function RouteComponent() {
         <FilterChip
           icon={<IconReceipt className="size-4" />}
           title="All receipts"
-          value={(data ?? []).length}
+          value={periodStats.all.count}
           active={quickFilter === 'all'}
           onClick={() => setQuickFilter('all')}
         />
         <FilterChip
-          icon={<IconReceipt className="size-4" />}
-          title="Receipts today"
-          value={stats.receiptsToday}
+          icon={<IconCalendarStats className="size-4" />}
+          title="Today"
+          value={periodStats.today.count}
           active={quickFilter === 'today'}
           onClick={() => setQuickFilter('today')}
         />
         <FilterChip
-          icon={<IconCurrencyRupee className="size-4" />}
-          title="Amount today"
-          value={formatCurrency(stats.totalToday)}
-          active={quickFilter === 'today'}
-          onClick={() => setQuickFilter('today')}
+          icon={<IconCalendarStats className="size-4" />}
+          title="This week"
+          value={periodStats.week.count}
+          active={quickFilter === 'week'}
+          onClick={() => setQuickFilter('week')}
+        />
+        <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="This month"
+          value={periodStats.month.count}
+          active={quickFilter === 'month'}
+          onClick={() => setQuickFilter('month')}
         />
         <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
-          title="Total receipts"
-          value={formatCurrency(stats.totalOverall)}
-          active={quickFilter === 'all'}
-          onClick={() => setQuickFilter('all')}
+          title={`Received (${QUICK_PERIOD_LABELS[quickFilter]})`}
+          value={formatCurrency(periodStats[quickFilter].total)}
+          active
+          onClick={() => setQuickFilter(quickFilter)}
         />
       </div>
 
@@ -255,6 +254,8 @@ function RouteComponent() {
         enableAddButton
         addButtonLink="/receipt/new"
         addButtonText="Add Receipt"
+        exportFileName="receipts-report"
+        exportTitle="Receipts report"
         onRowClick={(row) => {
           if (row.customerId) {
             navigate({ to: '/customer/$customerId', params: { customerId: String(row.customerId) } })

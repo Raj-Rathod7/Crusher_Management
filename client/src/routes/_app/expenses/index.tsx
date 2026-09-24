@@ -12,9 +12,10 @@ import {
 } from '#/components/ui/dialog'
 import { deleteExpense } from '#/lib/mutation'
 import { getAllExpenses, expenseKeys } from '#/lib/query'
+import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { IconCategory, IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
+import { IconCalendarStats, IconCategory, IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -45,7 +46,7 @@ function RouteComponent() {
   const router = useRouter()
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseRow | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState('all')
-  const [quickFilter, setQuickFilter] = useState<'all' | 'today'>('all')
+  const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: expenseKeys.all,
@@ -70,14 +71,10 @@ function RouteComponent() {
     return (data ?? []).filter((expense) => expense.truckNumber === selectedVehicle)
   }, [data, selectedVehicle])
 
-  const selectedExpenses = useMemo(() => {
-    if (quickFilter === 'all') return vehicleExpenses
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-      today.getDate()
-    ).padStart(2, '0')}`
-    return vehicleExpenses.filter((expense) => expense.expenseDate === todayKey)
-  }, [quickFilter, vehicleExpenses])
+  const selectedExpenses = useMemo(
+    () => vehicleExpenses.filter((expense) => matchesPeriod(expense.expenseDate, quickFilter)),
+    [quickFilter, vehicleExpenses]
+  )
 
   const expenseRows: ExpenseRow[] = selectedExpenses.map((expense) => ({
     id: expense.id,
@@ -104,21 +101,16 @@ function RouteComponent() {
     },
   })
 
-  const stats = useMemo(() => {
-    const expenses = vehicleExpenses
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-      today.getDate()
-    ).padStart(2, '0')}`
-    const todayExpenses = expenses.filter((expense) => expense.expenseDate === todayKey)
-    const totalToday = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const totalOverall = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-
-    return {
-      expensesToday: todayExpenses.length,
-      totalToday,
-      totalOverall,
+  const periodStats = useMemo(() => {
+    const stats = {} as Record<QuickPeriod, { count: number; total: number }>
+    for (const period of QUICK_PERIODS) {
+      const matched = vehicleExpenses.filter((expense) => matchesPeriod(expense.expenseDate, period))
+      stats[period] = {
+        count: matched.length,
+        total: matched.reduce((sum, expense) => sum + expense.amount, 0),
+      }
     }
+    return stats
   }, [vehicleExpenses])
 
   useEffect(() => {
@@ -163,23 +155,37 @@ function RouteComponent() {
         <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="All expenses"
-          value={vehicleExpenses.length}
+          value={periodStats.all.count}
           active={quickFilter === 'all'}
           onClick={() => setQuickFilter('all')}
         />
         <FilterChip
-          icon={<IconCurrencyRupee className="size-4" />}
-          title="Expenses today"
-          value={stats.expensesToday}
+          icon={<IconCalendarStats className="size-4" />}
+          title="Today"
+          value={periodStats.today.count}
           active={quickFilter === 'today'}
           onClick={() => setQuickFilter('today')}
         />
         <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="This week"
+          value={periodStats.week.count}
+          active={quickFilter === 'week'}
+          onClick={() => setQuickFilter('week')}
+        />
+        <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="This month"
+          value={periodStats.month.count}
+          active={quickFilter === 'month'}
+          onClick={() => setQuickFilter('month')}
+        />
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
-          title="Amount today"
-          value={formatCurrency(stats.totalToday)}
-          active={quickFilter === 'today'}
-          onClick={() => setQuickFilter('today')}
+          title={`Spent (${QUICK_PERIOD_LABELS[quickFilter]})`}
+          value={formatCurrency(periodStats[quickFilter].total)}
+          active
+          onClick={() => setQuickFilter(quickFilter)}
         />
       </div>
 
@@ -259,6 +265,8 @@ function RouteComponent() {
         enableAddButton
         addButtonLink="/expenses/new"
         addButtonText="Add Expense"
+        exportFileName="expenses-report"
+        exportTitle="Expenses report"
       />
 
       <Dialog open={Boolean(expenseToDelete)} onOpenChange={(open) => !open && setExpenseToDelete(null)}>

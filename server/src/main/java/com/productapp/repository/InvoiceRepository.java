@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.Optional;
 
@@ -36,5 +37,28 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
 	@Query("select coalesce(sum(i.totalAmount), 0) from Invoice i")
 	BigDecimal sumTotalAmount();
+
+	@Query("select coalesce(sum(i.totalAmount), 0) from Invoice i "
+			+ "where (:dateFrom is null or i.invoiceDate >= :dateFrom) "
+			+ "and (:dateTo is null or i.invoiceDate <= :dateTo)")
+	BigDecimal sumTotalAmount(@Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo);
+
+	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType"})
+	@Query("select i from Invoice i where (:dateFrom is null or i.invoiceDate >= :dateFrom) "
+			+ "and (:dateTo is null or i.invoiceDate <= :dateTo) order by i.invoiceDate desc")
+	List<Invoice> findRecent(@Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo, Pageable pageable);
+
+	@Query("select i.invoiceDate, count(i), coalesce(sum(i.totalAmount), 0) from Invoice i "
+			+ "where (:dateFrom is null or i.invoiceDate >= :dateFrom) "
+			+ "and (:dateTo is null or i.invoiceDate <= :dateTo) "
+			+ "group by i.invoiceDate order by i.invoiceDate")
+	List<Object[]> salesByDate(@Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo);
+
+	@Query("select mt.name, coalesce(sum(ii.quantityBrass), 0), coalesce(sum(ii.amount), 0) "
+			+ "from InvoiceItem ii join ii.invoice i join ii.materialType mt "
+			+ "where (:dateFrom is null or i.invoiceDate >= :dateFrom) "
+			+ "and (:dateTo is null or i.invoiceDate <= :dateTo) "
+			+ "group by mt.name order by mt.name")
+	List<Object[]> materialWiseSales(@Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo);
 
 }

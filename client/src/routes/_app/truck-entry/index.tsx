@@ -13,9 +13,11 @@ import {
 } from "#/components/ui/dialog";
 import { deleteTruckEntry } from "#/lib/mutation";
 import { getAllTruckEntries, truckEntryKeys } from "#/lib/query";
+import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from "#/lib/date-filters";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  IconCalendarStats,
   IconCube,
   IconPencil,
   IconTrash,
@@ -41,7 +43,7 @@ function RouteComponent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null);
-  const [quickFilter, setQuickFilter] = useState<"all" | "today">("all");
+  const [quickFilter, setQuickFilter] = useState<QuickPeriod>("all");
   const { data, isLoading, isError, error } = useQuery({
     queryKey: truckEntryKeys.all,
     queryFn: getAllTruckEntries,
@@ -51,16 +53,10 @@ function RouteComponent() {
     refetchOnWindowFocus: false,
   });
 
-  const quickFilterData = useMemo(() => {
-    if (quickFilter !== "today") {
-      return data ?? [];
-    }
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-      today.getDate(),
-    ).padStart(2, "0")}`;
-    return (data ?? []).filter((entry) => entry.entryDate === todayKey);
-  }, [data, quickFilter]);
+  const quickFilterData = useMemo(
+    () => (data ?? []).filter((entry) => matchesPeriod(entry.entryDate, quickFilter)),
+    [data, quickFilter],
+  );
 
   const truckRows: TruckRow[] = quickFilterData.map((entry) => ({
     id: entry.id,
@@ -90,41 +86,24 @@ function RouteComponent() {
     },
   });
 
-  const stats = useMemo(() => {
+  const periodStats = useMemo(() => {
     const entries = data ?? [];
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-      today.getDate(),
-    ).padStart(2, "0")}`;
-    const todayEntries = entries.filter(
-      (entry) => entry.entryDate === todayKey,
-    );
-    const selectedEntries = quickFilter === "today" ? todayEntries : entries;
-    const quantityToday = selectedEntries.reduce(
-      (sum, entry) => sum + entry.quantityBrass,
-      0,
-    );
-    const uniqueSuppliersToday = new Set(
-      selectedEntries
-        .map((entry) => entry.supplierName?.trim())
-        .filter((supplier): supplier is string => Boolean(supplier)),
-    ).size;
-    const uniqueMaterialsToday = new Set(
-      selectedEntries
-        .map((entry) => entry.materialName?.trim())
-        .filter((material): material is string => Boolean(material)),
-    ).size;
-
-    return {
-      entriesToday: selectedEntries.length,
-      quantityToday,
-      uniqueSuppliersToday,
-      uniqueMaterialsToday,
-      allEntries: entries.length,
-      todayEntries: todayEntries.length,
-      allQuantity: entries.reduce((sum, entry) => sum + entry.quantityBrass, 0),
-    };
-  }, [data, quickFilter]);
+    const stats = {} as Record<QuickPeriod, { count: number; quantity: number; suppliers: number; materials: number }>;
+    for (const period of QUICK_PERIODS) {
+      const matched = entries.filter((entry) => matchesPeriod(entry.entryDate, period));
+      stats[period] = {
+        count: matched.length,
+        quantity: matched.reduce((sum, entry) => sum + entry.quantityBrass, 0),
+        suppliers: new Set(
+          matched.map((entry) => entry.supplierName?.trim()).filter((supplier): supplier is string => Boolean(supplier)),
+        ).size,
+        materials: new Set(
+          matched.map((entry) => entry.materialName?.trim()).filter((material): material is string => Boolean(material)),
+        ).size,
+      };
+    }
+    return stats;
+  }, [data]);
 
   useEffect(() => {
     if (isError) {
@@ -144,18 +123,41 @@ function RouteComponent() {
         <FilterChip
           icon={<IconTruck className="size-4" />}
           title="All purchases"
-          value={stats.allEntries}
+          value={periodStats.all.count}
           active={quickFilter === "all"}
           onClick={() => setQuickFilter("all")}
         />
         <FilterChip
-          icon={<IconCube className="size-4" />}
-          title="Purchases today"
-          value={stats.todayEntries}
+          icon={<IconCalendarStats className="size-4" />}
+          title="Today"
+          value={periodStats.today.count}
           active={quickFilter === "today"}
           onClick={() => setQuickFilter("today")}
         />
-        <span className="text-xs text-muted-foreground">Quantity: {(quickFilter === "today" ? stats.quantityToday : stats.allQuantity).toFixed(2)}</span>
+        <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="This week"
+          value={periodStats.week.count}
+          active={quickFilter === "week"}
+          onClick={() => setQuickFilter("week")}
+        />
+        <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="This month"
+          value={periodStats.month.count}
+          active={quickFilter === "month"}
+          onClick={() => setQuickFilter("month")}
+        />
+        <FilterChip
+          icon={<IconCube className="size-4" />}
+          title={`Qty brass (${QUICK_PERIOD_LABELS[quickFilter]})`}
+          value={periodStats[quickFilter].quantity.toFixed(2)}
+          active
+          onClick={() => setQuickFilter(quickFilter)}
+        />
+        <span className="text-xs text-muted-foreground">
+          {periodStats[quickFilter].suppliers} suppliers · {periodStats[quickFilter].materials} materials
+        </span>
       </div>
 
       <ConfigurableDataTable
@@ -233,6 +235,8 @@ function RouteComponent() {
         enableAddButton
         addButtonLink="/truck-entry/new"
         addButtonText="Add Truck Entry"
+        exportFileName="truck-entries-report"
+        exportTitle="Truck entries report"
       />
 
       <Dialog

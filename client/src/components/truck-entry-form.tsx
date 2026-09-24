@@ -116,8 +116,8 @@ export function TruckEntryForm({
     isLoading: isLoadingMaterials,
     refetch: refetchMaterials,
   } = useQuery({
-    queryKey: materialKeys.all,
-    queryFn: getAllMaterials,
+    queryKey: materialKeys.list({ type: 'PURCHASE' }),
+    queryFn: () => getAllMaterials({ type: 'PURCHASE' }),
     retry: false,
     refetchOnMount: true,
     refetchOnReconnect: false,

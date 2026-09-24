@@ -1,5 +1,5 @@
 import { apiClient } from "../common/api"
-import type { Customer, CustomerSummaryResponse, Expense, ExpenseCategory, ExpenseVehicleSummary, Invoice, Material, Payment, TruckEntry } from "../models"
+import type { Customer, CustomerSummaryResponse, DashboardChartsResponse, Expense, ExpenseCategory, ExpenseVehicleSummary, Invoice, Material, Payment, TruckEntry } from "../models"
 
 export const truckEntryKeys = {
   all: ['truck-entries'] as const,
@@ -8,6 +8,7 @@ export const truckEntryKeys = {
 
 export const materialKeys = {
   all: ['materials'] as const,
+  list: (filters: { type?: 'PURCHASE' | 'SALE' } = {}) => ['materials', filters] as const,
 }
 
 export const salesKeys = {
@@ -28,8 +29,11 @@ export const getTruckEntryById = async (id: number | string) => {
   return apiClient.get<TruckEntry>(`/truck-entries/${id}`)
 }
 
-export const getAllMaterials = async () => {
-  return apiClient.get<Material[]>('/materials')
+export const getAllMaterials = async (filters: { type?: 'PURCHASE' | 'SALE' } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.type) params.set('type', filters.type)
+  const query = params.toString()
+  return apiClient.get<Material[]>(`/materials${query ? `?${query}` : ''}`)
 }
 
 export const getAllSales = async () => {
@@ -102,4 +106,25 @@ export const getCustomerSummary = async (id: number | string) => {
 
 export const customerSummaryKeys = {
   detail: (id: number | string) => ['customer-summary', String(id)] as const,
+}
+
+export const dashboardKeys = {
+  summary: (filters: { dateFrom?: string; dateTo?: string } = {}) => ['dashboard', filters] as const,
+  charts: (filters: { dateFrom?: string; dateTo?: string } = {}) => ['dashboard', 'charts', filters] as const,
+}
+
+export const getDashboardSummary = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get(`/dashboard${query ? `?${query}` : ''}`)
+}
+
+export const getDashboardCharts = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get<DashboardChartsResponse>(`/dashboard/charts${query ? `?${query}` : ''}`)
 }

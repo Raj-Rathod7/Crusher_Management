@@ -2,6 +2,7 @@ package com.productapp.service;
 
 import com.productapp.dto.MaterialResponse;
 import com.productapp.entity.MaterialType;
+import com.productapp.entity.MaterialUsageType;
 import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.MaterialRepository;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,11 @@ public class MaterialService {
         return MaterialResponse.fromEntity(materialRepository.save(materialType));
     }
 
-    public List<MaterialResponse> getAll() {
-        return materialRepository.findAllByIsActiveTrue().stream()
+    public List<MaterialResponse> getAll(MaterialUsageType type) {
+        List<MaterialType> materials = type == null
+                ? materialRepository.findAllByIsActiveTrue()
+                : materialRepository.findAllByTypeAndIsActiveTrue(type);
+        return materials.stream()
                 .map(MaterialResponse::fromEntity)
                 .collect(Collectors.toList());
     }

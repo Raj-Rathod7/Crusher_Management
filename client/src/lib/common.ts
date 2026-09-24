@@ -1,4 +1,4 @@
-import { IconChartBar, IconDashboard, IconFolder, IconInvoice, IconListDetails, IconMoneybagMinus, IconMoneybagPlus, IconReceipt, IconUsers, type IconProps } from "@tabler/icons-react";
+import { IconBell, IconChartBar, IconDashboard, IconFolder, IconInvoice, IconListDetails, IconMoneybagMinus, IconMoneybagPlus, IconReceipt, IconUsers, type IconProps } from "@tabler/icons-react";
 import { TruckIcon, UserSearch, type LucideProps } from "lucide-react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 
@@ -45,14 +45,16 @@ export const quickLinks: quickLink[] = [
     icon: IconInvoice
   },
 
-  { path: "/customer", label: "Customers", icon: IconUsers },
-  { path: "/customer/new", label: "New Customer", icon: UserSearch },
+  { path: "/customer", label: "Customers", shortcut: "alt+shift+c", icon: IconUsers },
+  { path: "/customer/new", label: "New Customer", shortcut: "alt+shift+u", icon: UserSearch },
 
-  { path: "/expenses", label: "Expenses/Payments", icon: IconMoneybagMinus },
-  { path: "/expenses/new", label: "New Expenses/Payments", icon: IconMoneybagPlus},
+  { path: "/expenses", label: "Expenses/Payments", shortcut: "alt+shift+e", icon: IconMoneybagMinus },
+  { path: "/expenses/new", label: "New Expenses/Payments", shortcut: "alt+shift+p", icon: IconMoneybagPlus},
 
-  { path: "/receipt", label: "Receipts", icon: IconReceipt },
+  { path: "/receipt", label: "Receipts", shortcut: "alt+shift+r", icon: IconReceipt },
   { path: "/receipt/new", label: "New Receipt", shortcut: "F8", icon: IconReceipt },
 
-  { path: "/analytics", label: "Analytics", icon: IconChartBar },
+  { path: "/analytics", label: "Analytics", shortcut: "alt+shift+a", icon: IconChartBar },
+
+  { path: "/notification", label: "Notifications", shortcut: "alt+shift+n", icon: IconBell },
 ];

@@ -13,9 +13,12 @@ INSERT INTO users (username,password,role_id,is_active,created_at,updated_at)
 SELECT 'demo-manager','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='MANAGER'
 ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),is_active=TRUE,updated_at=NOW();
 
-INSERT INTO material_types (name,is_active,created_at,updated_at) VALUES
-('10mm',TRUE,NOW(),NOW()),('20mm',TRUE,NOW(),NOW()),('Stone Dust',TRUE,NOW(),NOW()),('Crusher Run',TRUE,NOW(),NOW())
-ON DUPLICATE KEY UPDATE is_active=TRUE,updated_at=NOW();
+INSERT INTO material_types (name,type,is_active,created_at,updated_at) VALUES
+('10mm','SALE',TRUE,NOW(),NOW()),('20mm','SALE',TRUE,NOW(),NOW()),('Stone Dust','SALE',TRUE,NOW(),NOW()),('Crusher Run','SALE',TRUE,NOW(),NOW())
+ON DUPLICATE KEY UPDATE type=VALUES(type),is_active=TRUE,updated_at=NOW();
+INSERT INTO material_types (name,type,is_active,created_at,updated_at) VALUES
+('Raw Stone','PURCHASE',TRUE,NOW(),NOW()),('Boulders','PURCHASE',TRUE,NOW(),NOW())
+ON DUPLICATE KEY UPDATE type=VALUES(type),is_active=TRUE,updated_at=NOW();
 INSERT INTO categories (name,is_active,created_at,updated_at) VALUES
 ('Diesel',TRUE,NOW(),NOW()),('Machine Maintenance',TRUE,NOW(),NOW()),('Electricity Bill',TRUE,NOW(),NOW()),('Other',TRUE,NOW(),NOW())
 ON DUPLICATE KEY UPDATE is_active=TRUE,updated_at=NOW();

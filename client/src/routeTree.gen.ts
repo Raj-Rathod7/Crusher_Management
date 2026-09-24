@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppTruckEntryIndexRouteImport } from './routes/_app/truck-entry/index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app/sales/index'
 import { Route as AppReceiptIndexRouteImport } from './routes/_app/receipt/index'
+import { Route as AppNotificationIndexRouteImport } from './routes/_app/notification/index'
 import { Route as AppExpensesIndexRouteImport } from './routes/_app/expenses/index'
 import { Route as AppCustomerIndexRouteImport } from './routes/_app/customer/index'
 import { Route as AppTruckEntryNewRouteImport } from './routes/_app/truck-entry/new'
@@ -57,6 +58,11 @@ const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
 const AppReceiptIndexRoute = AppReceiptIndexRouteImport.update({
   id: '/receipt/',
   path: '/receipt/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppNotificationIndexRoute = AppNotificationIndexRouteImport.update({
+  id: '/notification/',
+  path: '/notification/',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/truck-entry/new': typeof AppTruckEntryNewRoute
   '/customer/': typeof AppCustomerIndexRoute
   '/expenses/': typeof AppExpensesIndexRoute
+  '/notification/': typeof AppNotificationIndexRoute
   '/receipt/': typeof AppReceiptIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/truck-entry/': typeof AppTruckEntryIndexRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/truck-entry/new': typeof AppTruckEntryNewRoute
   '/customer': typeof AppCustomerIndexRoute
   '/expenses': typeof AppExpensesIndexRoute
+  '/notification': typeof AppNotificationIndexRoute
   '/receipt': typeof AppReceiptIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/truck-entry': typeof AppTruckEntryIndexRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/_app/truck-entry/new': typeof AppTruckEntryNewRoute
   '/_app/customer/': typeof AppCustomerIndexRoute
   '/_app/expenses/': typeof AppExpensesIndexRoute
+  '/_app/notification/': typeof AppNotificationIndexRoute
   '/_app/receipt/': typeof AppReceiptIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/truck-entry/': typeof AppTruckEntryIndexRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/truck-entry/new'
     | '/customer/'
     | '/expenses/'
+    | '/notification/'
     | '/receipt/'
     | '/sales/'
     | '/truck-entry/'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/truck-entry/new'
     | '/customer'
     | '/expenses'
+    | '/notification'
     | '/receipt'
     | '/sales'
     | '/truck-entry'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/_app/truck-entry/new'
     | '/_app/customer/'
     | '/_app/expenses/'
+    | '/_app/notification/'
     | '/_app/receipt/'
     | '/_app/sales/'
     | '/_app/truck-entry/'
@@ -313,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/receipt'
       fullPath: '/receipt/'
       preLoaderRoute: typeof AppReceiptIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/notification/': {
+      id: '/_app/notification/'
+      path: '/notification'
+      fullPath: '/notification/'
+      preLoaderRoute: typeof AppNotificationIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/expenses/': {
@@ -425,6 +444,7 @@ interface AppRouteRouteChildren {
   AppTruckEntryNewRoute: typeof AppTruckEntryNewRoute
   AppCustomerIndexRoute: typeof AppCustomerIndexRoute
   AppExpensesIndexRoute: typeof AppExpensesIndexRoute
+  AppNotificationIndexRoute: typeof AppNotificationIndexRoute
   AppReceiptIndexRoute: typeof AppReceiptIndexRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
   AppTruckEntryIndexRoute: typeof AppTruckEntryIndexRoute
@@ -446,6 +466,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTruckEntryNewRoute: AppTruckEntryNewRoute,
   AppCustomerIndexRoute: AppCustomerIndexRoute,
   AppExpensesIndexRoute: AppExpensesIndexRoute,
+  AppNotificationIndexRoute: AppNotificationIndexRoute,
   AppReceiptIndexRoute: AppReceiptIndexRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
   AppTruckEntryIndexRoute: AppTruckEntryIndexRoute,

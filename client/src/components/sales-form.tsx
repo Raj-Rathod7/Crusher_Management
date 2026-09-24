@@ -190,8 +190,8 @@ export function SalesForm({
   })
 
   const { data: materials = [], isLoading: isLoadingMaterials } = useQuery({
-    queryKey: materialKeys.all,
-    queryFn: getAllMaterials,
+    queryKey: materialKeys.list({ type: 'SALE' }),
+    queryFn: () => getAllMaterials({ type: 'SALE' }),
     retry: false,
     refetchOnMount: true,
     refetchOnReconnect: false,
