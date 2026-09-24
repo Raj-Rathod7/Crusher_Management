@@ -178,22 +178,6 @@ export async function exportCustomerReportToExcel(data: CustomerReportData, file
   addSubtitle(sheet, generatedSubtitle(data.ledger.length + data.invoices.length + data.payments.length), 7)
   sheet.addRow([])
 
-  addTableHeader(sheet, ["Summary", "Value"])
-  addTableRows(
-    sheet,
-    [
-      ["Total sales", totalDebit],
-      ["Total payments", totalCredit],
-      ["Final balance", finalBalance],
-      ["Invoices raised", data.invoices.length],
-      ["Total billed", totalBilled],
-      ["Receipts recorded", data.payments.length],
-      ["Total received", totalReceived],
-    ],
-    [2]
-  )
-  sheet.addRow([])
-
   addHeading(sheet, "Customer details", 7)
   addTableRows(
     sheet,
@@ -201,7 +185,6 @@ export async function exportCustomerReportToExcel(data: CustomerReportData, file
       ["Name", data.customer.name],
       ["Phone", data.customer.phone ?? "-"],
       ["Address", data.customer.address ?? "-"],
-      ["Notes", data.customer.notes ?? "-"],
       ["Pending balance", data.customer.pendingBalance ?? 0],
     ],
     [2]
@@ -224,6 +207,22 @@ export async function exportCustomerReportToExcel(data: CustomerReportData, file
     [5, 6, 7]
   )
   addTotalsRow(sheet, ["", "", "", "Total", totalDebit, totalCredit, finalBalance], [5, 6, 7])
+  sheet.addRow([])
+
+  addTableHeader(sheet, ["Summary", "Value"])
+  addTableRows(
+    sheet,
+    [
+      ["Total sales", totalDebit],
+      ["Total payments", totalCredit],
+      ["Final balance", finalBalance],
+      ["Invoices raised", data.invoices.length],
+      ["Total billed", totalBilled],
+      ["Receipts recorded", data.payments.length],
+      ["Total received", totalReceived],
+    ],
+    [2]
+  )
   sheet.addRow([])
 
   addHeading(sheet, "Invoices", 6)

@@ -31,7 +31,10 @@ type SalesRow = {
   materialName: string
   quantityBrass: string
   rate: string
-  totalAmount: string
+  totalAmount: string,
+  payment? : {
+    amount: number
+  }
 }
 
 function formatCurrency(value: number) {
@@ -99,6 +102,7 @@ function RouteComponent() {
       ? formatCurrency(invoice.invoiceItems[0].rate)
       : '-',
     totalAmount: formatCurrency(invoice.totalAmount),
+    payment: invoice.payment ? { amount: invoice.payment.amount } : undefined,
   })).sort((a, b) => b.invoiceNumber.localeCompare(a.invoiceNumber, undefined));
 
   useEffect(() => {
@@ -217,11 +221,11 @@ function RouteComponent() {
             ),
           },
           {
-            accessorKey: 'rate',
-            header: 'Rate',
+            accessorKey: 'payment.amount',
+            header: 'Recieved',
             cell: ({ row }) => (
-              <span className="font-medium tabular-nums text-sky-700 dark:text-sky-300">
-                {row.original.rate}
+              <span className="font-medium tabular-nums text-green-700 dark:text-green-300">
+                {row.original.payment?.amount ? formatCurrency(row.original.payment.amount) : '0.00'}
               </span>
             ),
           },

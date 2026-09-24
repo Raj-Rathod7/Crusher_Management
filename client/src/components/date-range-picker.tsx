@@ -32,6 +32,13 @@ const PRESETS: Preset[] = [
       return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: startOfDay(now) }
     },
   },
+  {
+    label: "Today",
+    getRange: () => {
+      const now = new Date()
+      return {from: startOfDay(now), to: startOfDay(now)}
+    }
+  }
 ]
 
 const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" })

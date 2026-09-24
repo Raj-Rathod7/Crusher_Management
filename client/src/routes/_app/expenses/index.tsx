@@ -56,15 +56,7 @@ function RouteComponent() {
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
-
-  const vehicleOptions = useMemo(
-    () =>
-      Array.from(new Set((data ?? []).map((expense) => expense.truckNumber).filter(Boolean))).sort((left, right) =>
-        left.localeCompare(right)
-      ),
-    [data]
-  )
-
+  
   const vehicleExpenses = useMemo(() => {
     if (selectedVehicle === 'all') return data ?? []
     if (selectedVehicle === 'unassigned') return (data ?? []).filter((expense) => !expense.truckNumber)
@@ -131,25 +123,6 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-3">
-        <label htmlFor="vehicleFilter" className="text-sm font-medium">
-          Vehicle
-        </label>
-        <select
-          id="vehicleFilter"
-          value={selectedVehicle}
-          onChange={(event) => setSelectedVehicle(event.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="all">All vehicles</option>
-          <option value="unassigned">Unassigned</option>
-          {vehicleOptions.map((vehicle) => (
-            <option key={vehicle} value={vehicle}>
-              {vehicle}
-            </option>
-          ))}
-        </select>
-      </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterChip

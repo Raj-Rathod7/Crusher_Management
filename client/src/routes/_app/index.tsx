@@ -33,7 +33,7 @@ function defaultDateRange(): DateRangeValue {
   const to = new Date();
   to.setHours(0, 0, 0, 0);
   const from = new Date(to);
-  from.setDate(from.getDate() - 29);
+  from.setHours(0, 0, 0, 0);
   return { from, to };
 }
 
@@ -131,7 +131,7 @@ function RouteComponent() {
           <MetricCard
             label="Outstanding balance"
             value={currency.format(data.outstandingBalance)}
-            detail="Needs collection"
+            detail={data.outstandingBalance < 0 ? "To be paid": "Needs collection"}
             icon={<CircleDollarSign />}
             accent="amber"
           />
