@@ -116,6 +116,7 @@ type DataTableProps<TData> = {
   addButtonLink?: string
   addButtonText?: string
   onRowClick?: (row: TData) => void
+  onFilteredDataChange?: (rows: TData[]) => void
   renderExpandedRow?: (row: TData) => React.ReactNode
   enableExport?: boolean
   exportFileName?: string
@@ -213,8 +214,15 @@ function applyTableFilters<TData>(
             ? value === filterValue
             : numericValue === numericFilter
         }
-        case "date":
-          return value === filterValue
+        case "date": {
+          // stored as "from|to" (YYYY-MM-DD), either side may be empty
+          const [from = "", to = ""] = filterValue.split("|")
+          const day = value.slice(0, 10)
+          if (!day) {
+            return !from && !to
+          }
+          return (!from || day >= from) && (!to || day <= to)
+        }
         case "boolean":
           return value === filterValue
         case "select":
@@ -251,6 +259,7 @@ export function ConfigurableDataTable<TData>({
   addButtonText = "Add Entry",
   enableAddButton = false,
   onRowClick,
+  onFilteredDataChange,
   renderExpandedRow,
   enableExport = true,
   exportFileName = "table-export",
@@ -278,6 +287,12 @@ export function ConfigurableDataTable<TData>({
     () => applyTableFilters(data, tableColumns, columnFilters, globalSearch),
     [data, tableColumns, columnFilters, globalSearch]
   )
+
+  const onFilteredDataChangeRef = React.useRef(onFilteredDataChange)
+  onFilteredDataChangeRef.current = onFilteredDataChange
+  React.useEffect(() => {
+    onFilteredDataChangeRef.current?.(filteredData)
+  }, [filteredData])
 
   const table = useReactTable<TData>({
     data: filteredData,

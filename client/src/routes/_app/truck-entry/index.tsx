@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfigurableDataTable } from "@/components/data-table";
-import { FilterChip } from "@/components/stats-card";
+import { FilterChip, StatsCard } from "@/components/stats-card";
 import { Button } from "#/components/ui/button";
 import {
   Dialog,
@@ -13,7 +13,8 @@ import {
 } from "#/components/ui/dialog";
 import { deleteTruckEntry } from "#/lib/mutation";
 import { getAllTruckEntries, truckEntryKeys } from "#/lib/query";
-import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from "#/lib/date-filters";
+import { matchesPeriod, matchesRange, QUICK_PERIODS, type QuickPeriod } from "#/lib/date-filters";
+import { DateRangePicker, type DateRangeValue } from "@/components/date-range-picker";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -45,6 +46,15 @@ function RouteComponent() {
   const router = useRouter();
   const [entryToDelete, setEntryToDelete] = useState<TruckRow | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickPeriod>("all");
+  const [dateRange, setDateRange] = useState<DateRangeValue>();
+  const [visibleQuantity, setVisibleQuantity] = useState(0);
+  const [visibleSuppliers, setVisibleSuppliers] = useState(0);
+  const [visibleMaterials, setVisibleMaterials] = useState(0);
+  const handleFilteredRows = (rows: TruckRow[]) => {
+    setVisibleQuantity(rows.reduce((sum, row) => sum + Number(row.quantityBrass), 0));
+    setVisibleSuppliers(new Set(rows.map((row) => row.supplierName.trim()).filter((name) => name && name !== "-")).size);
+    setVisibleMaterials(new Set(rows.map((row) => row.material.trim()).filter((name) => name && name !== "-")).size);
+  };
   const { data, isLoading, isError, error } = useQuery({
     queryKey: truckEntryKeys.all,
     queryFn: getAllTruckEntries,
@@ -55,8 +65,8 @@ function RouteComponent() {
   });
 
   const quickFilterData = useMemo(
-    () => (data ?? []).filter((entry) => matchesPeriod(entry.entryDate, quickFilter)),
-    [data, quickFilter],
+    () => (data ?? []).filter((entry) => matchesPeriod(entry.entryDate, quickFilter) && matchesRange(entry.entryDate, dateRange)),
+    [data, quickFilter, dateRange],
   );
 
   const truckRows: TruckRow[] = quickFilterData.map((entry) => ({
@@ -120,49 +130,43 @@ function RouteComponent() {
           <p className="text-sm text-muted-foreground">All purchase entries.</p>
         </div>
       </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+        <StatsCard
+          icon={<IconCube className="size-4" />}
+          title="Qty brass"
+          value={visibleQuantity.toFixed(2)}
+          description={`${visibleSuppliers} suppliers · ${visibleMaterials} materials`}
+        />
+      </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterChip
           icon={<IconTruck className="size-4" />}
           title="All purchases"
           value={periodStats.all.count}
-          active={quickFilter === "all"}
-          onClick={() => setQuickFilter("all")}
+          active={quickFilter === "all" && !dateRange}
+          onClick={() => { setQuickFilter("all"); setDateRange(undefined); }}
         />
         <FilterChip
           icon={<IconCalendarStats className="size-4" />}
           title="Today"
           value={periodStats.today.count}
           active={quickFilter === "today"}
-          onClick={() => setQuickFilter("today")}
+          onClick={() => { setQuickFilter("today"); setDateRange(undefined); }}
         />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This week"
-          value={periodStats.week.count}
-          active={quickFilter === "week"}
-          onClick={() => setQuickFilter("week")}
-        />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This month"
-          value={periodStats.month.count}
-          active={quickFilter === "month"}
-          onClick={() => setQuickFilter("month")}
-        />
-        <FilterChip
-          icon={<IconCube className="size-4" />}
-          title={`Qty brass (${QUICK_PERIOD_LABELS[quickFilter]})`}
-          value={periodStats[quickFilter].quantity.toFixed(2)}
-          active
-          onClick={() => setQuickFilter(quickFilter)}
-        />
-        <span className="text-xs text-muted-foreground">
-          {periodStats[quickFilter].suppliers} suppliers · {periodStats[quickFilter].materials} materials
-        </span>
+        {!isManager() && (
+          <DateRangePicker
+            className="ml-auto"
+            showPresets={false}
+            value={dateRange}
+            onChange={(range) => { setDateRange(range); setQuickFilter("all"); }}
+            onClear={() => setDateRange(undefined)}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
         data={truckRows}
+        onFilteredDataChange={handleFilteredRows}
         columns={[
           {
             accessorKey: "truckNo",
@@ -181,7 +185,6 @@ function RouteComponent() {
           {
             accessorKey: "entryDate",
             header: "Entry Date",
-            meta: { filterable: true, filterType: "date" },
           },
           {
             accessorKey: "material",

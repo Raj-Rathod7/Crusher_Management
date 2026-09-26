@@ -91,7 +91,6 @@ function RouteComponent() {
       onSubmit={updateMutation.mutate}
       showSummary={true}
       variant="page"
-      requireRate
     />
   )
 }

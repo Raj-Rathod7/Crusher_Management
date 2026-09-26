@@ -26,6 +26,7 @@ import {
 } from '#/components/ui/select'
 import { createCustomer } from '#/lib/mutation'
 import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
 import type { CreateInvoicePayload, Customer } from '#/lib/models'
 import { customerKeys, getAllCustomers, getAllMaterials, getNextInvoiceNumber, materialKeys, salesKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -77,10 +78,9 @@ type SalesFormProps = {
   onSubmit: (payload: CreateInvoicePayload) => void
   showSummary?: boolean
   variant?: 'page' | 'dialog'
-  requireRate?: boolean
 }
 
-const todayLocal = () => new Date().toLocaleDateString('en-CA')
+const todayLocal = () => dateKey()
 
 const initialFormState: FormState = {
   invoiceNumber: '',
@@ -144,7 +144,6 @@ export function SalesForm({
   onSubmit,
   showSummary = true,
   variant = 'page',
-  requireRate = false,
 }: SalesFormProps) {
   const queryClient = useQueryClient()
   const manager = isManager()
@@ -262,10 +261,6 @@ export function SalesForm({
       nextErrors.truckNumber = 'Truck Number required.'
     }
 
-    if (requireRate && !manager && !(Number(invoiceItemForm.rate) > 0)) {
-      nextErrors.rate = 'Rate must be greater than 0.'
-    }
-
     return nextErrors
   }
 
@@ -340,8 +335,8 @@ export function SalesForm({
           id: !isNaN(Number(invoiceItem.id)) ? Number(invoiceItem.id) : 0,
           materialTypeId: Number(invoiceItem.materialTypeId),
           quantityBrass: Number(invoiceItem.quantityBrass),
-          rate: Number(invoiceItem.rate),
-          amount: Number(invoiceItem.amount),
+          rate: invoiceItemForm.rate.trim() ? Number(invoiceItem.rate) : null,
+          amount: invoiceItemForm.rate.trim() ? Number(invoiceItem.amount) : 0,
         },
       ],
     }
@@ -615,7 +610,7 @@ export function SalesForm({
 
                       {!manager && (
                       <Field>
-                        <FieldLabel htmlFor="item-rate">Rate</FieldLabel>
+                        <FieldLabel htmlFor="item-rate">Rate (optional)</FieldLabel>
                         <FieldContent>
                           <Input
                             id="item-rate"

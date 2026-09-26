@@ -19,6 +19,7 @@ import {
 } from '#/components/ui/select'
 import type { Customer, CreateCustomerPaymentPayload } from '#/lib/models'
 import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
 import { customerKeys, getAllCustomers } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -49,7 +50,7 @@ type ReceiptFormProps = {
 const defaultFormValues: ReceiptFormValues = {
   customerId: '',
   amount: '',
-  paymentDate: new Date().toLocaleDateString('en-CA'),
+  paymentDate: dateKey(),
   paymentMode: 'cash',
   externalRef: '',
   notes: '',

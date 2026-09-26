@@ -186,24 +186,25 @@ function RouteComponent() {
 }
 
 function CustomerLedgerTable({ entries }: { entries: CustomerLedgerEntry[] }) {
-  const totals = entries.reduce(
-    (summary, entry) => ({
-      debit: summary.debit + entry.debit,
-      credit: summary.credit + entry.credit,
-    }),
-    { debit: 0, credit: 0 },
-  )
-  const finalBalance = entries.at(-1)?.runningBalance ?? 0
+  const [debitTotal, setDebitTotal] = useState(0)
+  const [creditTotal, setCreditTotal] = useState(0)
+  const [finalBalance, setFinalBalance] = useState(0)
+  const handleFilteredRows = (rows: CustomerLedgerEntry[]) => {
+    setDebitTotal(rows.reduce((sum, entry) => sum + entry.debit, 0))
+    setCreditTotal(rows.reduce((sum, entry) => sum + entry.credit, 0))
+    setFinalBalance(rows.at(-1)?.runningBalance ?? 0)
+  }
 
   return entries.length ? (
     <div className="space-y-4">
       <div className="grid gap-3 border-t border-border/80 pt-4 sm:grid-cols-3">
-        <LedgerTotal label="Total sales" value={totals.debit} tone="debit" />
-        <LedgerTotal label="Total payments" value={totals.credit} tone="credit" />
+        <LedgerTotal label="Total sales" value={debitTotal} tone="debit" />
+        <LedgerTotal label="Total payments" value={creditTotal} tone="credit" />
         <LedgerTotal label="Final balance" value={finalBalance} emphasized />
       </div>
       <ConfigurableDataTable
         data={entries}
+        onFilteredDataChange={handleFilteredRows}
         columns={[
           { accessorKey: 'entryDate', header: 'Date' },
           {
@@ -442,7 +443,6 @@ function ReceiptsTable({ receipts }: { receipts: Payment[] }) {
             </span>
           ),
         },
-        { accessorKey: 'externalRef', header: 'Reference' },
         { accessorKey: 'paymentMode', header: 'Mode' },
         { accessorKey: 'notes', header: 'Notes' },
       ]}

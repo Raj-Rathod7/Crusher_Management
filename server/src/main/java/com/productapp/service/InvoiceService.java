@@ -179,8 +179,11 @@ public class InvoiceService {
             invoiceItems.add(item);
             totalAmount = totalAmount.add(itemAmount);
         }
+        if (invoiceRequest.getTotalAmount() != null && invoiceRequest.getTotalAmount().signum() > 0) {
+            totalAmount = invoiceRequest.getTotalAmount();
+        }
         if (totalAmount.signum() <= 0) {
-            throw new IllegalArgumentException("Enter rates so the total amount is greater than zero");
+            throw new IllegalArgumentException("Total amount must be greater than zero");
         }
         existingInvoice.setTotalAmount(totalAmount);
         existingInvoice.setTotalPending(false);

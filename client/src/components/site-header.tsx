@@ -18,11 +18,12 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList, CommandShortcut
+  CommandList,
+  CommandShortcut,
 } from "@/components/ui/command";
 import React, { useEffect } from "react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { useCache } from "#/hooks/use-cache";
 import { getQuickLinks, type quickLink } from "#/lib/common";
 import { getTokenClaims, isManager } from "#/lib/common/api";
@@ -30,6 +31,24 @@ import { getPendingTotalSales, salesKeys } from "#/lib/query";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "./ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 type AppPath = "/" | "/customer" | "/expenses" | "/sales" | "/truck-entry";
 
@@ -88,7 +107,10 @@ export function SiteHeader() {
   });
   const pendingCount = pendingSales.data?.length ?? 0;
 
-  const cache = useCache<string, quickLink>(3, {persitent: true, key: 'links'});
+  const cache = useCache<string, quickLink>(3, {
+    persitent: true,
+    key: "links",
+  });
 
   const handleOnCommandClick = (link: quickLink) => {
     cache?.set(link.path, link);
@@ -96,30 +118,33 @@ export function SiteHeader() {
     navigate({ to: link.path });
   };
 
-  const mostRecentLinks = (cache?.getAll() ?? []).filter((link) => quickLinks.some((l) => l.path === link.path));
+  const mostRecentLinks = (cache?.getAll() ?? []).filter((link) =>
+    quickLinks.some((l) => l.path === link.path),
+  );
 
   useEffect(() => {
     const handleCommand = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      
-      const isTyping = target &&
-                      (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-                        target.isContentEditable);
-      if(isTyping) return;
 
-      if(event.ctrlKey && event.code === "Slash" || event.key === "/"){
+      const isTyping =
+        target &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+          target.isContentEditable);
+      if (isTyping) return;
+
+      if ((event.ctrlKey && event.code === "Slash") || event.key === "/") {
         event.preventDefault();
         event.stopImmediatePropagation();
         setOpen((prev) => {
-          return !prev
+          return !prev;
         });
       }
-    }
-    document.addEventListener('keydown', handleCommand, true);
+    };
+    document.addEventListener("keydown", handleCommand, true);
     return () => {
-      document.removeEventListener('keydown', handleCommand, true);
-    }
-  }, [])
+      document.removeEventListener("keydown", handleCommand, true);
+    };
+  }, []);
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -151,14 +176,15 @@ export function SiteHeader() {
         </Breadcrumb>
       </div>
       <div className="flex shrink-0 items-center gap-1 pr-4 lg:pr-6">
-        {pendingCount > 0 && (
-          <Button asChild variant="outline" size="sm" className="mr-2">
-            <Link to="/sales" search={{ pending: true }}>
-              Add sale totals
-              <Badge variant="destructive">{pendingCount}</Badge>
-            </Link>
-          </Button>
-        )}
+        {/* {pendingCount > 0 && (
+          // <Button asChild variant="outline" size="sm" className="mr-2">
+          //   <Link to="/sales" search={{ pending: true }}>
+          //     Add sale totals
+          //     <Badge variant="destructive">{pendingCount}</Badge>
+          //   </Link>
+          // </Button>
+          
+        )} */}
         <InputGroup onClick={() => setOpen(true)} className="mr-5">
           <InputGroupInput readOnly placeholder="Search system" />
           <InputGroupAddon>
@@ -171,30 +197,31 @@ export function SiteHeader() {
             <CommandInput placeholder="Type a command or search..." />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
-              {mostRecentLinks.length > 0 && 
-              (
-              <CommandGroup heading="Frequent Visits">
-                {mostRecentLinks.map((link) => {
-                  const Icon = quickLinks.find(l => l.path === link.path)?.icon;
-                  return (
-                    <CommandItem
-                      key={link.path}
-                      value={link.path}
-                      onSelect={() => handleOnCommandClick(link)}
-                    >
-                      {Icon && <Icon />} 
-                      <span className="flex-1">{link.label}</span>
-                      {link.shortcut && (
-                        <CommandShortcut>{link.shortcut}</CommandShortcut>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+              {mostRecentLinks.length > 0 && (
+                <CommandGroup heading="Frequent Visits">
+                  {mostRecentLinks.map((link) => {
+                    const Icon = quickLinks.find(
+                      (l) => l.path === link.path,
+                    )?.icon;
+                    return (
+                      <CommandItem
+                        key={link.path}
+                        value={link.path}
+                        onSelect={() => handleOnCommandClick(link)}
+                      >
+                        {Icon && <Icon />}
+                        <span className="flex-1">{link.label}</span>
+                        {link.shortcut && (
+                          <CommandShortcut>{link.shortcut}</CommandShortcut>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
               )}
               <CommandGroup heading="Quick Links">
                 {quickLinks.map((link) => {
-                  const Icon = link.icon
+                  const Icon = link.icon;
                   return (
                     <CommandItem
                       key={link.label}
@@ -204,7 +231,9 @@ export function SiteHeader() {
                       {Icon && <Icon />}
                       <span className="flex-1">{link.label}</span>
                       {link.shortcut && (
-                        <CommandShortcut className="capitalize">{link.shortcut}</CommandShortcut>
+                        <CommandShortcut className="capitalize">
+                          {link.shortcut}
+                        </CommandShortcut>
                       )}
                     </CommandItem>
                   );
@@ -214,6 +243,33 @@ export function SiteHeader() {
           </Command>
         </CommandDialog>
         <ModeToggle />
+        {claims && claims.role === "ADMIN" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="relative mr-2">
+                <Bell />
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] rounded-full"
+                >
+                  {pendingCount}
+                </Badge>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuGroup>
+                <DropdownMenuItem>
+                  Pending Totals
+                  <DropdownMenuShortcut>
+                    <Badge variant="destructive" className="ml-2 text-xs">
+                    {pendingCount}
+                    </Badge>
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <NavUser user={user} />
       </div>
     </header>

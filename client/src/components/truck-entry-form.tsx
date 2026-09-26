@@ -20,6 +20,7 @@ import {
 } from '#/components/ui/select'
 import type { CreateTruckEntryPayload } from '#/lib/models'
 import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
 import { getAllMaterials, materialKeys } from '#/lib/query'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
@@ -68,7 +69,7 @@ type TruckEntryFormProps = {
 }
 
 const defaultFormValues: TruckEntryFormValues = {
-  entryDate: new Date().toLocaleDateString('en-CA'),
+  entryDate: dateKey(),
   truckNumber: '',
   materialTypeId: '',
   quantityBrass: '',

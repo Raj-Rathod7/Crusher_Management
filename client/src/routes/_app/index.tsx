@@ -28,6 +28,7 @@ import {
   TruckInwardChart,
 } from "@/components/dashboard-charts";
 import { dashboardKeys, getDashboardCharts, getDashboardSummary } from "@/lib/query";
+import { dateKey } from "@/lib/date-filters";
 
 function defaultDateRange(): DateRangeValue {
   const to = new Date();
@@ -38,7 +39,7 @@ function defaultDateRange(): DateRangeValue {
 }
 
 function toIsoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return dateKey(date);
 }
 
 export const Route = createFileRoute("/_app/")({

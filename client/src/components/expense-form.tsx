@@ -18,6 +18,7 @@ import {
 } from '#/components/ui/select'
 import type { CreateExpensePayload } from '#/lib/models'
 import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
 import { getAllExpenseCategories, expenseCategoryKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -45,7 +46,7 @@ type ExpenseFormProps = {
 }
 
 const defaultFormValues: ExpenseFormValues = {
-  expenseDate: new Date().toLocaleDateString('en-CA'),
+  expenseDate: dateKey(),
   categoryId: '',
   amount: '',
   truckNumber: '',

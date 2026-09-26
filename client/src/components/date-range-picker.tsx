@@ -1,5 +1,5 @@
 import * as React from "react"
-import { IconCalendar } from "@tabler/icons-react"
+import { IconCalendar, IconX } from "@tabler/icons-react"
 import type { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -44,15 +44,17 @@ const PRESETS: Preset[] = [
 const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" })
 
 type DateRangePickerProps = Readonly<{
-  value: DateRangeValue
+  value: DateRangeValue | undefined
   onChange: (value: DateRangeValue) => void
+  onClear?: () => void
+  showPresets?: boolean
   className?: string
 }>
 
-export function DateRangePicker({ value, onChange, className }: DateRangePickerProps) {
+export function DateRangePicker({ value, onChange, onClear, showPresets = true, className }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  const activePreset = PRESETS.find((preset) => {
+  const activePreset = value && PRESETS.find((preset) => {
     const range = preset.getRange()
     return (
       startOfDay(range.from).getTime() === startOfDay(value.from).getTime() &&
@@ -62,7 +64,7 @@ export function DateRangePicker({ value, onChange, className }: DateRangePickerP
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      {PRESETS.map((preset) => (
+      {showPresets && PRESETS.map((preset) => (
         <Button
           key={preset.label}
           type="button"
@@ -77,14 +79,14 @@ export function DateRangePicker({ value, onChange, className }: DateRangePickerP
         <PopoverTrigger asChild>
           <Button type="button" size="sm" variant="outline">
             <IconCalendar />
-            {dateFormatter.format(value.from)} – {dateFormatter.format(value.to)}
+            {value ? `${dateFormatter.format(value.from)} – ${dateFormatter.format(value.to)}` : "All dates"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end">
           <Calendar
             mode="range"
-            defaultMonth={value.from}
-            selected={{ from: value.from, to: value.to }}
+            defaultMonth={value?.from}
+            selected={value ? { from: value.from, to: value.to } : undefined}
             onSelect={(range: DateRange | undefined) => {
               if (range?.from && range?.to) {
                 onChange({ from: startOfDay(range.from), to: startOfDay(range.to) })
@@ -95,6 +97,11 @@ export function DateRangePicker({ value, onChange, className }: DateRangePickerP
           />
         </PopoverContent>
       </Popover>
+      {value && onClear ? (
+        <Button type="button" size="icon-sm" variant="ghost" onClick={onClear} aria-label="Clear date range">
+          <IconX />
+        </Button>
+      ) : null}
     </div>
   )
 }
