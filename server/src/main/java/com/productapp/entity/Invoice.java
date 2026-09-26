@@ -44,6 +44,11 @@ public class Invoice extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String remarks;
 
+    // true when created by a manager without rates; admin must add the total
+    @Builder.Default
+    @Column(name = "total_pending", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean totalPending = false;
+
     
 
     @OneToMany(

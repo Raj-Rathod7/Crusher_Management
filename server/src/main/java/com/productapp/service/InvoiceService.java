@@ -17,6 +17,7 @@ import com.productapp.entity.CustomerLedger;
 import com.productapp.repository.CustomerLedgerRepository;
 import com.productapp.repository.PaymentRepository;
 import com.productapp.entity.Payment;
+import com.productapp.security.SecurityUtils;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +58,13 @@ public class InvoiceService {
     public InvoiceResponse createInvoice(InvoiceRequest invoiceRequest) {
         Invoice invoice = new Invoice();
         User createdBy = getCurrentUser();
+        boolean manager = SecurityUtils.isManager();
+        SecurityUtils.requireTodayForManager(invoiceRequest.getInvoiceDate());
+        if (manager) {
+            invoiceRequest.setPaymentAmount(null);
+        } else if (invoiceRequest.getTotalAmount() == null || invoiceRequest.getTotalAmount().signum() <= 0) {
+            throw new IllegalArgumentException("Total amount must be greater than zero");
+        }
         Customer customer =
                 customerRepository.findByIdAndIsActiveTrue(invoiceRequest.getCustomerId())
                         .orElseThrow(() ->
@@ -73,7 +82,7 @@ public class InvoiceService {
                             
         
         List<InvoiceItem> invoiceItems = new ArrayList<>();
-        BigDecimal totalAmount = invoiceRequest.getTotalAmount();
+        BigDecimal totalAmount = manager ? BigDecimal.ZERO : invoiceRequest.getTotalAmount();
         for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
 
             MaterialType material = materialRepository.findByIdAndIsActiveTrue(
@@ -86,8 +95,10 @@ public class InvoiceService {
             item.setInvoice(invoice);
             item.setMaterialType(material);
             item.setQuantityBrass(itemRequest.getQuantityBrass());
-            item.setRate(itemRequest.getRate());
-            BigDecimal itemAmount = itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
+            item.setRate(manager ? null : itemRequest.getRate());
+            BigDecimal itemAmount = manager || itemRequest.getRate() == null
+                    ? BigDecimal.ZERO
+                    : itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
             item.setAmount(itemAmount);
             item.setTruckNumber(itemRequest.getTruckNumber());
 
@@ -95,6 +106,7 @@ public class InvoiceService {
         }
 
         invoice.setTotalAmount(totalAmount);
+        invoice.setTotalPending(manager);
         invoice.setInvoiceItems(invoiceItems);
         invoice.setCreatedBy(createdBy);
 
@@ -158,14 +170,20 @@ public class InvoiceService {
             item.setMaterialType(material);
             item.setQuantityBrass(itemRequest.getQuantityBrass());
             item.setRate(itemRequest.getRate());
-            BigDecimal itemAmount = itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
+            BigDecimal itemAmount = itemRequest.getRate() == null
+                    ? BigDecimal.ZERO
+                    : itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
             item.setAmount(itemAmount);
             item.setTruckNumber(itemRequest.getTruckNumber());
 
             invoiceItems.add(item);
             totalAmount = totalAmount.add(itemAmount);
         }
+        if (totalAmount.signum() <= 0) {
+            throw new IllegalArgumentException("Enter rates so the total amount is greater than zero");
+        }
         existingInvoice.setTotalAmount(totalAmount);
+        existingInvoice.setTotalPending(false);
         existingInvoice.setInvoiceItems(invoiceItems);
 
         Invoice savedInvoice = invoiceRepository.save(existingInvoice);
@@ -279,19 +297,49 @@ public class InvoiceService {
 
 
     public List<InvoiceResponse> getAll() {
-        return invoiceRepository.findAllByIsActiveTrue().stream()
+        List<Invoice> invoices = SecurityUtils.isManager()
+                ? invoiceRepository.findAllByIsActiveTrueAndInvoiceDateOrderByCreatedAtDesc(LocalDate.now())
+                : invoiceRepository.findAllByIsActiveTrueOrderByCreatedAtDesc();
+        return invoices.stream()
+                .map(InvoiceResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public String getNextInvoiceNumber() {
+        LocalDate today = LocalDate.now();
+        // Indian financial year runs April to March
+        int startYear = today.getMonthValue() >= 4 ? today.getYear() : today.getYear() - 1;
+        String prefix = String.format("INV-%02d/%02d-", startYear % 100, (startYear + 1) % 100);
+        String max = invoiceRepository.findMaxInvoiceNumber(prefix + "%");
+        int next = 1;
+        if (max != null) {
+            try {
+                next = Integer.parseInt(max.substring(prefix.length())) + 1;
+            } catch (NumberFormatException ignored) {
+                next = 1;
+            }
+        }
+        return prefix + String.format("%04d", next);
+    }
+
+    public List<InvoiceResponse> getPendingTotal() {
+        return invoiceRepository.findAllByIsActiveTrueAndTotalPendingTrueOrderByCreatedAtDesc().stream()
                 .map(InvoiceResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public Page<InvoiceResponse> getPage(Pageable pageable) {
-        return invoiceRepository.findAllByIsActiveTrue(pageable).map(InvoiceResponse::fromEntity);
+        Page<Invoice> page = SecurityUtils.isManager()
+                ? invoiceRepository.findAllByIsActiveTrueAndInvoiceDateOrderByCreatedAtDesc(LocalDate.now(), pageable)
+                : invoiceRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable);
+        return page.map(InvoiceResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)
     public InvoiceResponse getById(Long id) {
         Invoice invoice = invoiceRepository.findById(id)
             .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+            .filter(foundInvoice -> !SecurityUtils.isManager() || LocalDate.now().equals(foundInvoice.getInvoiceDate()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
         return InvoiceResponse.fromEntity(invoice);
     }

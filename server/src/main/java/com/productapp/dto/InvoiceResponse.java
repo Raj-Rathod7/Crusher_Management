@@ -16,7 +16,7 @@ public class InvoiceResponse {
     private Long customerId;
     private BigDecimal totalAmount;
     private String remarks;
-    
+    private Boolean totalPending;
     private String createdByUsername;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -58,6 +58,7 @@ public class InvoiceResponse {
                 invoice.getCustomer() != null ? invoice.getCustomer().getId() : null,
                 itemResponses
         );
+            response.totalPending = Boolean.TRUE.equals(invoice.getTotalPending());
             response.createdByUsername = invoice.getCreatedBy() != null ? invoice.getCreatedBy().getUsername() : null;
             response.createdAt = invoice.getCreatedAt();
             response.updatedAt = invoice.getUpdatedAt();
@@ -79,6 +80,8 @@ public class InvoiceResponse {
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
+    public Boolean getTotalPending() { return totalPending; }
+    public void setTotalPending(Boolean totalPending) { this.totalPending = totalPending; }
     public String getCreatedByUsername() { return createdByUsername; }
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
     public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }

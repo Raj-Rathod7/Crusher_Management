@@ -24,19 +24,18 @@ import React, { useEffect } from "react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { Search } from "lucide-react";
 import { useCache } from "#/hooks/use-cache";
-import { quickLinks, type quickLink } from "#/lib/common";
+import { getQuickLinks, type quickLink } from "#/lib/common";
+import { getTokenClaims, isManager } from "#/lib/common/api";
+import { getPendingTotalSales, salesKeys } from "#/lib/query";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
 type AppPath = "/" | "/customer" | "/expenses" | "/sales" | "/truck-entry";
 
 type BreadcrumbEntry = {
   label: string;
   to?: AppPath;
-};
-
-const user = {
-  name: "Admin",
-  email: "m@example.com",
-  avatar: "/avatars/shadcn.jpg",
 };
 
 function getBreadcrumbs(pathname: string): BreadcrumbEntry[] {
@@ -74,6 +73,20 @@ export function SiteHeader() {
   const breadcrumbs = getBreadcrumbs(pathname);
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
+  const manager = isManager();
+  const claims = getTokenClaims();
+  const user = {
+    name: claims.sub ?? "User",
+    email: claims.email || (claims.role ?? "").toLowerCase(),
+    avatar: "",
+  };
+  const quickLinks = getQuickLinks(manager);
+  const pendingSales = useQuery({
+    queryKey: salesKeys.pending,
+    queryFn: getPendingTotalSales,
+    enabled: !manager,
+  });
+  const pendingCount = pendingSales.data?.length ?? 0;
 
   const cache = useCache<string, quickLink>(3, {persitent: true, key: 'links'});
 
@@ -83,7 +96,7 @@ export function SiteHeader() {
     navigate({ to: link.path });
   };
 
-  const mostRecentLinks = cache?.getAll() ?? [];
+  const mostRecentLinks = (cache?.getAll() ?? []).filter((link) => quickLinks.some((l) => l.path === link.path));
 
   useEffect(() => {
     const handleCommand = (event: KeyboardEvent) => {
@@ -138,6 +151,14 @@ export function SiteHeader() {
         </Breadcrumb>
       </div>
       <div className="flex shrink-0 items-center gap-1 pr-4 lg:pr-6">
+        {pendingCount > 0 && (
+          <Button asChild variant="outline" size="sm" className="mr-2">
+            <Link to="/sales" search={{ pending: true }}>
+              Add sale totals
+              <Badge variant="destructive">{pendingCount}</Badge>
+            </Link>
+          </Button>
+        )}
         <InputGroup onClick={() => setOpen(true)} className="mr-5">
           <InputGroupInput readOnly placeholder="Search system" />
           <InputGroupAddon>

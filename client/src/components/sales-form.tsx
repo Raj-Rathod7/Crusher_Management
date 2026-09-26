@@ -25,8 +25,9 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { createCustomer } from '#/lib/mutation'
-import type { CreateInvoicePayload, Customer, Invoice } from '#/lib/models'
-import { customerKeys, getAllCustomers, getAllMaterials, getAllSales, materialKeys, salesKeys } from '#/lib/query'
+import { isManager } from '#/lib/common/api'
+import type { CreateInvoicePayload, Customer } from '#/lib/models'
+import { customerKeys, getAllCustomers, getAllMaterials, getNextInvoiceNumber, materialKeys, salesKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { IconArrowLeft, IconCurrencyRupee, IconPlus, IconReceipt, IconUser } from '@tabler/icons-react'
@@ -76,11 +77,14 @@ type SalesFormProps = {
   onSubmit: (payload: CreateInvoicePayload) => void
   showSummary?: boolean
   variant?: 'page' | 'dialog'
+  requireRate?: boolean
 }
+
+const todayLocal = () => new Date().toLocaleDateString('en-CA')
 
 const initialFormState: FormState = {
   invoiceNumber: '',
-  invoiceDate: new Date().toISOString().slice(0, 10),
+  invoiceDate: todayLocal(),
   customerId: '',
   totalAmount: '',
   paymentAmount: '',
@@ -94,32 +98,7 @@ const initialInvoiceItemForm: InvoiceItemFormState = {
   truckNumber: ''
 }
 
-function buildNextInvoiceNumber(invoices: Invoice[], year: number) {
-  const yearText = String(year)
-
-  const maxSequence = invoices.reduce((max, invoice) => {
-    const invoiceNumber = (invoice.invoiceNumber ?? '').trim()
-
-    if (!invoiceNumber.includes(yearText)) {
-      return max
-    }
-
-    const yearSequenceMatch = invoiceNumber.match(new RegExp(`${yearText}\\D*(\\d+)$`))
-    const fallbackLastNumberMatch = invoiceNumber.match(/(\d+)(?!.*\d)/)
-    const sequenceText = yearSequenceMatch?.[1] ?? fallbackLastNumberMatch?.[1]
-    const sequence = sequenceText ? Number(sequenceText) : NaN
-
-    if (!Number.isFinite(sequence)) {
-      return max
-    }
-
-    return Math.max(max, sequence)
-  }, 0)
-
-  return `INV-${yearText}-${String(maxSequence + 1).padStart(4, '0')}`
-}
-
-function validateForm(form: FormState) {
+function validateForm(form: FormState, manager: boolean) {
   const errors: FormErrors = {}
 
   if (!form.invoiceNumber.trim()) {
@@ -132,6 +111,10 @@ function validateForm(form: FormState) {
 
   if (!form.customerId) {
     errors.customerId = 'Customer required.'
+  }
+
+  if (manager) {
+    return errors
   }
 
   if (!form.totalAmount.trim() || Number(form.totalAmount) <= 0) {
@@ -161,10 +144,16 @@ export function SalesForm({
   onSubmit,
   showSummary = true,
   variant = 'page',
+  requireRate = false,
 }: SalesFormProps) {
   const queryClient = useQueryClient()
+  const manager = isManager()
   const shouldAutoGenerateInvoiceNumber = !initialValues?.invoiceNumber;
-  const [form, setForm] = React.useState<FormState>({ ...initialFormState, ...initialValues })
+  const [form, setForm] = React.useState<FormState>({
+    ...initialFormState,
+    ...initialValues,
+    ...(manager ? { invoiceDate: todayLocal() } : {}),
+  })
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
   const [invoiceItemForm, setInvoiceItemForm] = React.useState<InvoiceItemFormState>(() => {
@@ -198,9 +187,9 @@ export function SalesForm({
     refetchOnWindowFocus: false,
   })
 
-  const { data: sales = [] } = useQuery({
-    queryKey: salesKeys.all,
-    queryFn: getAllSales,
+  const { data: nextInvoiceNumber } = useQuery({
+    queryKey: [...salesKeys.all, 'next-number'],
+    queryFn: getNextInvoiceNumber,
     enabled: shouldAutoGenerateInvoiceNumber,
     retry: false,
     refetchOnMount: true,
@@ -244,21 +233,12 @@ export function SalesForm({
   }, [selectedCustomer])
 
   React.useEffect(() => {
-    if (!shouldAutoGenerateInvoiceNumber) {
+    if (!shouldAutoGenerateInvoiceNumber || !nextInvoiceNumber) {
       return
     }
-    setForm((current) => {
-      const invoiceNumber = buildNextInvoiceNumber(sales, new Date().getFullYear());
-      if(current.invoiceNumber.trim() === invoiceNumber.trim()){
-        return current;
-      }
-
-      return {
-        ...current,
-        invoiceNumber: buildNextInvoiceNumber(sales, new Date().getFullYear()),
-      }
-    })
-  }, [sales, shouldAutoGenerateInvoiceNumber])
+    setForm((current) =>
+      current.invoiceNumber === nextInvoiceNumber ? current : { ...current, invoiceNumber: nextInvoiceNumber })
+  }, [nextInvoiceNumber, shouldAutoGenerateInvoiceNumber])
 
   const handleInvoiceItemFieldChange = (field: keyof InvoiceItemFormState, value: string) => {
     setInvoiceItemForm((current) => ({ ...current, [field]: value }))
@@ -280,6 +260,10 @@ export function SalesForm({
 
     if (!invoiceItemForm.truckNumber.trim()) {
       nextErrors.truckNumber = 'Truck Number required.'
+    }
+
+    if (requireRate && !manager && !(Number(invoiceItemForm.rate) > 0)) {
+      nextErrors.rate = 'Rate must be greater than 0.'
     }
 
     return nextErrors
@@ -305,7 +289,7 @@ export function SalesForm({
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const nextErrors = validateForm(form)
+    const nextErrors = validateForm(form, manager)
     const invoiceItemErrorsNext = validateInvoiceItem()
 
     if (Object.keys(invoiceItemErrorsNext).length > 0) {
@@ -320,6 +304,26 @@ export function SalesForm({
     }
 
     const invoiceItem = buildInvoiceItem()
+
+    if (manager) {
+      onSubmit({
+        invoiceNumber: form.invoiceNumber.trim(),
+        invoiceDate: form.invoiceDate,
+        customerId: Number(form.customerId),
+        remarks: form.remarks.trim() || undefined,
+        invoiceItems: [
+          {
+            ...invoiceItem,
+            id: 0,
+            materialTypeId: Number(invoiceItem.materialTypeId),
+            quantityBrass: Number(invoiceItem.quantityBrass),
+            rate: null,
+            amount: 0,
+          },
+        ],
+      })
+      return
+    }
 
     const payload: CreateInvoicePayload = {
       invoiceNumber: form.invoiceNumber.trim(),
@@ -349,7 +353,7 @@ export function SalesForm({
     handleChange('customerId', String(customer.id))
   }
 
-  const sidebarContent = isPage && showSummary ? (
+  const sidebarContent = isPage && showSummary && !manager ? (
     <>
       <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-4">
         <div>
@@ -423,7 +427,7 @@ export function SalesForm({
                     id="invoiceNumber"
                     value={form.invoiceNumber}
                     readOnly
-                    placeholder="INV-YYYY-0001"
+                    placeholder="INV-YY/YY-0001"
                   />
                   <FieldError>{errors.invoiceNumber}</FieldError>
                 </FieldContent>
@@ -436,6 +440,7 @@ export function SalesForm({
                     id="invoiceDate"
                     type="date"
                     value={form.invoiceDate}
+                    readOnly={manager}
                     onChange={(event) => handleChange('invoiceDate', event.target.value)}
                   />
                   <FieldError>{errors.invoiceDate}</FieldError>
@@ -523,6 +528,7 @@ export function SalesForm({
           </div>
         </div>
 
+        {!manager && (
         <div className="border-b border-border/80 py-6">
           <div className="grid gap-4 md:grid-cols-2">
               <Field>
@@ -561,10 +567,11 @@ export function SalesForm({
 
           </div>
         </div>
+        )}
 
         <div className="py-6">
           <div className="border border-border/80 bg-muted/20 p-4">
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className={`grid gap-4 ${manager ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
                       <Field>
                         <FieldLabel htmlFor="item-material">Material</FieldLabel>
                         <FieldContent>
@@ -606,6 +613,7 @@ export function SalesForm({
                         </FieldContent>
                       </Field>
 
+                      {!manager && (
                       <Field>
                         <FieldLabel htmlFor="item-rate">Rate</FieldLabel>
                         <FieldContent>
@@ -621,6 +629,7 @@ export function SalesForm({
                           {invoiceItemErrors.rate && <FieldError>{invoiceItemErrors.rate}</FieldError>}
                         </FieldContent>
                       </Field>
+                      )}
                     </div> 
                     <div className="mt-2">
                       <Field>

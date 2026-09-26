@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import type { CreateExpensePayload } from '#/lib/models'
+import { isManager } from '#/lib/common/api'
 import { getAllExpenseCategories, expenseCategoryKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -44,7 +45,7 @@ type ExpenseFormProps = {
 }
 
 const defaultFormValues: ExpenseFormValues = {
-  expenseDate: new Date().toISOString().slice(0, 10),
+  expenseDate: new Date().toLocaleDateString('en-CA'),
   categoryId: '',
   amount: '',
   truckNumber: '',
@@ -137,6 +138,7 @@ export function ExpenseForm({
               id="expenseDate"
               type="date"
               value={form.expenseDate}
+              readOnly={isManager()}
               onChange={(event) => handleChange('expenseDate', event.target.value)}
             />
             <FieldError>{errors.expenseDate}</FieldError>

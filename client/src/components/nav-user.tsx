@@ -40,7 +40,7 @@ export function NavUser({
         <Button type="button" variant="ghost" className="h-8 gap-2 px-1.5" aria-label="Open user menu">
           <Avatar className="size-6 rounded-md grayscale">
             <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback className="rounded-md">CN</AvatarFallback>
+            <AvatarFallback className="rounded-md">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="hidden max-w-32 truncate text-sm font-medium md:inline">{user.name}</span>
           <IconDotsVertical className="size-4" />
@@ -51,7 +51,7 @@ export function NavUser({
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="h-8 w-8 rounded-lg">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+              <AvatarFallback className="rounded-lg">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>

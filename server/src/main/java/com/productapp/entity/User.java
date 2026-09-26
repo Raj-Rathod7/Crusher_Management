@@ -31,6 +31,8 @@ public class User extends AuditableEntity {
     @Column(nullable = false)
     private String password;
 
+    private String email;
+
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role; 

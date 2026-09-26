@@ -25,6 +25,7 @@ import {
 } from "@tabler/icons-react";
 import { Badge } from "#/components/ui/badge";
 import { Truck } from "lucide-react";
+import { isManager } from "#/lib/common/api";
 
 export const Route = createFileRoute("/_app/truck-entry/")({
   component: RouteComponent,
@@ -196,11 +197,11 @@ function RouteComponent() {
             accessorKey: "quantityBrass",
             header: "Quantity (Brass)",
           },
-          {
+          ...(isManager() ? [] : [{
             id: "actions",
             header: "Actions",
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: TruckRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">
                   <Link
@@ -221,7 +222,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility

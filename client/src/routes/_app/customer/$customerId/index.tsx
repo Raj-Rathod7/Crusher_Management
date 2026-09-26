@@ -389,7 +389,7 @@ function ExpandableInvoiceTable({
         {
           id: 'rate',
           header: 'Rate',
-          cell: ({ row }) => row.original.invoiceItems[0]
+          cell: ({ row }) => row.original.invoiceItems[0]?.rate != null
             ? currency.format(row.original.invoiceItems[0].rate)
             : '-',
         },

@@ -48,13 +48,13 @@ public class UserService {
     }
 
     public List<UserResponse> getAll() {
-        return userRepository.findAllByIsActiveTrue().stream()
+        return userRepository.findAllByIsActiveTrueOrderByCreatedAtDesc().stream()
                 .map(UserResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
         public Page<UserResponse> getPage(Pageable pageable) {
-                return userRepository.findAllByIsActiveTrue(pageable).map(UserResponse::fromEntity);
+                return userRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable).map(UserResponse::fromEntity);
         }
 
     public UserResponse getById(Long id) {

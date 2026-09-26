@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import type { CreateTruckEntryPayload } from '#/lib/models'
+import { isManager } from '#/lib/common/api'
 import { getAllMaterials, materialKeys } from '#/lib/query'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
@@ -67,7 +68,7 @@ type TruckEntryFormProps = {
 }
 
 const defaultFormValues: TruckEntryFormValues = {
-  entryDate: new Date().toISOString().slice(0, 10),
+  entryDate: new Date().toLocaleDateString('en-CA'),
   truckNumber: '',
   materialTypeId: '',
   quantityBrass: '',
@@ -235,7 +236,7 @@ export function TruckEntryForm({
                     <Field>
                       <FieldLabel htmlFor="entryDate">Entry date</FieldLabel>
                       <FieldContent>
-                        <Input id="entryDate" type="date" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)} aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0} />
+                        <Input id="entryDate" type="date" readOnly={isManager()} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)} aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0} />
                         {(field.state.meta.isTouched || form.state.isSubmitted) && <FieldError>{getErrorMessage(field.state.meta.errors)}</FieldError>}
                       </FieldContent>
                     </Field>

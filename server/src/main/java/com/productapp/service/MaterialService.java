@@ -29,15 +29,15 @@ public class MaterialService {
 
     public List<MaterialResponse> getAll(MaterialUsageType type) {
         List<MaterialType> materials = type == null
-                ? materialRepository.findAllByIsActiveTrue()
-                : materialRepository.findAllByTypeAndIsActiveTrue(type);
+                ? materialRepository.findAllByIsActiveTrueOrderByCreatedAtDesc()
+                : materialRepository.findAllByTypeAndIsActiveTrueOrderByCreatedAtDesc(type);
         return materials.stream()
                 .map(MaterialResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public Page<MaterialResponse> getPage(Pageable pageable) {
-        return materialRepository.findAllByIsActiveTrue(pageable).map(MaterialResponse::fromEntity);
+        return materialRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable).map(MaterialResponse::fromEntity);
     }
 
     public MaterialResponse getById(Long id) {

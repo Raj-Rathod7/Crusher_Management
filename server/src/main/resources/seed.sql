@@ -6,12 +6,12 @@ INSERT INTO roles (role_name, description, is_active, created_at, updated_at) VA
 ('SYSTEM','System role',TRUE,NOW(),NOW()),('ADMIN','Administrator role',TRUE,NOW(),NOW()),('MANAGER','Manager role',TRUE,NOW(),NOW()),('USER','Standard user role',TRUE,NOW(),NOW())
 ON DUPLICATE KEY UPDATE description=VALUES(description),is_active=TRUE,updated_at=NOW();
 
-INSERT INTO users (username,password,role_id,is_active,created_at,updated_at)
-SELECT 'demo-admin','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='ADMIN'
-ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),is_active=TRUE,updated_at=NOW();
-INSERT INTO users (username,password,role_id,is_active,created_at,updated_at)
-SELECT 'demo-manager','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='MANAGER'
-ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),is_active=TRUE,updated_at=NOW();
+INSERT INTO users (username,password,email,role_id,is_active,created_at,updated_at)
+SELECT 'demo-admin','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','admin@example.com',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='ADMIN'
+ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),email=VALUES(email),is_active=TRUE,updated_at=NOW();
+INSERT INTO users (username,password,email,role_id,is_active,created_at,updated_at)
+SELECT 'demo-manager','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','manager@example.com',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='MANAGER'
+ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),email=VALUES(email),is_active=TRUE,updated_at=NOW();
 
 INSERT INTO material_types (name,type,is_active,created_at,updated_at) VALUES
 ('10mm','SALE',TRUE,NOW(),NOW()),('20mm','SALE',TRUE,NOW(),NOW()),('Stone Dust','SALE',TRUE,NOW(),NOW()),('Crusher Run','SALE',TRUE,NOW(),NOW())

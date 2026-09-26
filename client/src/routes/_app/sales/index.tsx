@@ -7,6 +7,7 @@ import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } f
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import {
+  IconAlertTriangle,
   IconCalendarStats,
   IconCube,
   IconCurrencyRupee,
@@ -17,8 +18,11 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/sales/')({
+  validateSearch: (search: Record<string, unknown>): { pending?: boolean } =>
+    search.pending === true || search.pending === 'true' ? { pending: true } : {},
   component: RouteComponent,
 })
 
@@ -32,6 +36,7 @@ type SalesRow = {
   quantityBrass: string
   rate: string
   totalAmount: string,
+  totalPending: boolean
   payment? : {
     amount: number
   }
@@ -48,6 +53,8 @@ function RouteComponent() {
   const navigate = useNavigate()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const manager = isManager()
+  const { pending: pendingOnly = false } = Route.useSearch()
   const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
   const [saleToDelete, setSaleToDelete] = useState<SalesRow | null>(null)
   const { data, isLoading, isError, error } = useQuery({
@@ -84,9 +91,12 @@ function RouteComponent() {
   }, [data])
 
   const filteredInvoices = useMemo(
-    () => (data ?? []).filter((invoice) => matchesPeriod(invoice.invoiceDate, quickFilter)),
-    [data, quickFilter]
+    () => (data ?? []).filter((invoice) =>
+      matchesPeriod(invoice.invoiceDate, quickFilter) && (!pendingOnly || invoice.totalPending)),
+    [data, quickFilter, pendingOnly]
   )
+
+  const pendingCount = useMemo(() => (data ?? []).filter((invoice) => invoice.totalPending).length, [data])
 
   const salesRows: SalesRow[] = filteredInvoices.map((invoice) => ({
     id: invoice.id,
@@ -98,12 +108,13 @@ function RouteComponent() {
     quantityBrass: invoice.invoiceItems[0]
       ? `${invoice.invoiceItems[0].quantityBrass} brass`
       : '-',
-    rate: invoice.invoiceItems[0]
+    rate: invoice.invoiceItems[0]?.rate != null
       ? formatCurrency(invoice.invoiceItems[0].rate)
       : '-',
     totalAmount: formatCurrency(invoice.totalAmount),
+    totalPending: invoice.totalPending,
     payment: invoice.payment ? { amount: invoice.payment.amount } : undefined,
-  })).sort((a, b) => b.invoiceNumber.localeCompare(a.invoiceNumber, undefined));
+  }));
 
   useEffect(() => {
     if (isError) {
@@ -152,6 +163,7 @@ function RouteComponent() {
           active={quickFilter === 'month'}
           onClick={() => setQuickFilter('month')}
         />
+        {!manager && (
         <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title={`Billed (${QUICK_PERIOD_LABELS[quickFilter]})`}
@@ -159,6 +171,16 @@ function RouteComponent() {
           active
           onClick={() => setQuickFilter(quickFilter)}
         />
+        )}
+        {!manager && (
+          <FilterChip
+            icon={<IconAlertTriangle className="size-4" />}
+            title="Pending total"
+            value={pendingCount}
+            active={pendingOnly}
+            onClick={() => navigate({ to: '/sales', search: pendingOnly ? {} : { pending: true } })}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
@@ -184,7 +206,7 @@ function RouteComponent() {
             header: 'Customer',
             meta: { filterable: true, filterPlaceholder: 'Filter customer' },
             cell: ({ row }) =>
-              row.original.customerId ? (
+              row.original.customerId && !manager ? (
                 <Link
                   to="/customer/$customerId"
                   params={{ customerId: String(row.original.customerId) }}
@@ -229,20 +251,22 @@ function RouteComponent() {
               </span>
             ),
           },
-          {
+          ...(manager ? [] : [{
             accessorKey: 'totalAmount',
             header: 'Total',
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: SalesRow } }) => row.original.totalPending ? (
+              <Badge variant="destructive">Pending total</Badge>
+            ) : (
               <span className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
                 {row.original.totalAmount}
               </span>
             ),
-          },
-          {
+          }]),
+          ...(manager ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: SalesRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
                   <Link to="/sales/$saleId/edit" params={{ saleId: String(row.original.id) }}>
@@ -263,7 +287,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility

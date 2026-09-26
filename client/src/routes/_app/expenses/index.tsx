@@ -18,6 +18,7 @@ import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { IconCalendarStats, IconCategory, IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/expenses/')({
   component: RouteComponent,
@@ -199,11 +200,11 @@ function RouteComponent() {
             accessorKey: 'notes',
             header: 'Notes',
           },
-          {
+          ...(isManager() ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: ExpenseRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">
                   <Link
@@ -224,7 +225,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility

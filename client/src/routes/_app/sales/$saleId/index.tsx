@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { IconPencil } from '@tabler/icons-react'
 import { Truck } from 'lucide-react'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/sales/$saleId/')({
   component: RouteComponent,
@@ -30,6 +31,7 @@ function RouteComponent() {
 
   const sale = saleQuery.data
   const invoiceItems = sale?.invoiceItems ?? []
+  const manager = isManager()
 
   return (
     <FormPageLayout
@@ -39,12 +41,12 @@ function RouteComponent() {
       backTo="/sales"
       badge="Invoice"
     >
-      {sale ? (
+      {sale && !manager ? (
         <div className="mb-4 flex justify-end">
           <Button asChild size="sm" variant="outline">
             <Link to="/sales/$saleId/edit" params={{ saleId }}>
               <IconPencil />
-              Edit
+              {sale.totalPending ? 'Add total' : 'Edit'}
             </Link>
           </Button>
         </div>
@@ -61,10 +63,12 @@ function RouteComponent() {
             <DetailField
               label="Customer"
               value={sale.customerName ?? '-'}
-              linkTo={sale.customerId ? { to: '/customer/$customerId', params: { customerId: String(sale.customerId) } } : undefined}
+              linkTo={sale.customerId && !manager ? { to: '/customer/$customerId', params: { customerId: String(sale.customerId) } } : undefined}
             />
             <DetailField label="Created by" value={sale.createdByUsername ?? '-'} />
-            <DetailField label="Total" value={formatCurrency(sale.totalAmount)} />
+            {!manager && (
+              <DetailField label="Total" value={sale.totalPending ? 'Pending' : formatCurrency(sale.totalAmount)} />
+            )}
             <DetailField label="Payment received" value={sale.payment ? formatCurrency(sale.payment.amount) : 'Not received'} />
             <DetailField label="Remarks" value={sale.remarks || '-'} />
           </dl>
@@ -123,7 +127,7 @@ function RouteComponent() {
                     <div className="min-w-0">
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">Quantity x Rate</p>
                       <p className="mt-1 text-sm font-medium">
-                        {item.quantityBrass} &times; {formatCurrency(item.rate)}
+                        {item.quantityBrass} &times; {item.rate != null ? formatCurrency(item.rate) : 'Pending'}
                       </p>
                     </div>
                     <div className="min-w-0">

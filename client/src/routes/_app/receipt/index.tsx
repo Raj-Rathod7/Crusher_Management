@@ -10,6 +10,7 @@ import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-r
 import { IconCalendarStats, IconCreditCard, IconCurrencyRupee, IconPencil, IconReceipt, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/receipt/')({
   component: RouteComponent,
@@ -215,11 +216,11 @@ function RouteComponent() {
             accessorKey: 'notes',
             header: 'Notes',
           },
-          {
+          ...(isManager() ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: ReceiptRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
                   <Link to="/receipt/$paymentId/edit" params={{ paymentId: String(row.original.id) }}>
@@ -240,7 +241,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility
@@ -257,7 +258,7 @@ function RouteComponent() {
         exportFileName="receipts-report"
         exportTitle="Receipts report"
         onRowClick={(row) => {
-          if (row.customerId) {
+          if (row.customerId && !isManager()) {
             navigate({ to: '/customer/$customerId', params: { customerId: String(row.customerId) } })
           }
         }}

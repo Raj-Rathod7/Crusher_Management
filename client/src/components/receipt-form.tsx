@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import type { Customer, CreateCustomerPaymentPayload } from '#/lib/models'
+import { isManager } from '#/lib/common/api'
 import { customerKeys, getAllCustomers } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -48,7 +49,7 @@ type ReceiptFormProps = {
 const defaultFormValues: ReceiptFormValues = {
   customerId: '',
   amount: '',
-  paymentDate: new Date().toISOString().slice(0, 10),
+  paymentDate: new Date().toLocaleDateString('en-CA'),
   paymentMode: 'cash',
   externalRef: '',
   notes: '',
@@ -190,6 +191,7 @@ export function ReceiptForm({
               id="paymentDate"
               type="date"
               value={form.paymentDate}
+              readOnly={isManager()}
               onChange={(event) => handleChange('paymentDate', event.target.value)}
             />
             <FieldError>{errors.paymentDate}</FieldError>

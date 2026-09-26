@@ -2,6 +2,9 @@ package com.productapp.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -42,6 +45,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/auth/**",
@@ -49,12 +54,25 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/api/auth/**",
                                 "/auth/login",
+                                "/error",
                                 "/swagger-ui.html"
                         ).permitAll()
-                        .requestMatchers("/customers/**")
+                        .requestMatchers("/users/is-authenticated").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/invoices/pending", "/expenses/vehicle-summary")
                         .hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/truck-entries/**","/invoices/**").authenticated()
-                        .anyRequest().authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/invoices/**", "/truck-entries/**", "/expenses/**")
+                        .hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/invoices/**", "/truck-entries/**", "/expenses/**")
+                        .hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/invoices/**", "/truck-entries/**", "/expenses/**", "/materials/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST, "/invoices", "/truck-entries", "/expenses")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/customers").hasAnyRole("USER", "ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.POST, "/customers").hasAnyRole("USER", "ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.GET, "/payments", "/payments/*").hasAnyRole("USER", "ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.POST, "/customers/*/payments").hasAnyRole("USER", "ADMIN", "MANAGER")
+                        .anyRequest().hasAnyRole("USER", "ADMIN")
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

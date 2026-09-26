@@ -48,8 +48,8 @@ function RouteComponent() {
       toast.success('Sale updated.')
       navigate({ to: '/sales' })
     },
-    onError: () => {
-      toast.error('Failed to update sale.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update sale.')
     },
   })
 
@@ -75,7 +75,7 @@ function RouteComponent() {
         invoiceNumber: sale.invoiceNumber,
         invoiceDate: sale.invoiceDate,
         customerId,
-        totalAmount: String(sale.totalAmount),
+        totalAmount: sale.totalPending ? '' : String(sale.totalAmount),
         paymentAmount: sale.payment ? String(sale.payment.amount) : '',
         remarks: sale.remarks || '',
       }}
@@ -83,7 +83,7 @@ function RouteComponent() {
         id: String(item.id),
         materialTypeId: String(item.materialTypeId ?? ''),
         quantityBrass: String(item.quantityBrass),
-        rate: String(item.rate),
+        rate: item.rate != null ? String(item.rate) : '',
         amount: String(item.amount),
         materialName: item.materialName ?? '',
         truckNumber: item.truckNumber ?? '',
@@ -91,6 +91,7 @@ function RouteComponent() {
       onSubmit={updateMutation.mutate}
       showSummary={true}
       variant="page"
+      requireRate
     />
   )
 }
