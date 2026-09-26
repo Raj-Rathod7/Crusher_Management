@@ -54,6 +54,7 @@ export type Invoice = {
   customerName: string | null;
   customerId: number | null;
   totalAmount: number;
+  totalPending: boolean;
   remarks: string | null;
   createdByUsername: string | null;
   createdAt: string;
@@ -67,7 +68,7 @@ export type InvoiceItem = {
   materialTypeId: number | null;
   materialName: string | null;
   quantityBrass: number;
-  rate: number;
+  rate: number | null;
   amount: number;
   truckNumber: string | null;
 }
@@ -75,7 +76,7 @@ export type InvoiceItem = {
 export type CreateInvoicePayload = {
   invoiceNumber: string;
   invoiceDate: string;
-  totalAmount: number;
+  totalAmount?: number;
   paymentAmount?: number;
   remarks?: string;
   customerId: number;

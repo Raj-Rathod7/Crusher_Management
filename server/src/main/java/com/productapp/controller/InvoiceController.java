@@ -40,6 +40,16 @@ public class InvoiceController {
         return invoiceService.getPage(pageable);
     }
 
+    @GetMapping("/next-number")
+    public java.util.Map<String, String> getNextInvoiceNumber() {
+        return java.util.Map.of("invoiceNumber", invoiceService.getNextInvoiceNumber());
+    }
+
+    @GetMapping("/pending")
+    public List<InvoiceResponse> getPendingTotal() {
+        return invoiceService.getPendingTotal();
+    }
+
     @GetMapping("/{id}")
     public InvoiceResponse getById(@PathVariable Long id) {
         return invoiceService.getById(id);

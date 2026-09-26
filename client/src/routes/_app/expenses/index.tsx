@@ -1,5 +1,5 @@
 import { ConfigurableDataTable } from '#/components/data-table'
-import { FilterChip } from '#/components/stats-card'
+import { FilterChip, StatsCard } from '#/components/stats-card'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 import {
@@ -12,12 +12,14 @@ import {
 } from '#/components/ui/dialog'
 import { deleteExpense } from '#/lib/mutation'
 import { getAllExpenses, expenseKeys } from '#/lib/query'
-import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { matchesPeriod, matchesRange, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { DateRangePicker, type DateRangeValue } from '#/components/date-range-picker'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { IconCalendarStats, IconCategory, IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/expenses/')({
   component: RouteComponent,
@@ -29,6 +31,7 @@ type ExpenseRow = {
   categoryName: string
   truckNumber: string
   amount: string
+  amountValue: number
   notes: string
 }
 
@@ -47,6 +50,8 @@ function RouteComponent() {
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseRow | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState('all')
   const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
+  const [dateRange, setDateRange] = useState<DateRangeValue>()
+  const [spentTotal, setSpentTotal] = useState(0)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: expenseKeys.all,
@@ -64,8 +69,9 @@ function RouteComponent() {
   }, [data, selectedVehicle])
 
   const selectedExpenses = useMemo(
-    () => vehicleExpenses.filter((expense) => matchesPeriod(expense.expenseDate, quickFilter)),
-    [quickFilter, vehicleExpenses]
+    () => vehicleExpenses.filter((expense) =>
+      matchesPeriod(expense.expenseDate, quickFilter) && matchesRange(expense.expenseDate, dateRange)),
+    [quickFilter, dateRange, vehicleExpenses]
   )
 
   const expenseRows: ExpenseRow[] = selectedExpenses.map((expense) => ({
@@ -74,6 +80,7 @@ function RouteComponent() {
     categoryName: expense.categoryName ?? '-',
     truckNumber: expense.truckNumber ?? '-',
     amount: formatCurrency(expense.amount),
+    amountValue: expense.amount,
     notes: expense.notes ?? '-',
   }))
 
@@ -124,51 +131,47 @@ function RouteComponent() {
       </div>
 
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+        <StatsCard
+          icon={<IconCurrencyRupee className="size-4" />}
+          title="Spent"
+          value={formatCurrency(spentTotal)}
+        />
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
           title="All expenses"
           value={periodStats.all.count}
-          active={quickFilter === 'all'}
-          onClick={() => setQuickFilter('all')}
+          active={quickFilter === 'all' && !dateRange}
+          onClick={() => { setQuickFilter('all'); setDateRange(undefined) }}
         />
         <FilterChip
           icon={<IconCalendarStats className="size-4" />}
           title="Today"
           value={periodStats.today.count}
           active={quickFilter === 'today'}
-          onClick={() => setQuickFilter('today')}
+          onClick={() => { setQuickFilter('today'); setDateRange(undefined) }}
         />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This week"
-          value={periodStats.week.count}
-          active={quickFilter === 'week'}
-          onClick={() => setQuickFilter('week')}
-        />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This month"
-          value={periodStats.month.count}
-          active={quickFilter === 'month'}
-          onClick={() => setQuickFilter('month')}
-        />
-        <FilterChip
-          icon={<IconCurrencyRupee className="size-4" />}
-          title={`Spent (${QUICK_PERIOD_LABELS[quickFilter]})`}
-          value={formatCurrency(periodStats[quickFilter].total)}
-          active
-          onClick={() => setQuickFilter(quickFilter)}
-        />
+        {!isManager() && (
+          <DateRangePicker
+            className="ml-auto"
+            showPresets={false}
+            value={dateRange}
+            onChange={(range) => { setDateRange(range); setQuickFilter('all') }}
+            onClear={() => setDateRange(undefined)}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
         data={expenseRows}
+        onFilteredDataChange={(rows) => setSpentTotal(rows.reduce((sum, row) => sum + row.amountValue, 0))}
         columns={[
           {
             accessorKey: 'expenseDate',
             header: 'Date',
-            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'categoryName',
@@ -199,11 +202,11 @@ function RouteComponent() {
             accessorKey: 'notes',
             header: 'Notes',
           },
-          {
+          ...(isManager() ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: ExpenseRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">
                   <Link
@@ -224,7 +227,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility

@@ -28,13 +28,13 @@ public class RoleService {
     }
 
     public List<RoleResponse> getAll() {
-        return roleRepository.findAllByIsActiveTrue().stream()
+        return roleRepository.findAllByIsActiveTrueOrderByCreatedAtDesc().stream()
                 .map(RoleResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public Page<RoleResponse> getPage(Pageable pageable) {
-        return roleRepository.findAllByIsActiveTrue(pageable).map(RoleResponse::fromEntity);
+        return roleRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable).map(RoleResponse::fromEntity);
     }
 
     public RoleResponse getById(Long id) {

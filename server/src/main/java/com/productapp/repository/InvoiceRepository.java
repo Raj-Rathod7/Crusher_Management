@@ -25,15 +25,28 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 	Optional<Invoice> findByIdForUpdate(@Param("id") Long id);
 
 	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType", "payment"})
-	List<Invoice> findAllByIsActiveTrue();
+	List<Invoice> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
 	@EntityGraph(attributePaths = {"customer", "createdBy", "payment"})
-	Page<Invoice> findAllByIsActiveTrue(Pageable pageable);
+	Page<Invoice> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
+
+	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType", "payment"})
+	List<Invoice> findAllByIsActiveTrueAndInvoiceDateOrderByCreatedAtDesc(LocalDate invoiceDate);
+
+	@EntityGraph(attributePaths = {"customer", "createdBy", "payment"})
+	Page<Invoice> findAllByIsActiveTrueAndInvoiceDateOrderByCreatedAtDesc(LocalDate invoiceDate, Pageable pageable);
+
+	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType", "payment"})
+	List<Invoice> findAllByIsActiveTrueAndTotalPendingTrueOrderByCreatedAtDesc();
+
+	// native query so soft-deleted invoices still reserve their numbers
+	@Query(value = "select max(invoice_number) from invoices where invoice_number like :prefix", nativeQuery = true)
+	String findMaxInvoiceNumber(@Param("prefix") String prefix);
 
 	List<Invoice> findTop5ByIsActiveTrueOrderByInvoiceDateDesc();
 
 	@EntityGraph(attributePaths = {"customer", "createdBy", "invoiceItems", "invoiceItems.materialType"})
-	List<Invoice> findAllByCustomerIdAndIsActiveTrueOrderByInvoiceDateDesc(Long customerId);
+	List<Invoice> findAllByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(Long customerId);
 
 	@Query("select coalesce(sum(i.totalAmount), 0) from Invoice i")
 	BigDecimal sumTotalAmount();

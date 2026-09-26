@@ -26,8 +26,8 @@ function RouteComponent() {
       toast.success('Purchase created.')
       navigate({ to: '/truck-entry' })
     },
-    onError: () => {
-      toast.error('Failed to create purchase.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create purchase.')
     },
   })
 

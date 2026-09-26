@@ -16,6 +16,7 @@ import com.productapp.entity.Payment;
 import com.productapp.entity.User;
 import com.productapp.entity.CustomerLedger;
 import com.productapp.repository.CustomerLedgerRepository;
+import com.productapp.security.SecurityUtils;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,7 @@ public class CustomerService {
 
     @Transactional
     public PaymentResponse recordPayment(Long customerId, CustomerPaymentRequest request) {
+        SecurityUtils.requireTodayForManager(request.getPaymentDate());
         Customer customer = customerRepository.findByIdAndIsActiveTrue(customerId)
             .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
@@ -100,7 +102,7 @@ public class CustomerService {
     }
 
     public List<CustomerResponse> getAll() {
-        List<Customer> customers = customerRepository.findAllByIsActiveTrue();
+        List<Customer> customers = customerRepository.findAllByIsActiveTrueOrderByCreatedAtDesc();
 
         return customers.stream()
             .map(customer -> CustomerResponse.fromEntity(
@@ -111,7 +113,7 @@ public class CustomerService {
     }
 
     public Page<CustomerResponse> getPage(Pageable pageable) {
-        Page<Customer> customersPage = customerRepository.findAllByIsActiveTrue(pageable);
+        Page<Customer> customersPage = customerRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable);
         List<Long> customerIds = customersPage.getContent().stream()
             .map(Customer::getId)
             .toList();
@@ -139,13 +141,13 @@ public class CustomerService {
             getPendingBalance(id));
 
         List<PaymentResponse> recentPayments = paymentRepository
-                .findAllByCustomerIdAndIsActiveTrueOrderByPaymentDateDesc(id).stream()
+                .findAllByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(id).stream()
                 .limit(10)
                 .map(PaymentResponse::fromEntity)
                 .toList();
 
         List<InvoiceResponse> recentInvoices = invoiceRepository
-                .findAllByCustomerIdAndIsActiveTrueOrderByInvoiceDateDesc(id).stream()
+                .findAllByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(id).stream()
                 .limit(10)
                 .map(InvoiceResponse::fromEntity)
                 .toList();
@@ -157,7 +159,7 @@ public class CustomerService {
     public List<InvoiceResponse> getInvoices(Long customerId) {
         customerRepository.findByIdAndIsActiveTrue(customerId)
             .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id : " + customerId));
-        return invoiceRepository.findAllByCustomerIdAndIsActiveTrueOrderByInvoiceDateDesc(customerId).stream()
+        return invoiceRepository.findAllByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(customerId).stream()
             .map(InvoiceResponse::fromEntity)
             .toList();
         }

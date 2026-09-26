@@ -8,7 +8,7 @@ import type { Customer } from '#/lib/models'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { IconArrowDown, IconArrowUp, IconRefresh } from '@tabler/icons-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/_app/notification/')({
   component: RouteComponent,
@@ -27,7 +27,7 @@ function RouteComponent() {
     retry: false,
   })
 
-  const { collections, payables, totalCollections, totalPayables } = useMemo(() => {
+  const { collections, payables } = useMemo(() => {
     const customers = data ?? []
     const collections = customers
       .filter((customer) => (customer.pendingBalance ?? 0) > 0)
@@ -36,12 +36,7 @@ function RouteComponent() {
       .filter((customer) => (customer.pendingBalance ?? 0) < 0)
       .sort((a, b) => (a.pendingBalance ?? 0) - (b.pendingBalance ?? 0))
 
-    return {
-      collections,
-      payables,
-      totalCollections: collections.reduce((sum, customer) => sum + (customer.pendingBalance ?? 0), 0),
-      totalPayables: payables.reduce((sum, customer) => sum + Math.abs(customer.pendingBalance ?? 0), 0),
-    }
+    return { collections, payables }
   }, [data])
 
   return (
@@ -69,34 +64,26 @@ function RouteComponent() {
           </TabsList>
 
           <TabsContent value="pending" className="flex min-h-0 flex-1 flex-col space-y-4">
-            <StatsCard
-              className="max-w-sm"
-              icon={<IconArrowUp className="size-4 text-amber-600" />}
-              title="Total to collect"
-              value={currency.format(totalCollections)}
-              description="Sum of pending balances owed by customers."
-            />
             <BalanceTable
               customers={collections}
               isLoading={isLoading}
               emptyMessage="No customer currently owes the business money."
               amountClassName="text-amber-700 dark:text-amber-400"
+              totalIcon={<IconArrowUp className="size-4 text-amber-600" />}
+              totalTitle="Total to collect"
+              totalDescription="Sum of pending balances owed by customers."
             />
           </TabsContent>
 
           <TabsContent value="overdue" className="flex min-h-0 flex-1 flex-col space-y-4">
-            <StatsCard
-              className="max-w-sm"
-              icon={<IconArrowDown className="size-4 text-emerald-600" />}
-              title="Total to pay back"
-              value={currency.format(totalPayables)}
-              description="Sum of credit balances owed to customers (overpayments)."
-            />
             <BalanceTable
               customers={payables}
               isLoading={isLoading}
               emptyMessage="The business does not owe money to any customer."
               amountClassName="text-emerald-700 dark:text-emerald-400"
+              totalIcon={<IconArrowDown className="size-4 text-emerald-600" />}
+              totalTitle="Total to pay back"
+              totalDescription="Sum of credit balances owed to customers (overpayments)."
             />
           </TabsContent>
         </Tabs>
@@ -110,15 +97,33 @@ function BalanceTable({
   isLoading,
   emptyMessage,
   amountClassName,
+  totalIcon,
+  totalTitle,
+  totalDescription,
 }: {
   customers: Customer[]
   isLoading: boolean
   emptyMessage: string
   amountClassName: string
+  totalIcon: React.ReactNode
+  totalTitle: string
+  totalDescription: string
 }) {
+  const [total, setTotal] = useState(0)
+
   return (
+    <>
+    <StatsCard
+      className="max-w-sm"
+      icon={totalIcon}
+      title={totalTitle}
+      value={currency.format(total)}
+      description={totalDescription}
+    />
     <ConfigurableDataTable
       data={customers}
+      onFilteredDataChange={(rows) =>
+        setTotal(rows.reduce((sum, customer) => sum + Math.abs(customer.pendingBalance ?? 0), 0))}
       columns={[
         {
           accessorKey: 'name',
@@ -168,5 +173,6 @@ function BalanceTable({
       exportFileName="notifications-report"
       exportTitle="Customer balances"
     />
+    </>
   )
 }

@@ -5,6 +5,7 @@ import { customerKeys } from '#/lib/query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/customer/new')({
   component: RouteComponent,
@@ -19,7 +20,7 @@ function RouteComponent() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: customerKeys.all })
       toast.success('Customer created.')
-      navigate({ to: '/customer' })
+      navigate({ to: isManager() ? '/sales/new' : '/customer' })
     },
     onError: () => {
       toast.error('Failed to create customer.')

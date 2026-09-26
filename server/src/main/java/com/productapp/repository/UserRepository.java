@@ -15,8 +15,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsernameAndIsActiveTrue(String username);
 
-    List<User> findAllByIsActiveTrue();
+    List<User> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
-    Page<User> findAllByIsActiveTrue(Pageable pageable);
+    Page<User> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
 
 }

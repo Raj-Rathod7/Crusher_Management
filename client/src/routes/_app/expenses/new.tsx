@@ -26,8 +26,8 @@ function RouteComponent() {
       toast.success('Expense created.')
       navigate({ to: '/expenses' })
     },
-    onError: () => {
-      toast.error('Failed to create expense.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create expense.')
     },
   })
 

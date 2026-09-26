@@ -6,10 +6,12 @@ import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.ExpenseRepository;
 import com.productapp.repository.CategoryRepository;
 import com.productapp.repository.UserRepository;
+import com.productapp.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
@@ -35,6 +37,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse save(ExpenseRequest expenseRequest) {
+        SecurityUtils.requireTodayForManager(expenseRequest.getExpenseDate());
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResourceNotFoundException("Authenticated user not found");
@@ -56,14 +59,17 @@ public class ExpenseService {
     }
 
     public List<ExpenseResponse> getAll() {
-        return expenseRepository.findAllByIsActiveTrue().stream()
+        List<Expense> expenses = SecurityUtils.isManager()
+                ? expenseRepository.findAllByIsActiveTrueAndExpenseDateOrderByCreatedAtDesc(LocalDate.now())
+                : expenseRepository.findAllByIsActiveTrueOrderByCreatedAtDesc();
+        return expenses.stream()
                 .map(ExpenseResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<Categories> getCategories() {
-        return categoryRepository.findAll();
+        return categoryRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
     @Transactional
@@ -91,12 +97,16 @@ public class ExpenseService {
     }
 
     public Page<ExpenseResponse> getPage(Pageable pageable) {
-        return expenseRepository.findAllByIsActiveTrue(pageable).map(ExpenseResponse::fromEntity);
+        Page<Expense> page = SecurityUtils.isManager()
+                ? expenseRepository.findAllByIsActiveTrueAndExpenseDateOrderByCreatedAtDesc(LocalDate.now(), pageable)
+                : expenseRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable);
+        return page.map(ExpenseResponse::fromEntity);
     }
 
     public ExpenseResponse getById(Long id) {
         Expense expense = expenseRepository.findById(id)
             .filter(foundExpense -> Boolean.TRUE.equals(foundExpense.getIsActive()))
+            .filter(foundExpense -> !SecurityUtils.isManager() || LocalDate.now().equals(foundExpense.getExpenseDate()))
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id : " + id));
         return ExpenseResponse.fromEntity(expense);
     }

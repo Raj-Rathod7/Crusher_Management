@@ -9,6 +9,7 @@ import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.CustomerLedgerRepository;
 import com.productapp.repository.CustomerRepository;
 import com.productapp.repository.PaymentRepository;
+import com.productapp.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +33,17 @@ public class PaymentService {
     }
 
     public List<PaymentResponse> getAll() {
-        return paymentRepository.findAllByIsActiveTrue().stream()
+        List<Payment> payments = SecurityUtils.isManager()
+                ? paymentRepository.findAllByIsActiveTrueAndPaymentDateOrderByCreatedAtDesc(LocalDate.now())
+                : paymentRepository.findAllByIsActiveTrueOrderByCreatedAtDesc();
+        return payments.stream()
                 .map(PaymentResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public PaymentResponse getById(Long id) {
         Payment payment = paymentRepository.findByIdAndIsActiveTrue(id)
+                .filter(found -> !SecurityUtils.isManager() || LocalDate.now().equals(found.getPaymentDate()))
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id : " + id));
         return PaymentResponse.fromEntity(payment);
     }

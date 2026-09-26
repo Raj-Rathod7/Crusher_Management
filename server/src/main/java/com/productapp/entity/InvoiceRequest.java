@@ -24,8 +24,6 @@ public class InvoiceRequest {
     @NotNull
     private LocalDate invoiceDate;
 
-    @NotNull
-    @DecimalMin(value = "0.01")
     private BigDecimal totalAmount;
 
     @DecimalMin(value = "0.01")

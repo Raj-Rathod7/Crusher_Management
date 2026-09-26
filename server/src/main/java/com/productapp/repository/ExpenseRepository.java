@@ -15,10 +15,16 @@ import org.springframework.data.repository.query.Param;
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
 	@EntityGraph(attributePaths = {"category", "createdBy"})
-	List<Expense> findAllByIsActiveTrue();
+	List<Expense> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
 	@EntityGraph(attributePaths = {"category", "createdBy"})
-	Page<Expense> findAllByIsActiveTrue(Pageable pageable);
+	Page<Expense> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
+
+	@EntityGraph(attributePaths = {"category", "createdBy"})
+	List<Expense> findAllByIsActiveTrueAndExpenseDateOrderByCreatedAtDesc(LocalDate expenseDate);
+
+	@EntityGraph(attributePaths = {"category", "createdBy"})
+	Page<Expense> findAllByIsActiveTrueAndExpenseDateOrderByCreatedAtDesc(LocalDate expenseDate, Pageable pageable);
 
 	@EntityGraph(attributePaths = {"category", "createdBy"})
 	Optional<Expense> findById(Long id);

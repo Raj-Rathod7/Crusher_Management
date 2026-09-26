@@ -12,11 +12,11 @@ import org.springframework.data.domain.Pageable;
 
 public interface MaterialRepository extends JpaRepository<MaterialType, Long> {
 
-	List<MaterialType> findAllByIsActiveTrue();
+	List<MaterialType> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
-	List<MaterialType> findAllByTypeAndIsActiveTrue(MaterialUsageType type);
+	List<MaterialType> findAllByTypeAndIsActiveTrueOrderByCreatedAtDesc(MaterialUsageType type);
 
 	Optional<MaterialType> findByIdAndIsActiveTrue(Long id);
 
-	Page<MaterialType> findAllByIsActiveTrue(Pageable pageable);
+	Page<MaterialType> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
 }

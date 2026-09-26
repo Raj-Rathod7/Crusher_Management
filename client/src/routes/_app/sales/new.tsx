@@ -21,8 +21,8 @@ function RouteComponent() {
       toast.success('Sale created.')
       navigate({ to: '/sales' })
     },
-    onError: () => {
-      toast.error('Failed to create sale.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create sale.')
     },
   })
 

@@ -15,9 +15,9 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     Optional<Role> findByRoleNameAndIsActiveTrue(String roleName);
 
-    List<Role> findAllByIsActiveTrue();
+    List<Role> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
-    Page<Role> findAllByIsActiveTrue(Pageable pageable);
+    Page<Role> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
     
     
 

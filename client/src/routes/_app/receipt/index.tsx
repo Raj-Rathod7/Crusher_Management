@@ -1,15 +1,17 @@
 import { ConfigurableDataTable } from '#/components/data-table'
-import { FilterChip } from '#/components/stats-card'
+import { FilterChip, StatsCard } from '#/components/stats-card'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { deleteCustomerPayment } from '#/lib/mutation'
 import { getAllReceipts, receiptKeys } from '#/lib/query'
-import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { matchesPeriod, matchesRange, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { DateRangePicker, type DateRangeValue } from '#/components/date-range-picker'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { IconCalendarStats, IconCreditCard, IconCurrencyRupee, IconPencil, IconReceipt, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/receipt/')({
   component: RouteComponent,
@@ -23,6 +25,7 @@ type ReceiptRow = {
   invoiceId: number | null
   invoiceNumber: string | null
   amount: string
+  receivedValue: number
   entryType: string
   paymentMode: string
   externalRef: string
@@ -48,6 +51,8 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const [paymentToDelete, setPaymentToDelete] = useState<ReceiptRow | null>(null)
   const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
+  const [dateRange, setDateRange] = useState<DateRangeValue>()
+  const [receivedTotal, setReceivedTotal] = useState(0)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: receiptKeys.list({}),
     queryFn: () => getAllReceipts(),
@@ -69,8 +74,9 @@ function RouteComponent() {
   })
 
   const filteredPayments = useMemo(
-    () => (data ?? []).filter((payment) => matchesPeriod(payment.paymentDate, quickFilter)),
-    [data, quickFilter]
+    () => (data ?? []).filter((payment) =>
+      matchesPeriod(payment.paymentDate, quickFilter) && matchesRange(payment.paymentDate, dateRange)),
+    [data, quickFilter, dateRange]
   )
 
   const receiptRows: ReceiptRow[] = filteredPayments.map((payment) => ({
@@ -81,6 +87,7 @@ function RouteComponent() {
     invoiceId: payment.invoiceId,
     invoiceNumber: payment.invoiceNumber,
     amount: formatCurrency(payment.amount),
+    receivedValue: payment.entryType === 'CUSTOMER_PAYMENT' ? payment.amount : 0,
     entryType: formatEntryType(payment.entryType ?? ''),
     paymentMode: payment.paymentMode ?? '-',
     externalRef: payment.externalRef ?? '-',
@@ -116,51 +123,47 @@ function RouteComponent() {
         </div>
       </div>
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+        <StatsCard
+          icon={<IconCurrencyRupee className="size-4" />}
+          title="Received"
+          value={formatCurrency(receivedTotal)}
+        />
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterChip
           icon={<IconReceipt className="size-4" />}
           title="All receipts"
           value={periodStats.all.count}
-          active={quickFilter === 'all'}
-          onClick={() => setQuickFilter('all')}
+          active={quickFilter === 'all' && !dateRange}
+          onClick={() => { setQuickFilter('all'); setDateRange(undefined) }}
         />
         <FilterChip
           icon={<IconCalendarStats className="size-4" />}
           title="Today"
           value={periodStats.today.count}
           active={quickFilter === 'today'}
-          onClick={() => setQuickFilter('today')}
+          onClick={() => { setQuickFilter('today'); setDateRange(undefined) }}
         />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This week"
-          value={periodStats.week.count}
-          active={quickFilter === 'week'}
-          onClick={() => setQuickFilter('week')}
-        />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This month"
-          value={periodStats.month.count}
-          active={quickFilter === 'month'}
-          onClick={() => setQuickFilter('month')}
-        />
-        <FilterChip
-          icon={<IconCurrencyRupee className="size-4" />}
-          title={`Received (${QUICK_PERIOD_LABELS[quickFilter]})`}
-          value={formatCurrency(periodStats[quickFilter].total)}
-          active
-          onClick={() => setQuickFilter(quickFilter)}
-        />
+        {!isManager() && (
+          <DateRangePicker
+            className="ml-auto"
+            showPresets={false}
+            value={dateRange}
+            onChange={(range) => { setDateRange(range); setQuickFilter('all') }}
+            onClear={() => setDateRange(undefined)}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
         data={receiptRows}
+        onFilteredDataChange={(rows) => setReceivedTotal(rows.reduce((sum, row) => sum + row.receivedValue, 0))}
         columns={[
           {
             accessorKey: 'paymentDate',
             header: 'Date',
-            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'customerName',
@@ -208,18 +211,14 @@ function RouteComponent() {
             ),
           },
           {
-            accessorKey: 'externalRef',
-            header: 'Reference',
-          },
-          {
             accessorKey: 'notes',
             header: 'Notes',
           },
-          {
+          ...(isManager() ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: ReceiptRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
                   <Link to="/receipt/$paymentId/edit" params={{ paymentId: String(row.original.id) }}>
@@ -240,7 +239,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility
@@ -257,7 +256,7 @@ function RouteComponent() {
         exportFileName="receipts-report"
         exportTitle="Receipts report"
         onRowClick={(row) => {
-          if (row.customerId) {
+          if (row.customerId && !isManager()) {
             navigate({ to: '/customer/$customerId', params: { customerId: String(row.customerId) } })
           }
         }}

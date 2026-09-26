@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/sidebar"
 import { IconDashboard, IconListDetails, IconChartBar, IconFolder, IconUsers, IconInnerShadowTop, IconMoneybagMinus, IconNotification } from "@tabler/icons-react"
 import { useLocation } from "@tanstack/react-router"
+import { isManager } from "#/lib/common/api"
 
-const data = {
+const data: { navMain: { title: string; url: string; icon: React.ReactNode; managerAllowed?: boolean }[] } = {
   navMain: [
     {
       title: "Dashboard",
@@ -25,6 +26,7 @@ const data = {
     {
       title: "Purchase",
       url: "/truck-entry",
+      managerAllowed: true,
       icon: (
         <IconListDetails
         />
@@ -33,6 +35,7 @@ const data = {
     {
       title: "Sales",
       url: "/sales",
+      managerAllowed: true,
       icon: (
         <IconFolder
         />
@@ -41,6 +44,7 @@ const data = {
     {
       title: "Receipt",
       url: "/receipt",
+      managerAllowed: true,
       icon: (
         <IconChartBar />
       )
@@ -56,6 +60,7 @@ const data = {
     {
       title: "Expenses/Payments",
       url: "/expenses",
+      managerAllowed: true,
       icon: (
         <IconMoneybagMinus
         />
@@ -91,7 +96,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} activeRoute={location.pathname} />
+        <NavMain
+          items={isManager() ? data.navMain.filter((item) => item.managerAllowed) : data.navMain}
+          activeRoute={location.pathname}
+        />
       </SidebarContent>
     </Sidebar>
   )

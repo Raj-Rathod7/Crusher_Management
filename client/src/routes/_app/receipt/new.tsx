@@ -30,8 +30,8 @@ function RouteComponent() {
       toast.success('Customer payment recorded.')
       navigate({ to: '/receipt' })
     },
-    onError: () => {
-      toast.error('Failed to record customer payment.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to record customer payment.')
     },
   })
 

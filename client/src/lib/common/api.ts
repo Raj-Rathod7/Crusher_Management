@@ -76,6 +76,28 @@ export function getDefaultToken(): string | null {
   )
 }
 
+// UI hint only; the server enforces role permissions
+export function getTokenClaims(): { sub?: string; role?: string; email?: string } {
+  const token = getDefaultToken()
+  if (!token) {
+    return {}
+  }
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(payload))
+  } catch {
+    return {}
+  }
+}
+
+export function getUserRole(): string | null {
+  return getTokenClaims().role?.toUpperCase() || null
+}
+
+export function isManager(): boolean {
+  return getUserRole() === 'MANAGER'
+}
+
 function getDefaultBaseUrl(): string {
   return (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8081'
 }
@@ -180,7 +202,7 @@ export function createApiClient(config: ApiClientConfig = {}) {
       const data = await parseResponseBody(response, responseText, options.responseType ?? 'json')
 
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) {
           config.onUnauthorized?.()
         }
 

@@ -1,12 +1,14 @@
 import { Badge } from '#/components/ui/badge'
 import { deleteSale } from '#/lib/mutation'
 import { ConfigurableDataTable } from '@/components/data-table'
-import { FilterChip } from '@/components/stats-card'
+import { FilterChip, StatsCard } from '@/components/stats-card'
 import { getAllSales, salesKeys } from '#/lib/query'
-import { matchesPeriod, QUICK_PERIOD_LABELS, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { matchesPeriod, matchesRange, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { DateRangePicker, type DateRangeValue } from '@/components/date-range-picker'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import {
+  IconAlertTriangle,
   IconCalendarStats,
   IconCube,
   IconCurrencyRupee,
@@ -17,8 +19,11 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/sales/')({
+  validateSearch: (search: Record<string, unknown>): { pending?: boolean } =>
+    search.pending === true || search.pending === 'true' ? { pending: true } : {},
   component: RouteComponent,
 })
 
@@ -32,6 +37,9 @@ type SalesRow = {
   quantityBrass: string
   rate: string
   totalAmount: string,
+  totalValue: number
+  receivedValue: number
+  totalPending: boolean
   payment? : {
     amount: number
   }
@@ -48,7 +56,17 @@ function RouteComponent() {
   const navigate = useNavigate()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const manager = isManager()
+  const { pending: pendingOnly = false } = Route.useSearch()
+  // primitives so setState bails out when the table re-reports the same totals
+  const [billedTotal, setBilledTotal] = useState(0)
+  const [pendingAmount, setPendingAmount] = useState(0)
+  const handleFilteredRows = (rows: SalesRow[]) => {
+    setBilledTotal(rows.reduce((sum, row) => sum + row.totalValue, 0))
+    setPendingAmount(rows.reduce((sum, row) => sum + Math.max(row.totalValue - row.receivedValue, 0), 0))
+  }
   const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
+  const [dateRange, setDateRange] = useState<DateRangeValue>()
   const [saleToDelete, setSaleToDelete] = useState<SalesRow | null>(null)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: salesKeys.all,
@@ -84,9 +102,13 @@ function RouteComponent() {
   }, [data])
 
   const filteredInvoices = useMemo(
-    () => (data ?? []).filter((invoice) => matchesPeriod(invoice.invoiceDate, quickFilter)),
-    [data, quickFilter]
+    () => (data ?? []).filter((invoice) =>
+      matchesPeriod(invoice.invoiceDate, quickFilter) && matchesRange(invoice.invoiceDate, dateRange)
+        && (!pendingOnly || invoice.totalPending)),
+    [data, quickFilter, dateRange, pendingOnly]
   )
+
+  const pendingCount = useMemo(() => (data ?? []).filter((invoice) => invoice.totalPending).length, [data])
 
   const salesRows: SalesRow[] = filteredInvoices.map((invoice) => ({
     id: invoice.id,
@@ -98,12 +120,15 @@ function RouteComponent() {
     quantityBrass: invoice.invoiceItems[0]
       ? `${invoice.invoiceItems[0].quantityBrass} brass`
       : '-',
-    rate: invoice.invoiceItems[0]
+    rate: invoice.invoiceItems[0]?.rate != null
       ? formatCurrency(invoice.invoiceItems[0].rate)
       : '-',
     totalAmount: formatCurrency(invoice.totalAmount),
+    totalValue: invoice.totalAmount,
+    receivedValue: invoice.payment?.amount ?? 0,
+    totalPending: invoice.totalPending,
     payment: invoice.payment ? { amount: invoice.payment.amount } : undefined,
-  })).sort((a, b) => b.invoiceNumber.localeCompare(a.invoiceNumber, undefined));
+  }));
 
   useEffect(() => {
     if (isError) {
@@ -123,42 +148,54 @@ function RouteComponent() {
         </div>
       </div>
 
+      {!manager && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+          <StatsCard
+            icon={<IconCurrencyRupee className="size-4" />}
+            title="Billed total"
+            value={formatCurrency(billedTotal)}
+          />
+          <StatsCard
+            icon={<IconAlertTriangle className="size-4" />}
+            title="Pending amount"
+            value={formatCurrency(pendingAmount)}
+          />
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterChip
           icon={<IconReceipt className="size-4" />}
           title="All sales"
           value={quickFilterCounts.all.count}
-          active={quickFilter === 'all'}
-          onClick={() => setQuickFilter('all')}
+          active={quickFilter === 'all' && !dateRange}
+          onClick={() => { setQuickFilter('all'); setDateRange(undefined) }}
         />
         <FilterChip
           icon={<IconCalendarStats className="size-4" />}
           title="Today"
           value={quickFilterCounts.today.count}
           active={quickFilter === 'today'}
-          onClick={() => setQuickFilter('today')}
+          onClick={() => { setQuickFilter('today'); setDateRange(undefined) }}
         />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This week"
-          value={quickFilterCounts.week.count}
-          active={quickFilter === 'week'}
-          onClick={() => setQuickFilter('week')}
-        />
-        <FilterChip
-          icon={<IconCalendarStats className="size-4" />}
-          title="This month"
-          value={quickFilterCounts.month.count}
-          active={quickFilter === 'month'}
-          onClick={() => setQuickFilter('month')}
-        />
-        <FilterChip
-          icon={<IconCurrencyRupee className="size-4" />}
-          title={`Billed (${QUICK_PERIOD_LABELS[quickFilter]})`}
-          value={formatCurrency(quickFilterCounts[quickFilter].total)}
-          active
-          onClick={() => setQuickFilter(quickFilter)}
-        />
+        {!manager && (
+          <FilterChip
+            icon={<IconAlertTriangle className="size-4" />}
+            title="Pending total"
+            value={pendingCount}
+            active={pendingOnly}
+            onClick={() => navigate({ to: '/sales', search: pendingOnly ? {} : { pending: true } })}
+          />
+        )}
+        {!manager && (
+          <DateRangePicker
+            className="ml-auto"
+            showPresets={false}
+            value={dateRange}
+            onChange={(range) => { setDateRange(range); setQuickFilter('all') }}
+            onClear={() => setDateRange(undefined)}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
@@ -177,14 +214,13 @@ function RouteComponent() {
           {
             accessorKey: 'invoiceDate',
             header: 'Date',
-            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'customerName',
             header: 'Customer',
             meta: { filterable: true, filterPlaceholder: 'Filter customer' },
             cell: ({ row }) =>
-              row.original.customerId ? (
+              row.original.customerId && !manager ? (
                 <Link
                   to="/customer/$customerId"
                   params={{ customerId: String(row.original.customerId) }}
@@ -229,20 +265,22 @@ function RouteComponent() {
               </span>
             ),
           },
-          {
+          ...(manager ? [] : [{
             accessorKey: 'totalAmount',
             header: 'Total',
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: SalesRow } }) => row.original.totalPending ? (
+              <Badge variant="destructive">Pending total</Badge>
+            ) : (
               <span className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
                 {row.original.totalAmount}
               </span>
             ),
-          },
-          {
+          }]),
+          ...(manager ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: SalesRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
                   <Link to="/sales/$saleId/edit" params={{ saleId: String(row.original.id) }}>
@@ -263,7 +301,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility
@@ -280,6 +318,7 @@ function RouteComponent() {
         exportFileName="sales-report"
         exportTitle="Sales report"
         onRowClick={(row) => navigate({ to: '/sales/$saleId', params: { saleId: String(row.id) } })}
+        onFilteredDataChange={handleFilteredRows}
       />
 
       {saleToDelete ? (

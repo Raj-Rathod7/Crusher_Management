@@ -15,11 +15,11 @@ import org.springframework.data.domain.Pageable;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-	List<Customer> findAllByIsActiveTrue();
+	List<Customer> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
 	Optional<Customer> findByIdAndIsActiveTrue(Long id);
 
-	Page<Customer> findAllByIsActiveTrue(Pageable pageable);
+	Page<Customer> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
 
 	long countByIsActiveTrue();
 

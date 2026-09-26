@@ -12,9 +12,13 @@ import com.productapp.entity.TruckEntry;
 
 public interface TruckEntryRepository extends JpaRepository<TruckEntry, Long> {
 
-	List<TruckEntry> findAllByIsActiveTrue();
+	List<TruckEntry> findAllByIsActiveTrueOrderByCreatedAtDesc();
 
-	Page<TruckEntry> findAllByIsActiveTrue(Pageable pageable);
+	Page<TruckEntry> findAllByIsActiveTrueOrderByCreatedAtDesc(Pageable pageable);
+
+	List<TruckEntry> findAllByIsActiveTrueAndEntryDateOrderByCreatedAtDesc(LocalDate entryDate);
+
+	Page<TruckEntry> findAllByIsActiveTrueAndEntryDateOrderByCreatedAtDesc(LocalDate entryDate, Pageable pageable);
 
 	long countByIsActiveTrue();
 

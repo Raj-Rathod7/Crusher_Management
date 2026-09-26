@@ -14,6 +14,7 @@ export const materialKeys = {
 export const salesKeys = {
   all: ['sales'] as const,
   detail: (id: number | string) => ['sales', String(id)] as const,
+  pending: ['sales', 'pending'] as const,
 }
 
 export const customerKeys = {
@@ -42,6 +43,15 @@ export const getAllSales = async () => {
 
 export const getSaleById = async (id: number | string) => {
   return apiClient.get<Invoice>(`/invoices/${id}`)
+}
+
+export const getPendingTotalSales = async () => {
+  return apiClient.get<Invoice[]>('/invoices/pending')
+}
+
+export const getNextInvoiceNumber = async () => {
+  const { invoiceNumber } = await apiClient.get<{ invoiceNumber: string }>('/invoices/next-number')
+  return invoiceNumber
 }
 
 export const getAllCustomers = async () => {
