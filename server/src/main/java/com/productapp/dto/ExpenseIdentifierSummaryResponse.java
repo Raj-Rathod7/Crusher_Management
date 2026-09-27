@@ -2,8 +2,8 @@ package com.productapp.dto;
 
 import java.math.BigDecimal;
 
-public record ExpenseVehicleSummaryResponse(
-        String truckNumber,
+public record ExpenseIdentifierSummaryResponse(
+        String identifier,
         BigDecimal totalAmount,
         long expenseCount
 ) {

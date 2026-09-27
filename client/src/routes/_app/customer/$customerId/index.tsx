@@ -11,11 +11,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '#/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import type { Customer, CustomerLedgerEntry, Invoice, Payment } from '#/lib/models'
 import { recordCustomerPayment } from '#/lib/mutation'
-import { customerKeys, customerSummaryKeys, getCustomerById, getCustomerSummary } from '#/lib/query'
-import { exportCustomerReportToExcel } from '#/lib/table-export'
+import { businessSettingsKeys, customerKeys, customerSummaryKeys, getBusinessSettings, getCustomerById, getCustomerSummary } from '#/lib/query'
+import { exportCustomerReportToExcel, exportCustomerReportToPdf } from '#/lib/table-export'
 import { IconArrowDown, IconArrowUp, IconCash, IconDownload, IconPencil } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
@@ -74,6 +80,28 @@ function RouteComponent() {
   const receipts = payments.filter((payment) => payment.entryType === 'CUSTOMER_PAYMENT')
   const ledger = summaryQuery.data?.ledger ?? []
 
+  const exportCustomerReport = async (format: 'excel' | 'pdf') => {
+    if (!customer) return
+
+    try {
+      const businessSettings = await queryClient.fetchQuery({
+        queryKey: businessSettingsKeys.detail,
+        queryFn: getBusinessSettings,
+        staleTime: 5 * 60 * 1000,
+      })
+      const reportData = { customer, ledger, invoices, payments: receipts }
+      const filename = `customer-${customer.name}-report`
+
+      if (format === 'excel') {
+        await exportCustomerReportToExcel(reportData, filename, businessSettings)
+      } else {
+        await exportCustomerReportToPdf(reportData, filename, businessSettings)
+      }
+    } catch {
+      toast.error('Export failed. Business details could not be loaded or the report could not be generated.')
+    }
+  }
+
   return (
     <FormPageLayout
       title={customer?.name ?? 'Customer'}
@@ -86,19 +114,22 @@ function RouteComponent() {
         <div>
           {customer ? (
             <div className="flex gap-2 justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  exportCustomerReportToExcel(
-                    { customer, ledger, invoices, payments: receipts },
-                    `customer-${customer.name}-report`
-                  )
-                }
-              >
-                <IconDownload />
-                Export report
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <IconDownload />
+                    Export report
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => void exportCustomerReport('excel')}>
+                    Export to Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void exportCustomerReport('pdf')}>
+                    Export to PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
                 <IconCash />
                 Record payment

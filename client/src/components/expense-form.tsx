@@ -9,6 +9,7 @@ import {
   FieldLabel,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -29,7 +30,7 @@ export type ExpenseFormValues = {
   expenseDate: string
   categoryId: string
   amount: string
-  truckNumber: string
+  identifier: string
   notes: string
 }
 
@@ -49,7 +50,7 @@ const defaultFormValues: ExpenseFormValues = {
   expenseDate: dateKey(),
   categoryId: '',
   amount: '',
-  truckNumber: '',
+  identifier: '',
   notes: '',
 }
 
@@ -68,8 +69,8 @@ function validateForm(form: ExpenseFormValues) {
     errors.amount = 'Amount must be greater than 0.'
   }
 
-  if (form.truckNumber.trim().length > 20) {
-    errors.truckNumber = 'Vehicle number must be 20 characters or fewer.'
+  if (form.identifier.trim().length > 20) {
+    errors.identifier = 'Identifier must be 20 characters or fewer.'
   }
 
   return errors
@@ -124,7 +125,7 @@ export function ExpenseForm({
       expenseDate: form.expenseDate,
       categoryId: Number(form.categoryId),
       amount: Number(form.amount),
-      truckNumber: form.truckNumber.trim() || undefined,
+      identifier: form.identifier.trim() || undefined,
       notes: form.notes.trim() || undefined,
     })
   }
@@ -186,28 +187,28 @@ export function ExpenseForm({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="truckNumber">Vehicle number</FieldLabel>
+          <FieldLabel htmlFor="identifier">Identifier</FieldLabel>
           <FieldContent>
             <Input
-              id="truckNumber"
-              value={form.truckNumber}
-              onChange={(event) => handleChange('truckNumber', event.target.value)}
-              placeholder="Optional vehicle number"
+              id="identifier"
+              value={form.identifier}
+              onChange={(event) => handleChange('identifier', event.target.value)}
+              placeholder="Optional identifier"
               maxLength={20}
             />
-            <FieldError>{errors.truckNumber}</FieldError>
+            <FieldError>{errors.identifier}</FieldError>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel htmlFor="notes">Notes</FieldLabel>
           <FieldContent>
-            <textarea
+            <Textarea
               id="notes"
               value={form.notes}
               onChange={(event) => handleChange('notes', event.target.value)}
               placeholder="Optional notes"
-              className="min-h-20 rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="min-h-20"
             />
           </FieldContent>
         </Field>

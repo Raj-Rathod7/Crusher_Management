@@ -51,7 +51,7 @@ public class ExpenseService {
                 .expenseDate(expenseRequest.getExpenseDate())
             .category(category)
                 .amount(expenseRequest.getAmount())
-                .truckNumber(normalizeTruckNumber(expenseRequest.getTruckNumber()))
+                .identifier(normalizeIdentifier(expenseRequest.getIdentifier()))
                 .notes(expenseRequest.getNotes())
                 .createdBy(user)
                 .build();
@@ -82,7 +82,7 @@ public class ExpenseService {
         expense.setExpenseDate(expenseRequest.getExpenseDate());
         expense.setCategory(category);
         expense.setAmount(expenseRequest.getAmount());
-        expense.setTruckNumber(normalizeTruckNumber(expenseRequest.getTruckNumber()));
+        expense.setIdentifier(normalizeIdentifier(expenseRequest.getIdentifier()));
         expense.setNotes(expenseRequest.getNotes());
         return ExpenseResponse.fromEntity(expenseRepository.save(expense));
     }
@@ -112,20 +112,20 @@ public class ExpenseService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExpenseVehicleSummaryResponse> summarizeByTruckNumber(LocalDate dateFrom, LocalDate dateTo) {
-        return expenseRepository.summarizeByTruckNumber(dateFrom, dateTo).stream()
-                .map(row -> new ExpenseVehicleSummaryResponse(
+    public List<ExpenseIdentifierSummaryResponse> summarizeByIdentifier(LocalDate dateFrom, LocalDate dateTo) {
+        return expenseRepository.summarizeByIdentifier(dateFrom, dateTo).stream()
+                .map(row -> new ExpenseIdentifierSummaryResponse(
                         (String) row[0],
                         (BigDecimal) row[1],
                         ((Number) row[2]).longValue()))
                 .toList();
     }
 
-    private String normalizeTruckNumber(String truckNumber) {
-        if (truckNumber == null) {
+    private String normalizeIdentifier(String identifier) {
+        if (identifier == null) {
             return null;
         }
-        String trimmed = truckNumber.trim();
+        String trimmed = identifier.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

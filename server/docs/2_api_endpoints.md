@@ -46,6 +46,7 @@ Payment creation is intentionally customer-scoped through
 
 - `GET|POST|PUT /truck-entries`
 - `GET|POST|PUT /expenses`
+- `GET /business-settings` — business name, address, and phone used in exports
 - `GET|POST|PUT /materials`
 - `GET|POST|PUT /users`
 - `GET /dashboard`

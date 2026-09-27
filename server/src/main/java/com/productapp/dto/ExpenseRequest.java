@@ -16,7 +16,7 @@ public class ExpenseRequest {
     @DecimalMin(value = "0.01")
     private BigDecimal amount;
 
-    private String truckNumber;
+    private String identifier;
 
     private String notes;
 
@@ -36,12 +36,12 @@ public class ExpenseRequest {
         this.notes = notes;
     }
 
-    public String getTruckNumber() {
-        return truckNumber;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public void setTruckNumber(String truckNumber) {
-        this.truckNumber = truckNumber;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
     public LocalDate getExpenseDate() {

@@ -10,6 +10,7 @@ import {
   FieldLabel,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -250,12 +251,12 @@ export function ReceiptForm({
         <Field>
           <FieldLabel htmlFor="notes">Notes</FieldLabel>
           <FieldContent>
-            <textarea
+            <Textarea
               id="notes"
               value={form.notes}
               onChange={(event) => handleChange('notes', event.target.value)}
               placeholder="Optional notes"
-              className="min-h-20 rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="min-h-20"
             />
           </FieldContent>
         </Field>

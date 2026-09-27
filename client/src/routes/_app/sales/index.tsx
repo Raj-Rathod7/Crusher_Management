@@ -19,7 +19,9 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
+import { FileText } from 'lucide-react'
 import { isManager } from '#/lib/common/api'
+import { downloadInvoicePdf } from '#/lib/common/invoice-export'
 
 export const Route = createFileRoute('/_app/sales/')({
   validateSearch: (search: Record<string, unknown>): { pending?: boolean } =>
@@ -76,6 +78,17 @@ function RouteComponent() {
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
+
+  const createInvoicePdf = async (invoiceId: number) => {
+    const invoice = data?.find((sale) => sale.id === invoiceId)
+    if (!invoice) return
+
+    try {
+      await downloadInvoicePdf(invoice, queryClient)
+    } catch {
+      toast.error('Could not create invoice PDF. Check the business settings and customer details, then try again.')
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: deleteSale,
@@ -276,32 +289,48 @@ function RouteComponent() {
               </span>
             ),
           }]),
-          ...(manager ? [] : [{
+          {
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
             cell: ({ row }: { row: { original: SalesRow } }) => (
               <div className="flex items-center gap-2">
-                <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
-                  <Link to="/sales/$saleId/edit" params={{ saleId: String(row.original.id) }}>
-                    <IconPencil />
-                    <span className="sr-only">Edit sale</span>
-                  </Link>
-                </Button>
+                {!manager ? (
+                  <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
+                    <Link to="/sales/$saleId/edit" params={{ saleId: String(row.original.id) }}>
+                      <IconPencil />
+                      <span className="sr-only">Edit sale</span>
+                    </Link>
+                  </Button>
+                ) : null}
                 <Button
                   size="icon-sm"
-                  variant="destructive"
+                  variant="outline"
+                  title="Create invoice PDF"
                   onClick={(event) => {
                     event.stopPropagation()
-                    setSaleToDelete(row.original)
+                    void createInvoicePdf(row.original.id)
                   }}
                 >
-                  <IconTrash />
-                  <span className="sr-only">Delete sale</span>
+                  <FileText />
+                  <span className="sr-only">Create invoice PDF</span>
                 </Button>
+                {!manager ? (
+                  <Button
+                    size="icon-sm"
+                    variant="destructive"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSaleToDelete(row.original)
+                    }}
+                  >
+                    <IconTrash />
+                    <span className="sr-only">Delete sale</span>
+                  </Button>
+                ) : null}
               </div>
             ),
-          }]),
+          },
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility

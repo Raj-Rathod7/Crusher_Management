@@ -186,12 +186,16 @@ are not deleted; corrections use reversal or adjustment entries.
 | `expense_date` | DATE | NOT NULL |
 | `category_id` | INT | Foreign Key -> `expense_categories(id)`, NOT NULL |
 | `amount` | DECIMAL(12, 2) | NOT NULL, CHECK > 0 |
+| `identifier` | VARCHAR(20) | NULLABLE |
 | `notes` | TEXT | NULLABLE |
 | `created_by` | INT | Foreign Key -> `users(id)`, NOT NULL |
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT `NOW()` |
 | `updated_at` | TIMESTAMP | NOT NULL, DEFAULT `NOW()` |
 
-* **Indexes:** `expense_date`, `category_id`
+* **Indexes:** `expense_date`, `category_id`, `identifier`
+
+Existing databases must run `migrations/20260926_rename_expense_truck_number_to_identifier.sql`
+before deploying the application; Hibernate's `ddl-auto=update` does not rename columns.
 
 ---
 

@@ -29,7 +29,7 @@ type ExpenseRow = {
   id: number
   expenseDate: string
   categoryName: string
-  truckNumber: string
+  identifier: string
   amount: string
   amountValue: number
   notes: string
@@ -48,7 +48,7 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseRow | null>(null)
-  const [selectedVehicle, setSelectedVehicle] = useState('all')
+  const [selectedIdentifier, setSelectedIdentifier] = useState('all')
   const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
   const [dateRange, setDateRange] = useState<DateRangeValue>()
   const [spentTotal, setSpentTotal] = useState(0)
@@ -62,23 +62,23 @@ function RouteComponent() {
     refetchOnWindowFocus: false,
   })
   
-  const vehicleExpenses = useMemo(() => {
-    if (selectedVehicle === 'all') return data ?? []
-    if (selectedVehicle === 'unassigned') return (data ?? []).filter((expense) => !expense.truckNumber)
-    return (data ?? []).filter((expense) => expense.truckNumber === selectedVehicle)
-  }, [data, selectedVehicle])
+  const identifierExpenses = useMemo(() => {
+    if (selectedIdentifier === 'all') return data ?? []
+    if (selectedIdentifier === 'unassigned') return (data ?? []).filter((expense) => !expense.identifier)
+    return (data ?? []).filter((expense) => expense.identifier === selectedIdentifier)
+  }, [data, selectedIdentifier])
 
   const selectedExpenses = useMemo(
-    () => vehicleExpenses.filter((expense) =>
+    () => identifierExpenses.filter((expense) =>
       matchesPeriod(expense.expenseDate, quickFilter) && matchesRange(expense.expenseDate, dateRange)),
-    [quickFilter, dateRange, vehicleExpenses]
+    [quickFilter, dateRange, identifierExpenses]
   )
 
   const expenseRows: ExpenseRow[] = selectedExpenses.map((expense) => ({
     id: expense.id,
     expenseDate: expense.expenseDate,
     categoryName: expense.categoryName ?? '-',
-    truckNumber: expense.truckNumber ?? '-',
+    identifier: expense.identifier ?? '-',
     amount: formatCurrency(expense.amount),
     amountValue: expense.amount,
     notes: expense.notes ?? '-',
@@ -103,14 +103,14 @@ function RouteComponent() {
   const periodStats = useMemo(() => {
     const stats = {} as Record<QuickPeriod, { count: number; total: number }>
     for (const period of QUICK_PERIODS) {
-      const matched = vehicleExpenses.filter((expense) => matchesPeriod(expense.expenseDate, period))
+      const matched = identifierExpenses.filter((expense) => matchesPeriod(expense.expenseDate, period))
       stats[period] = {
         count: matched.length,
         total: matched.reduce((sum, expense) => sum + expense.amount, 0),
       }
     }
     return stats
-  }, [vehicleExpenses])
+  }, [identifierExpenses])
 
   useEffect(() => {
     if (isError) {
@@ -194,9 +194,9 @@ function RouteComponent() {
             ),
           },
           {
-            accessorKey: 'truckNumber',
-            header: 'Vehicle number',
-            meta: { filterable: true, filterPlaceholder: 'Filter vehicle' },
+            accessorKey: 'identifier',
+            header: 'Identifier',
+            meta: { filterable: true, filterPlaceholder: 'Filter identifier' },
           },
           {
             accessorKey: 'notes',

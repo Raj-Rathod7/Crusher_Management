@@ -2,7 +2,7 @@ package com.productapp.controller;
 
 import com.productapp.dto.ExpenseRequest;
 import com.productapp.dto.ExpenseResponse;
-import com.productapp.dto.ExpenseVehicleSummaryResponse;
+import com.productapp.dto.ExpenseIdentifierSummaryResponse;
 import com.productapp.entity.Categories;
 import com.productapp.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
@@ -44,10 +44,10 @@ public class ExpenseController {
     }
 
     @GetMapping("/vehicle-summary")
-    public List<ExpenseVehicleSummaryResponse> getVehicleSummary(
+    public List<ExpenseIdentifierSummaryResponse> getIdentifierSummary(
             @RequestParam(required = false) LocalDate dateFrom,
             @RequestParam(required = false) LocalDate dateTo) {
-        return expenseService.summarizeByTruckNumber(dateFrom, dateTo);
+        return expenseService.summarizeByIdentifier(dateFrom, dateTo);
     }
 
     @GetMapping("/{id}")

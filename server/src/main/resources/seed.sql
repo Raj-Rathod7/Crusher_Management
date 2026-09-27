@@ -1,76 +1,84 @@
 -- Rerunnable demo data for MySQL. Run after the schema exists.
 -- Demo user password: password
+
+
 START TRANSACTION;
 
-INSERT INTO roles (role_name, description, is_active, created_at, updated_at) VALUES
-('SYSTEM','System role',TRUE,NOW(),NOW()),('ADMIN','Administrator role',TRUE,NOW(),NOW()),('MANAGER','Manager role',TRUE,NOW(),NOW()),('USER','Standard user role',TRUE,NOW(),NOW())
-ON DUPLICATE KEY UPDATE description=VALUES(description),is_active=TRUE,updated_at=NOW();
+-- Roles
+INSERT INTO roles (role_name, description, is_active, created_at, updated_at)
+VALUES
+    ('SYSTEM', 'System role', TRUE, NOW(), NOW()),
+    ('ADMIN', 'Administrator role', TRUE, NOW(), NOW()),
+    ('MANAGER', 'Manager role', TRUE, NOW(), NOW()),
+    ('USER', 'Standard user role', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    description = VALUES(description),
+    is_active = TRUE,
+    updated_at = NOW();
 
-INSERT INTO users (username,password,email,role_id,is_active,created_at,updated_at)
-SELECT 'demo-admin','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','admin@example.com',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='ADMIN'
-ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),email=VALUES(email),is_active=TRUE,updated_at=NOW();
-INSERT INTO users (username,password,email,role_id,is_active,created_at,updated_at)
-SELECT 'demo-manager','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','manager@example.com',id,TRUE,NOW(),NOW() FROM roles WHERE role_name='MANAGER'
-ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),email=VALUES(email),is_active=TRUE,updated_at=NOW();
 
-INSERT INTO material_types (name,type,is_active,created_at,updated_at) VALUES
-('10mm','SALE',TRUE,NOW(),NOW()),('20mm','SALE',TRUE,NOW(),NOW()),('Stone Dust','SALE',TRUE,NOW(),NOW()),('Crusher Run','SALE',TRUE,NOW(),NOW())
-ON DUPLICATE KEY UPDATE type=VALUES(type),is_active=TRUE,updated_at=NOW();
-INSERT INTO material_types (name,type,is_active,created_at,updated_at) VALUES
-('Raw Stone','PURCHASE',TRUE,NOW(),NOW()),('Boulders','PURCHASE',TRUE,NOW(),NOW())
-ON DUPLICATE KEY UPDATE type=VALUES(type),is_active=TRUE,updated_at=NOW();
-INSERT INTO categories (name,is_active,created_at,updated_at) VALUES
-('Diesel',TRUE,NOW(),NOW()),('Machine Maintenance',TRUE,NOW(),NOW()),('Electricity Bill',TRUE,NOW(),NOW()),('Other',TRUE,NOW(),NOW())
-ON DUPLICATE KEY UPDATE is_active=TRUE,updated_at=NOW();
-INSERT INTO business_settings (id,business_name,address,phone,is_active,created_at,updated_at)
-VALUES (1,'Vaibhav Stone Crusher','Industrial Area, Nashik','+91 98765 43210',TRUE,NOW(),NOW())
-ON DUPLICATE KEY UPDATE business_name=VALUES(business_name),address=VALUES(address),phone=VALUES(phone),is_active=TRUE,updated_at=NOW();
+-- Assign ADMIN role to existing admin user
+UPDATE users u
+JOIN roles r ON r.role_name = 'ADMIN'
+SET
+    u.role_id = r.id,
+    u.updated_at = NOW()
+WHERE u.username = 'admin';
 
-INSERT INTO customers (name,phone,address,notes,is_active,created_at,updated_at)
-SELECT 'Apex Infrastructure','+91 98765 10001','Nashik Road','Regular buyer',TRUE,NOW(),NOW() WHERE NOT EXISTS (SELECT 1 FROM customers WHERE phone='+91 98765 10001');
-INSERT INTO customers (name,phone,address,notes,is_active,created_at,updated_at)
-SELECT 'Shree Buildwell','+91 98765 10002','Sinnar','Morning dispatch',TRUE,NOW(),NOW() WHERE NOT EXISTS (SELECT 1 FROM customers WHERE phone='+91 98765 10002');
-INSERT INTO customers (name,phone,address,notes,is_active,created_at,updated_at)
-SELECT 'Northline Contractors','+91 98765 10003','Igatpuri','Monthly account',TRUE,NOW(),NOW() WHERE NOT EXISTS (SELECT 1 FROM customers WHERE phone='+91 98765 10003');
 
-INSERT INTO truck_entries (entry_date,truck_number,material_type_id,quantity_brass,supplier_name,remarks,created_by,is_active,created_at,updated_at)
-SELECT '2026-08-18','MH15AB1234',m.id,18.50,'Patil Aggregates','Raw stone load',u.id,TRUE,NOW(),NOW() FROM material_types m JOIN users u ON u.username='demo-manager' WHERE m.name='20mm' AND NOT EXISTS (SELECT 1 FROM truck_entries WHERE truck_number='MH15AB1234' AND entry_date='2026-08-18');
+-- Assign MANAGER role to existing manager user
+UPDATE users u
+JOIN roles r ON r.role_name = 'MANAGER'
+SET
+    u.role_id = r.id,
+    u.updated_at = NOW()
+WHERE u.username = 'manager';
 
-INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,remarks,created_by,is_active,created_at,updated_at)
-SELECT 'INV-2026-0001','2026-08-18',c.id,52500.00,'Sale recorded; payment is tracked on the customer ledger',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-admin' WHERE c.phone='+91 98765 10001' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0001');
-INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,remarks,created_by,is_active,created_at,updated_at)
-SELECT 'INV-2026-0002','2026-08-20',c.id,68000.00,'Sale recorded; payment is tracked on the customer ledger',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-admin' WHERE c.phone='+91 98765 10002' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0002');
-INSERT INTO invoices (invoice_number,invoice_date,customer_id,total_amount,remarks,created_by,is_active,created_at,updated_at)
-SELECT 'INV-2026-0003','2026-08-21',c.id,41500.00,'Awaiting confirmation',u.id,TRUE,NOW(),NOW() FROM customers c JOIN users u ON u.username='demo-manager' WHERE c.phone='+91 98765 10003' AND NOT EXISTS (SELECT 1 FROM invoices WHERE invoice_number='INV-2026-0003');
 
-INSERT INTO payments (payment_date,customer_id,amount,payment_mode,notes,entry_type,is_active,created_by,created_at,updated_at)
-SELECT '2026-08-25',c.id,30000.00,'cash','Customer payment received','CUSTOMER_PAYMENT',TRUE,u.id,NOW(),NOW()
-FROM customers c JOIN users u ON u.username='demo-admin'
-WHERE c.phone='+91 98765 10002'
-	AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id=c.id AND p.entry_type='CUSTOMER_PAYMENT' AND p.amount=30000.00);
+-- Sale material types
+INSERT INTO material_types (name, type, is_active, created_at, updated_at)
+VALUES
+    ('80mm', 'SALE', TRUE, NOW(), NOW()),
+    ('40mm', 'SALE', TRUE, NOW(), NOW()),
+    ('20mm', 'SALE', TRUE, NOW(), NOW()),
+    ('12mm', 'SALE', TRUE, NOW(), NOW()),
+    ('10mm', 'SALE', TRUE, NOW(), NOW()),
+    ('6mm', 'SALE', TRUE, NOW(), NOW()),
+    ('Dust', 'SALE', TRUE, NOW(), NOW()),
+    ('Crushed Sand', 'SALE', TRUE, NOW(), NOW()),
+    ('Waste', 'SALE', TRUE, NOW(), NOW()),
+    ('D/C', 'SALE', TRUE, NOW(), NOW()),
+    ('C/12mm', 'SALE', TRUE, NOW(), NOW()),
+    ('D/12mm', 'SALE', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    type = VALUES(type),
+    is_active = TRUE,
+    updated_at = NOW();
 
-INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
-SELECT p.payment_date,p.customer_id,'CUSTOMER_PAYMENT',CONCAT('PAYMENT-',p.id),COALESCE(p.notes,'Customer payment'),0.00,p.amount,'PAYMENT',p.id,TRUE,NOW(),NOW()
-FROM payments p
-WHERE p.entry_type='CUSTOMER_PAYMENT'
-	AND NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='PAYMENT' AND l.source_id=p.id);
 
-INSERT INTO invoice_items (invoice_id,material_type_id,truck_number,quantity_brass,rate,amount,is_active,created_at,updated_at)
-SELECT i.id,m.id,'MH15AB1234',25.00,2100.00,52500.00,TRUE,NOW(),NOW() FROM invoices i JOIN material_types m ON m.name='20mm' WHERE i.invoice_number='INV-2026-0001' AND NOT EXISTS (SELECT 1 FROM invoice_items WHERE invoice_id=i.id AND truck_number='MH15AB1234');
+-- Purchase material types
+INSERT INTO material_types (name, type, is_active, created_at, updated_at)
+VALUES
+    ('Raw Stone', 'PURCHASE', TRUE, NOW(), NOW()),
+    ('Boulders', 'PURCHASE', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    type = VALUES(type),
+    is_active = TRUE,
+    updated_at = NOW();
 
-INSERT INTO customer_ledger (entry_date,customer_id,entry_type,reference,description,debit,credit,source_type,source_id,is_active,created_at,updated_at)
-SELECT i.invoice_date,i.customer_id,'SALE',i.invoice_number,
-	CONCAT('Sale ',i.invoice_number,
-		CASE WHEN item.id IS NULL THEN '' ELSE CONCAT(' - ',material.name,' - ',item.quantity_brass,' brass @ ',item.rate) END),
-	i.total_amount,0.00,'INVOICE',i.id,TRUE,NOW(),NOW()
-FROM invoices i
-LEFT JOIN invoice_items item ON item.invoice_id=i.id AND item.is_active=TRUE
-LEFT JOIN material_types material ON material.id=item.material_type_id
-WHERE NOT EXISTS (SELECT 1 FROM customer_ledger l WHERE l.source_type='INVOICE' AND l.source_id=i.id);
 
-INSERT INTO expenses (expense_date,category_id,amount,truck_number,notes,created_by,is_active,created_at,updated_at)
-SELECT '2026-08-18',c.id,12500.00,'MH15AB1234','Diesel stock refill',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Diesel' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-18' AND notes='Diesel stock refill');
-INSERT INTO expenses (expense_date,category_id,amount,truck_number,notes,created_by,is_active,created_at,updated_at)
-SELECT '2026-08-19',c.id,6800.00,NULL,'Machine maintenance',u.id,TRUE,NOW(),NOW() FROM categories c JOIN users u ON u.username='demo-manager' WHERE c.name='Machine Maintenance' AND NOT EXISTS (SELECT 1 FROM expenses WHERE expense_date='2026-08-19' AND notes='Machine maintenance');
+-- Expense categories
+INSERT INTO categories (name, is_active, created_at, updated_at)
+VALUES
+    ('Diesel', TRUE, NOW(), NOW()),
+    ('Machine Maintenance', TRUE, NOW(), NOW()),
+    ('Truck/Feet Maintenance', TRUE, NOW(), NOW()),
+    ('Tyres', TRUE, NOW(), NOW()),
+    ('Labour', TRUE, NOW(), NOW()),
+    ('Other', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    is_active = TRUE,
+    updated_at = NOW();
+
 
 COMMIT;

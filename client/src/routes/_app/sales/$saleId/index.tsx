@@ -3,11 +3,13 @@ import { FormPageLayout } from '#/components/form-page-layout'
 import { Button } from '#/components/ui/button'
 import { Separator } from '#/components/ui/separator'
 import { getSaleById, salesKeys } from '#/lib/query'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { IconPencil } from '@tabler/icons-react'
-import { Truck } from 'lucide-react'
+import { FileText, Truck } from 'lucide-react'
 import { isManager } from '#/lib/common/api'
+import { downloadInvoicePdf } from '#/lib/common/invoice-export'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_app/sales/$saleId/')({
   component: RouteComponent,
@@ -22,6 +24,7 @@ function formatCurrency(value: number) {
 
 function RouteComponent() {
   const { saleId } = Route.useParams()
+  const queryClient = useQueryClient()
 
   const saleQuery = useQuery({
     queryKey: salesKeys.detail(saleId),
@@ -33,6 +36,16 @@ function RouteComponent() {
   const invoiceItems = sale?.invoiceItems ?? []
   const manager = isManager()
 
+  const createInvoicePdf = async () => {
+    if (!sale) return
+
+    try {
+      await downloadInvoicePdf(sale, queryClient)
+    } catch {
+      toast.error('Could not create invoice PDF. Check the business settings and customer details, then try again.')
+    }
+  }
+
   return (
     <FormPageLayout
       title={sale ? `Invoice ${sale.invoiceNumber}` : 'Invoice details'}
@@ -41,13 +54,19 @@ function RouteComponent() {
       backTo="/sales"
       badge="Invoice"
     >
-      {sale && !manager ? (
-        <div className="mb-4 flex justify-end">
-          <Button asChild size="sm" variant="outline">
-            <Link to="/sales/$saleId/edit" params={{ saleId }}>
-              <IconPencil />
-              {sale.totalPending ? 'Add total' : 'Edit'}
-            </Link>
+      {sale ? (
+        <div className="mb-4 flex justify-end gap-2">
+          {!manager ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/sales/$saleId/edit" params={{ saleId }}>
+                <IconPencil />
+                {sale.totalPending ? 'Add total' : 'Edit'}
+              </Link>
+            </Button>
+          ) : null}
+          <Button size="sm" variant="outline" onClick={createInvoicePdf}>
+            <FileText />
+            Create invoice PDF
           </Button>
         </div>
       ) : null}

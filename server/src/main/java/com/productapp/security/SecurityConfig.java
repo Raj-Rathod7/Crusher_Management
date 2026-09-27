@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/invoices/**", "/truck-entries/**", "/expenses/**")
                         .hasAnyRole("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/invoices/**", "/truck-entries/**", "/expenses/**", "/materials/**")
+                        .requestMatchers(HttpMethod.GET, "/invoices/**", "/truck-entries/**", "/expenses/**", "/materials/**", "/business-settings")
                         .authenticated()
                         .requestMatchers(HttpMethod.POST, "/invoices", "/truck-entries", "/expenses")
                         .authenticated()

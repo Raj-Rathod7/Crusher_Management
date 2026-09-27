@@ -1,5 +1,13 @@
 import { apiClient } from "../common/api"
-import type { Customer, CustomerSummaryResponse, DashboardChartsResponse, Expense, ExpenseCategory, ExpenseVehicleSummary, Invoice, Material, Payment, TruckEntry } from "../models"
+import type { BusinessSettings, Customer, CustomerSummaryResponse, DashboardChartsResponse, Expense, ExpenseCategory, ExpenseIdentifierSummary, Invoice, Material, Payment, TruckEntry } from "../models"
+
+export const businessSettingsKeys = {
+  detail: ['business-settings'] as const,
+}
+
+export const getBusinessSettings = async () => {
+  return apiClient.get<BusinessSettings>('/business-settings')
+}
 
 export const truckEntryKeys = {
   all: ['truck-entries'] as const,
@@ -83,12 +91,12 @@ export const getAllExpenseCategories = async () => {
   return apiClient.get<ExpenseCategory[]>('/expenses/categories')
 }
 
-export const getExpenseVehicleSummary = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+export const getExpenseIdentifierSummary = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
   const params = new URLSearchParams()
   if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
   if (filters.dateTo) params.set('dateTo', filters.dateTo)
   const query = params.toString()
-  return apiClient.get<ExpenseVehicleSummary[]>(`/expenses/vehicle-summary${query ? `?${query}` : ''}`)
+  return apiClient.get<ExpenseIdentifierSummary[]>(`/expenses/vehicle-summary${query ? `?${query}` : ''}`)
 }
 
 export const receiptKeys = {

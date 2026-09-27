@@ -60,7 +60,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Link } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { exportTableToExcel, exportTableToPdf, type TableExportColumn } from "@/lib/table-export"
+import { businessSettingsKeys, getBusinessSettings } from "@/lib/query"
 
 export const schema = z.object({
   id: z.number(),
@@ -265,6 +268,7 @@ export function ConfigurableDataTable<TData>({
   exportFileName = "table-export",
   exportTitle,
 }: DataTableProps<TData>) {
+  const queryClient = useQueryClient()
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -348,6 +352,24 @@ export function ConfigurableDataTable<TData>({
   )
 
   const canExport = enableExport && !isLoading && exportRows.length > 0 && exportColumns.length > 0
+
+  const handleExport = async (format: "excel" | "pdf") => {
+    try {
+      const businessSettings = await queryClient.fetchQuery({
+        queryKey: businessSettingsKeys.detail,
+        queryFn: getBusinessSettings,
+        staleTime: 5 * 60 * 1000,
+      })
+
+      if (format === "excel") {
+        await exportTableToExcel(exportHeaders, exportRows, exportFileName, exportTitle, businessSettings)
+      } else {
+        await exportTableToPdf(exportHeaders, exportRows, exportFileName, exportTitle, businessSettings)
+      }
+    } catch {
+      toast.error("Export failed. Business details could not be loaded or the report could not be generated.")
+    }
+  }
 
   return (
     <div className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
@@ -456,11 +478,11 @@ export function ConfigurableDataTable<TData>({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => exportTableToExcel(exportHeaders, exportRows, exportFileName, exportTitle)}>
+                <DropdownMenuItem onSelect={() => handleExport("excel")}>
                   <IconDownload />
                   Export to Excel
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportTableToPdf(exportHeaders, exportRows, exportFileName, exportTitle)}>
+                <DropdownMenuItem onSelect={() => handleExport("pdf")}>
                   <IconDownload />
                   Export to PDF
                 </DropdownMenuItem>

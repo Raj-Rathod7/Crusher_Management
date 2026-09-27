@@ -4,6 +4,12 @@ export type AuthResponse = {
   username: string;
 }
 
+export type BusinessSettings = {
+  businessName: string | null;
+  address: string | null;
+  phone: string | null;
+}
+
 export type TruckEntry = {
   id: number;
   entryDate: string;
@@ -102,7 +108,7 @@ export type Expense = {
   categoryId: number;
   categoryName: string | null;
   amount: number;
-  truckNumber: string | null;
+  identifier: string | null;
   notes: string | null;
   createdByUsername: string | null;
   createdAt: string;
@@ -113,12 +119,12 @@ export type CreateExpensePayload = {
   expenseDate: string;
   categoryId: number;
   amount: number;
-  truckNumber?: string;
+  identifier?: string;
   notes?: string;
 }
 
-export type ExpenseVehicleSummary = {
-  truckNumber: string;
+export type ExpenseIdentifierSummary = {
+  identifier: string;
   totalAmount: number;
   expenseCount: number;
 }

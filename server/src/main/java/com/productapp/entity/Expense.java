@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "expenses", indexes = {
     @Index(name = "idx_expenses_date", columnList = "expense_date"),
     @Index(name = "idx_expenses_category", columnList = "category_id"),
-    @Index(name = "idx_expenses_truck_number", columnList = "truck_number")
+    @Index(name = "idx_expenses_identifier", columnList = "identifier")
 })
 @SQLRestriction("is_active = true")
 @SQLDelete(sql = "UPDATE expenses SET is_active = false WHERE id = ?")
@@ -38,8 +38,8 @@ public class Expense extends AuditableEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    @Column(name = "truck_number", length = 20)
-    private String truckNumber;
+    @Column(name = "identifier", length = 20)
+    private String identifier;
 
     @Column(columnDefinition = "TEXT")
     private String notes;

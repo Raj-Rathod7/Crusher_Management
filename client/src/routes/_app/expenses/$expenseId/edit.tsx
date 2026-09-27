@@ -58,7 +58,7 @@ function RouteComponent() {
         expenseDate: expense.expenseDate,
         categoryId: String(expense.categoryId),
         amount: String(expense.amount),
-        truckNumber: expense.truckNumber ?? '',
+        identifier: expense.identifier ?? '',
         notes: expense.notes ?? '',
       }}
       onSubmit={(payload: CreateExpensePayload) => updateMutation.mutate(payload)}

@@ -78,6 +78,7 @@ const data: { navMain: { title: string; url: string; icon: React.ReactNode; mana
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
+  const [logoFailed, setLogoFailed] = React.useState(false)
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -88,7 +89,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
               <a href="/">
-                <IconInnerShadowTop className="size-5!" />
+                {logoFailed ? (
+                  <IconInnerShadowTop className="size-5!" />
+                ) : (
+                  <img
+                    src="/business-logo.png"
+                    alt=""
+                    className="size-5 object-contain"
+                    onError={() => setLogoFailed(true)}
+                  />
+                )}
                 <span className="text-base font-semibold">Vaibhav Stone Crusher</span>
               </a>
             </SidebarMenuButton>
