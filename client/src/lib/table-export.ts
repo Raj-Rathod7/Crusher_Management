@@ -344,41 +344,114 @@ function addPdfDocumentHeader(
   logo: LogoAsset | null = null,
 ) {
   const pageWidth = document.internal.pageSize.getWidth()
+
   const businessName = settings.businessName?.trim()
-  const details = [settings.address?.trim(), settings.phone?.trim() ? `Phone: ${settings.phone.trim()}` : ""]
+
+  const details = [
+    settings.address?.trim(),
+    settings.phone?.trim() ? `Phone: ${settings.phone.trim()}` : "",
+  ]
     .filter(Boolean)
     .join("  |  ")
 
-  const logoOffset = logo ? 24 : 0
-  if (logo) document.addImage(logo.dataUrl, logo.extension.toUpperCase(), 8, 8, 48, 14)
-  const nameLines = businessName ? document.splitTextToSize(businessName, pageWidth * 0.55 - logoOffset) : []
+  // Logo occupies 48mm starting from x=8.
+  // Reserve enough space so business name/details never overlap it.
+  const logoWidth = 48
+  const logoHeight = 24
+  const logoX = 8
+  const logoY = 8
+
+  // Text starts after the logo with a small gap.
+  const logoOffset = logo ? logoWidth + 5 : 0
+
+  if (logo) {
+    document.addImage(
+      logo.dataUrl,
+      logo.extension.toUpperCase(),
+      logoX,
+      logoY,
+      logoWidth,
+      logoHeight,
+    )
+  }
+
+  // Left side: business name and details.
+  const leftX = 8 + logoOffset
+
+  // Keep the business information away from the report title on the right.
+  const leftWidth = pageWidth * 0.55 - logoOffset
+
+  const nameLines = businessName
+    ? document.splitTextToSize(businessName, leftWidth)
+    : []
+
   if (nameLines.length > 0) {
     document.setFont("helvetica", "bold")
     document.setFontSize(17)
     document.setTextColor(23, 50, 77)
-    document.text(nameLines, 8 + logoOffset, 16)
+
+    document.text(nameLines, leftX, 16)
   }
 
   if (details) {
     document.setFont("helvetica", "normal")
     document.setFontSize(8)
     document.setTextColor(100, 116, 139)
-    document.text(document.splitTextToSize(details, pageWidth * 0.55 - logoOffset), 8 + logoOffset, 16 + nameLines.length * 7)
+
+    const detailLines = document.splitTextToSize(details, leftWidth)
+
+    // Put details below the business name.
+    document.text(
+      detailLines,
+      leftX,
+      16 + nameLines.length * 7,
+    )
   }
 
+  // Right side: report title.
   document.setFont("helvetica", "bold")
   document.setFontSize(18)
   document.setTextColor(15, 118, 110)
-  const titleLines = document.splitTextToSize(title, pageWidth * 0.4)
-  document.text(titleLines, pageWidth - 8, 16, { align: "right" })
+
+  const titleLines = document.splitTextToSize(
+    title,
+    pageWidth * 0.4,
+  )
+
+  document.text(
+    titleLines,
+    pageWidth - 8,
+    16,
+    { align: "right" },
+  )
+
+  // Report subtitle.
   document.setFont("helvetica", "normal")
   document.setFontSize(8)
   document.setTextColor(71, 85, 105)
-  document.text(document.splitTextToSize(subtitle, pageWidth * 0.4), pageWidth - 8, 16 + titleLines.length * 7, { align: "right" })
 
+  const subtitleLines = document.splitTextToSize(
+    subtitle,
+    pageWidth * 0.4,
+  )
+
+  document.text(
+    subtitleLines,
+    pageWidth - 8,
+    16 + titleLines.length * 7,
+    { align: "right" },
+  )
+
+  // Header separator.
   document.setDrawColor(15, 118, 110)
   document.setLineWidth(0.8)
-  document.line(8, 35, pageWidth - 8, 35)
+  document.line(
+    8,
+    35,
+    pageWidth - 8,
+    35,
+  )
+
   return 43
 }
 
@@ -635,17 +708,6 @@ export async function exportCustomerReportToPdf(
     ["Pending balance", formatPdfAmount(data.customer.pendingBalance ?? finalBalance)],
   ], y) + 6
 
-  y = addPdfSectionTitle(document, "Summary", y)
-  y = addPdfTable(document, ["Summary", "Value"], [
-    ["Total sales", formatPdfAmount(totalDebit)],
-    ["Total payments", formatPdfAmount(totalCredit)],
-    ["Final balance", formatPdfAmount(finalBalance)],
-    ["Invoices raised", data.invoices.length],
-    ["Total billed", formatPdfAmount(totalBilled)],
-    ["Receipts recorded", data.payments.length],
-    ["Total received", formatPdfAmount(totalReceived)],
-  ], y) + 6
-
   y = addPdfSectionTitle(document, "Ledger", y)
   y = addPdfTable(document,
     ["Date", "Entry", "Reference", "Description", "Debit", "Credit", "Running balance"],
@@ -661,6 +723,17 @@ export async function exportCustomerReportToPdf(
       ]),
       ["", "", "", "Total", formatPdfAmount(totalDebit), formatPdfAmount(totalCredit), formatPdfAmount(finalBalance)],
     ], y) + 6
+  
+  y = addPdfSectionTitle(document, "Summary", y)
+  y = addPdfTable(document, ["Summary", "Value"], [
+    ["Total sales", formatPdfAmount(totalDebit)],
+    ["Total payments", formatPdfAmount(totalCredit)],
+    ["Final balance", formatPdfAmount(finalBalance)],
+    ["Invoices raised", data.invoices.length],
+    ["Total billed", formatPdfAmount(totalBilled)],
+    ["Receipts recorded", data.payments.length],
+    ["Total received", formatPdfAmount(totalReceived)],
+  ], y) + 6
 
   const invoiceRows = data.invoices.flatMap((invoice) => {
     const items = invoice.invoiceItems.length > 0

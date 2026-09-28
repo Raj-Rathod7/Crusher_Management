@@ -272,6 +272,7 @@ function RouteComponent() {
           {
             accessorKey: 'payment.amount',
             header: 'Recieved',
+            accessorFn: (row) => row.payment?.amount ? formatCurrency(row.payment.amount) : '0.0',
             cell: ({ row }) => (
               <span className="font-medium tabular-nums text-green-700 dark:text-green-300">
                 {row.original.payment?.amount ? formatCurrency(row.original.payment.amount) : '0.00'}

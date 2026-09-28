@@ -330,7 +330,7 @@ export function ConfigurableDataTable<TData>({
     return meta?.exportable !== false &&
       (typeof meta?.exportValue === "function" ||
         typeof column.accessorFn === "function" ||
-        typeof (column.columnDef as DataTableColumnDef<TData>).accessorKey === "string")
+        (typeof (column.columnDef as DataTableColumnDef<TData>) as any).accessorKey === "string")
   })
 
   const exportHeaders = exportColumns.map((column) => {
