@@ -152,7 +152,7 @@ This document details the database schema for the Crusher Management System (CMS
 ---
 
 ### 1.10 `customer_ledger`
-**Purpose:** Append-only financial entries for customer balances.
+**Purpose:** Active financial entries for customer balances, with source-linked corrections.
 
 | Column | Type | Constraints / Description |
 | :--- | :--- | :--- |
@@ -172,8 +172,10 @@ This document details the database schema for the Crusher Management System (CMS
 
 * **Indexes:** `(customer_id, entry_date)`, `(source_type, source_id)`
 
-Customer balance is total active debit minus total active credit. Ledger rows
-are not deleted; corrections use reversal or adjustment entries.
+Customer balance is total active debit minus total active credit. Invoice and
+payment corrections update the existing source-linked ledger row directly.
+Deleted invoices and payments soft-deactivate their original ledger rows by
+setting `is_active = FALSE`; new reversal rows are not created.
 
 ---
 

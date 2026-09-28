@@ -55,10 +55,6 @@ public class PaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
         validatePayment(request);
 
-        postLedgerEntry(payment.getPaymentDate(), customer, "CUSTOMER_PAYMENT_REVERSAL",
-                "PAYMENT-" + payment.getId() + "-REVERSAL", "Reversal of customer payment",
-                payment.getAmount(), BigDecimal.ZERO, "PAYMENT", payment.getId());
-
         payment.setCustomer(customer);
         payment.setAmount(request.getAmount());
         payment.setPaymentDate(request.getPaymentDate());
@@ -67,19 +63,23 @@ public class PaymentService {
         payment.setExternalRef(request.getExternalRef());
         payment.setNotes(request.getNotes());
         Payment savedPayment = paymentRepository.save(payment);
-        postLedgerEntry(savedPayment.getPaymentDate(), customer, "CUSTOMER_PAYMENT",
-                "PAYMENT-" + savedPayment.getId(), savedPayment.getNotes() == null
-                        ? "Customer payment" : savedPayment.getNotes(),
-                BigDecimal.ZERO, savedPayment.getAmount(), "PAYMENT", savedPayment.getId());
+        CustomerLedger ledger = customerLedgerRepository
+            .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("PAYMENT", savedPayment.getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Ledger entry not found for payment id : " + savedPayment.getId()));
+        updateLedgerEntry(ledger, savedPayment);
         return PaymentResponse.fromEntity(savedPayment);
     }
 
     @Transactional
     public void delete(Long id) {
         Payment payment = getActivePayment(id);
-        postLedgerEntry(payment.getPaymentDate(), payment.getCustomer(), "CUSTOMER_PAYMENT_REVERSAL",
-                "PAYMENT-" + payment.getId() + "-REVERSAL", "Reversal of deleted customer payment",
-                payment.getAmount(), BigDecimal.ZERO, "PAYMENT", payment.getId());
+        CustomerLedger ledger = customerLedgerRepository
+            .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("PAYMENT", payment.getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Ledger entry not found for payment id : " + payment.getId()));
+        ledger.setIsActive(false);
+        customerLedgerRepository.save(ledger);
         payment.setIsActive(false);
         paymentRepository.save(payment);
     }
@@ -104,20 +104,15 @@ public class PaymentService {
         return paymentMode == null || paymentMode.isBlank() ? "cash" : paymentMode;
     }
 
-    private void postLedgerEntry(LocalDate entryDate, Customer customer, String entryType, String reference,
-                                 String description, BigDecimal debit, BigDecimal credit,
-                                 String sourceType, Long sourceId) {
-        customerLedgerRepository.save(CustomerLedger.builder()
-                .entryDate(entryDate)
-                .customer(customer)
-                .entryType(entryType)
-                .reference(reference)
-                .description(description)
-                .debit(debit)
-                .credit(credit)
-                .sourceType(sourceType)
-                .sourceId(sourceId)
-                .build());
+    private void updateLedgerEntry(CustomerLedger ledger, Payment payment) {
+        ledger.setEntryDate(payment.getPaymentDate());
+        ledger.setCustomer(payment.getCustomer());
+        ledger.setEntryType("CUSTOMER_PAYMENT");
+        ledger.setReference("PAYMENT-" + payment.getId());
+        ledger.setDescription(payment.getNotes() == null ? "Customer payment" : payment.getNotes());
+        ledger.setDebit(BigDecimal.ZERO);
+        ledger.setCredit(payment.getAmount());
+        customerLedgerRepository.save(ledger);
     }
 
 }

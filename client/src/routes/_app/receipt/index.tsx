@@ -68,7 +68,7 @@ function RouteComponent() {
       await queryClient.invalidateQueries({ queryKey: receiptKeys.all })
       await router.invalidate()
       setPaymentToDelete(null)
-      toast.success('Payment deleted and reversed.')
+      toast.success('Payment deleted and removed from the ledger.')
     },
     onError: () => toast.error('Failed to delete payment.'),
   })
@@ -264,7 +264,7 @@ function RouteComponent() {
 
       {paymentToDelete ? (
         <div className="mt-3 flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
-          <span>Delete payment {paymentToDelete.amount}? It will be reversed in the ledger.</span>
+          <span>Delete payment {paymentToDelete.amount}? It will be removed from the ledger.</span>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => setPaymentToDelete(null)}>Cancel</Button>
             <Button

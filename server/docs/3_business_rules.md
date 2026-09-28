@@ -2,14 +2,16 @@
 
 ## Customer ledger
 
-The `customer_ledger` table is append-only and is the source of truth for
+The `customer_ledger` table is the source of truth for
 customer balances.
 
 - A sale posts a debit ledger entry.
 - A customer payment posts a credit ledger entry.
 - Pending balance is total debit minus total credit.
 - Payments are customer-level and are not assigned to invoices.
-- Financial history is corrected with reversal or adjustment entries, not deletes.
+- Financial corrections update the existing source-linked ledger row directly.
+- Deleted invoices and payments soft-deactivate their original ledger rows;
+  reversal entries are not created.
 
 ## Customer payments
 
@@ -29,10 +31,11 @@ customer balances.
   ledger entry atomically with the sale.
 - Invoice creation payments are customer-level credits and may exceed the
   invoice total.
-- Editing a sale reverses the previous ledger sale and posts a replacement
-  entry.
-- Invoice and payment deletion endpoints are intentionally unavailable so
-  ledger history cannot be silently destroyed.
+- Editing a sale updates its existing `SALE` ledger entry in place.
+- Editing a payment updates its existing `CUSTOMER_PAYMENT` ledger entry in
+  place.
+- Invoice and payment deletion soft-deactivates the matching source-linked
+  ledger entry and the original business record.
 
 ## Customer deactivation
 

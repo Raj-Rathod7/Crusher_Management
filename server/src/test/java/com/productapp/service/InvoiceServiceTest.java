@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -128,11 +129,81 @@ class InvoiceServiceTest {
         verify(paymentRepository, never()).save(any(Payment.class));
     }
 
+    @Test
+    void updateInvoiceMutatesExistingSaleLedgerEntry() {
+        InvoiceRequest request = invoiceRequest(null);
+        request.setInvoiceNumber("INV-2026-0002");
+        request.setInvoiceDate(LocalDate.of(2026, 9, 24));
+        request.setTotalAmount(new BigDecimal("250"));
+        prepareDependencies();
+
+        Customer customer = customer(10L, "Alpha");
+        Invoice invoice = new Invoice();
+        invoice.setId(11L);
+        invoice.setIsActive(true);
+        invoice.setCustomer(customer);
+        invoice.setInvoiceNumber("INV-2026-0001");
+        invoice.setInvoiceDate(LocalDate.of(2026, 9, 23));
+        invoice.setTotalAmount(new BigDecimal("200"));
+        invoice.setInvoiceItems(new ArrayList<>());
+
+        CustomerLedger ledger = new CustomerLedger();
+        ledger.setId(31L);
+        ledger.setIsActive(true);
+        ledger.setEntryType("SALE");
+        ledger.setSourceType("INVOICE");
+        ledger.setSourceId(11L);
+
+        when(invoiceRepository.findById(11L)).thenReturn(Optional.of(invoice));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(customerLedgerRepository.findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", 11L))
+                .thenReturn(Optional.of(ledger));
+
+        invoiceService.updateInvoice(11L, request);
+
+        verify(customerLedgerRepository).save(ledger);
+        assertEquals("SALE", ledger.getEntryType());
+        assertEquals("INV-2026-0002-SALE", ledger.getReference());
+        assertEquals(new BigDecimal("250"), ledger.getDebit());
+        assertEquals(BigDecimal.ZERO, ledger.getCredit());
+        assertEquals(LocalDate.of(2026, 9, 24), ledger.getEntryDate());
+    }
+
+    @Test
+    void deleteInvoiceSoftDeactivatesExistingLedgerEntries() {
+        prepareDependencies();
+
+        Customer customer = customer(10L, "Alpha");
+        Invoice invoice = new Invoice();
+        invoice.setId(11L);
+        invoice.setIsActive(true);
+        invoice.setCustomer(customer);
+        invoice.setInvoiceNumber("INV-2026-0001");
+        invoice.setInvoiceDate(LocalDate.of(2026, 9, 23));
+        invoice.setTotalAmount(new BigDecimal("200"));
+
+        CustomerLedger ledger = new CustomerLedger();
+        ledger.setId(31L);
+        ledger.setIsActive(true);
+        ledger.setEntryType("SALE");
+        ledger.setSourceType("INVOICE");
+        ledger.setSourceId(11L);
+
+        when(invoiceRepository.findById(11L)).thenReturn(Optional.of(invoice));
+        when(customerLedgerRepository.findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", 11L))
+                .thenReturn(Optional.of(ledger));
+        when(paymentRepository.findByInvoiceIdAndIsActiveTrue(11L)).thenReturn(Optional.empty());
+
+        invoiceService.delete(11L);
+
+        verify(customerLedgerRepository).save(ledger);
+        verify(invoiceRepository).save(invoice);
+        assertEquals(false, ledger.getIsActive());
+        assertEquals("SALE", ledger.getEntryType());
+    }
+
     private void prepareDependencies() {
-        Customer customer = new Customer();
-        customer.setId(10L);
-        customer.setName("Alpha");
-        customer.setIsActive(true);
+        Customer customer = customer(10L, "Alpha");
 
         MaterialType material = new MaterialType();
         material.setId(20L);
@@ -149,6 +220,14 @@ class InvoiceServiceTest {
         when(userRepository.findByUsernameAndIsActiveTrue("demo")).thenReturn(Optional.of(user));
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken("demo", "password"));
+    }
+
+    private Customer customer(Long id, String name) {
+        Customer customer = new Customer();
+        customer.setId(id);
+        customer.setName(name);
+        customer.setIsActive(true);
+        return customer;
     }
 
     private InvoiceRequest invoiceRequest(BigDecimal paymentAmount) {

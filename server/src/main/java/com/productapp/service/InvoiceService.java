@@ -60,9 +60,9 @@ public class InvoiceService {
         User createdBy = getCurrentUser();
         boolean manager = SecurityUtils.isManager();
         SecurityUtils.requireTodayForManager(invoiceRequest.getInvoiceDate());
-        if (invoiceRequest.getTotalAmount() == null || invoiceRequest.getTotalAmount().signum() <= 0) {
-            throw new IllegalArgumentException("Total amount must be greater than zero");
-        }
+        // if ( invoiceRequest.getTotalAmount() == null || invoiceRequest.getTotalAmount().signum() <= 0) {
+        //     throw new IllegalArgumentException("Total amount must be greater than zero");
+        // }
         Customer customer =
                 customerRepository.findByIdAndIsActiveTrue(invoiceRequest.getCustomerId())
                         .orElseThrow(() ->
@@ -132,11 +132,9 @@ public class InvoiceService {
                 .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
 
-            Customer previousCustomer = existingInvoice.getCustomer();
-            BigDecimal previousTotalAmount = existingInvoice.getTotalAmount();
-            String previousSaleDescription = saleDescription(existingInvoice);
-            Optional<CustomerLedger> existingLedger = customerLedgerRepository
-                .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", existingInvoice.getId());
+        CustomerLedger existingLedger = customerLedgerRepository
+                .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", existingInvoice.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Ledger entry not found for invoice id : " + id));
 
         Customer customer =
                 customerRepository.findByIdAndIsActiveTrue(invoiceRequest.getCustomerId())
@@ -197,12 +195,7 @@ public class InvoiceService {
 
         Invoice savedInvoice = invoiceRepository.save(existingInvoice);
 
-        if (existingLedger.isPresent()) {
-            postSaleLedgerEntry(savedInvoice, previousCustomer, BigDecimal.ZERO, previousTotalAmount,
-                "SALE_REVERSAL", "Reversal of " + previousSaleDescription);
-        }
-        postSaleLedgerEntry(savedInvoice, savedInvoice.getCustomer(), savedInvoice.getTotalAmount(), BigDecimal.ZERO,
-            "SALE", saleDescription(savedInvoice));
+        updateSaleLedgerEntry(existingLedger, savedInvoice);
 
         if (invoiceRequest.getPaymentAmount() != null) {
             updatePayment(existingInvoice, invoiceRequest.getPaymentAmount());
@@ -255,25 +248,15 @@ public class InvoiceService {
             return;
         }
         
-        postPaymentLedgerReversal(payment);
         payment.setAmount(amount);
         payment.setPaymentDate(invoice.getInvoiceDate());
+        payment.setCustomer(invoice.getCustomer());
         Payment savedPayment = paymentRepository.save(payment);
-        postPaymentLedgerEntry(savedPayment);
-    }
-
-    private void postPaymentLedgerReversal(Payment payment) {
-        customerLedgerRepository.save(CustomerLedger.builder()
-                .entryDate(payment.getPaymentDate())
-                .customer(payment.getCustomer())
-                .entryType("CUSTOMER_PAYMENT_REVERSAL")
-                .reference("PAYMENT-" + payment.getId() + "-REVERSAL")
-                .description("Reversal of customer payment")
-                .debit(payment.getAmount())
-                .credit(BigDecimal.ZERO)
-                .sourceType("PAYMENT")
-                .sourceId(payment.getId())
-                .build());
+        CustomerLedger paymentLedger = customerLedgerRepository
+            .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("PAYMENT", savedPayment.getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Ledger entry not found for payment id : " + savedPayment.getId()));
+        updatePaymentLedgerEntry(paymentLedger, savedPayment);
     }
 
     private void postPaymentLedgerEntry(Payment payment) {
@@ -288,6 +271,28 @@ public class InvoiceService {
                 .sourceType("PAYMENT")
                 .sourceId(payment.getId())
                 .build());
+    }
+
+    private void updateSaleLedgerEntry(CustomerLedger ledger, Invoice invoice) {
+        ledger.setEntryDate(invoice.getInvoiceDate());
+        ledger.setCustomer(invoice.getCustomer());
+        ledger.setEntryType("SALE");
+        ledger.setReference(invoice.getInvoiceNumber() + "-SALE");
+        ledger.setDescription(saleDescription(invoice));
+        ledger.setDebit(invoice.getTotalAmount());
+        ledger.setCredit(BigDecimal.ZERO);
+        customerLedgerRepository.save(ledger);
+    }
+
+    private void updatePaymentLedgerEntry(CustomerLedger ledger, Payment payment) {
+        ledger.setEntryDate(payment.getPaymentDate());
+        ledger.setCustomer(payment.getCustomer());
+        ledger.setEntryType("CUSTOMER_PAYMENT");
+        ledger.setReference("PAYMENT-" + payment.getId());
+        ledger.setDescription(payment.getNotes());
+        ledger.setDebit(BigDecimal.ZERO);
+        ledger.setCredit(payment.getAmount());
+        customerLedgerRepository.save(ledger);
     }
 
         private void postSaleLedgerEntry(Invoice invoice, Customer customer, BigDecimal debit,
@@ -360,12 +365,21 @@ public class InvoiceService {
                 .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
             paymentRepository.findByInvoiceIdAndIsActiveTrue(invoice.getId()).ifPresent(payment -> {
-                postPaymentLedgerReversal(payment);
+                CustomerLedger paymentLedger = customerLedgerRepository
+                        .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("PAYMENT", payment.getId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Ledger entry not found for payment id : " + payment.getId()));
+                paymentLedger.setIsActive(false);
+                customerLedgerRepository.save(paymentLedger);
                 payment.setIsActive(false);
                 paymentRepository.save(payment);
             });
-        postSaleLedgerEntry(invoice, invoice.getCustomer(), BigDecimal.ZERO, invoice.getTotalAmount(),
-            "SALE_REVERSAL", "Reversal of " + saleDescription(invoice));
+        CustomerLedger saleLedger = customerLedgerRepository
+                .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", invoice.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ledger entry not found for invoice id : " + invoice.getId()));
+        saleLedger.setIsActive(false);
+        customerLedgerRepository.save(saleLedger);
         invoice.setIsActive(false);
         invoiceRepository.save(invoice);
     }

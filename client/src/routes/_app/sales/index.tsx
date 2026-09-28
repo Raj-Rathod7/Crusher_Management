@@ -96,7 +96,7 @@ function RouteComponent() {
       await queryClient.invalidateQueries({ queryKey: salesKeys.all })
       await router.invalidate()
       setSaleToDelete(null)
-      toast.success('Sale deleted and reversed.')
+      toast.success('Sale deleted and removed from the ledger.')
     },
     onError: () => toast.error('Failed to delete sale.'),
   })
@@ -352,7 +352,7 @@ function RouteComponent() {
 
       {saleToDelete ? (
         <div className="mt-3 flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
-          <span>Delete {saleToDelete.invoiceNumber}? It will be reversed in the ledger.</span>
+          <span>Delete {saleToDelete.invoiceNumber}? It will be removed from the ledger.</span>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => setSaleToDelete(null)}>Cancel</Button>
             <Button

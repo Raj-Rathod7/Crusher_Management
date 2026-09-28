@@ -2,6 +2,8 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,6 +13,8 @@ import java.time.LocalDate;
     @Index(name = "idx_customer_ledger_customer_date", columnList = "customer_id,entry_date"),
     @Index(name = "idx_customer_ledger_source", columnList = "source_type,source_id")
 })
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE customer_ledger SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor

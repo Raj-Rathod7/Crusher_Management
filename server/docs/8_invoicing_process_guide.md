@@ -32,7 +32,7 @@ The customer summary shows:
 
 - recent sales
 - recent customer payments
-- the append-only ledger
+- the source-linked customer ledger
 - running balance, calculated as sale debits minus payment credits
 
 A payment can exceed the balance when the business accepts an advance. That
@@ -41,8 +41,8 @@ assigned to a specific invoice.
 
 ## Editing a sale
 
-Editing an existing sale posts a `SALE_REVERSAL` credit for the previous sale
-and a new `SALE` debit for the updated sale. This preserves an audit trail.
+Editing an existing sale updates the existing `SALE` ledger entry for the
+updated sale.
 
-Invoice and payment deletion is not supported. Corrections must be represented
-as ledger reversals or adjustments.
+Invoice and payment deletion soft-deactivates the matching ledger entry and
+does not create a reversal row.

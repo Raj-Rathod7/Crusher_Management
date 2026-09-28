@@ -42,7 +42,6 @@ total. Payments are not allocated to individual invoices.
 
 ## Editing and corrections
 
-Invoice edits post a reversal for the previous sale entry and a new sale entry
-for the updated values. Financial records are not deleted, and there are no
-invoice or payment delete endpoints. Future corrections should use reversal or
-adjustment ledger rows rather than mutating history.
+Invoice and payment edits update their existing source-linked ledger entries.
+Invoice and payment deletes soft-deactivate the original ledger entry, so no
+new reversal or adjustment rows are created.
