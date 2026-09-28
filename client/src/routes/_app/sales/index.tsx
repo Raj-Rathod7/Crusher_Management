@@ -168,11 +168,11 @@ function RouteComponent() {
             title="Billed total"
             value={formatCurrency(billedTotal)}
           />
-          <StatsCard
+          {/* <StatsCard
             icon={<IconAlertTriangle className="size-4" />}
             title="Pending amount"
             value={formatCurrency(pendingAmount)}
-          />
+          /> */}
         </div>
       )}
 
