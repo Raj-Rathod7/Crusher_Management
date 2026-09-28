@@ -2,11 +2,16 @@ package com.productapp.controller;
 
 import com.productapp.dto.ExpenseRequest;
 import com.productapp.dto.ExpenseResponse;
-import com.productapp.entity.Expense;
+import com.productapp.dto.ExpenseIdentifierSummaryResponse;
+import com.productapp.entity.Categories;
 import com.productapp.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
+import java.time.LocalDate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/expenses")
@@ -19,8 +24,13 @@ public class ExpenseController {
     }
 
     @PostMapping
-    public ExpenseResponse create(@RequestBody ExpenseRequest expenseRequest) {
+    public ExpenseResponse create(@Valid @RequestBody ExpenseRequest expenseRequest) {
         return expenseService.save(expenseRequest);
+    }
+
+    @GetMapping("/categories")
+    public List<Categories> getCategories() {
+        return expenseService.getCategories();
     }
 
     @GetMapping
@@ -28,8 +38,30 @@ public class ExpenseController {
         return expenseService.getAll();
     }
 
+    @GetMapping("/page")
+    public Page<ExpenseResponse> getPage(Pageable pageable) {
+        return expenseService.getPage(pageable);
+    }
+
+    @GetMapping("/vehicle-summary")
+    public List<ExpenseIdentifierSummaryResponse> getIdentifierSummary(
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo) {
+        return expenseService.summarizeByIdentifier(dateFrom, dateTo);
+    }
+
     @GetMapping("/{id}")
     public ExpenseResponse getById(@PathVariable Long id) {
         return expenseService.getById(id);
+    }
+
+    @PutMapping("/{id}")
+    public ExpenseResponse update(@PathVariable Long id, @Valid @RequestBody ExpenseRequest expenseRequest) {
+        return expenseService.update(id, expenseRequest);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        expenseService.delete(id);
     }
 }

@@ -1,6 +1,8 @@
 package com.productapp.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class AuthRequest {
 
@@ -9,6 +11,16 @@ public class AuthRequest {
 
     @NotBlank
     private String password;
+
+    public AuthRequest() {
+    }
+
+    @JsonCreator
+    public AuthRequest(@JsonProperty("username") String username,
+                       @JsonProperty("password") String password) {
+        this.username = username;
+        this.password = password;
+    }
 
     public String getUsername() {
         return username;

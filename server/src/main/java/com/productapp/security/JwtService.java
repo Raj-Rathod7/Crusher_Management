@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +32,7 @@ public class JwtService {
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
                 .claim("role", user.getRole() != null ? user.getRole().getRoleName() : "")
+                .claim("email", user.getEmail() != null ? user.getEmail() : "")
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -52,8 +54,12 @@ public class JwtService {
         if (username == null || token == null) {
             return false;
         }
-        String tokenUsername = extractUsername(token);
-        return username.equals(tokenUsername) && !isTokenExpired(token);
+        try {
+            String tokenUsername = extractUsername(token);
+            return username.equals(tokenUsername) && !isTokenExpired(token);
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

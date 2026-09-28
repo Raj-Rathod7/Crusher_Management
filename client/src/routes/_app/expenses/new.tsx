@@ -26,8 +26,8 @@ function RouteComponent() {
       toast.success('Expense created.')
       navigate({ to: '/expenses' })
     },
-    onError: () => {
-      toast.error('Failed to create expense.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create expense.')
     },
   })
 
@@ -36,7 +36,7 @@ function RouteComponent() {
       title="New Expense"
       description="Record a new expense with category, amount, and notes."
       backLabel="Back to expenses"
-      submitLabel="Create expense"
+      submitLabel="Save expense"
       isSubmitting={createMutation.isPending}
       onSubmit={(payload: CreateExpensePayload) => createMutation.mutate(payload)}
     />

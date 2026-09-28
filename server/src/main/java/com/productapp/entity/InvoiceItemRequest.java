@@ -5,19 +5,17 @@ import java.math.BigDecimal;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMin;
 
 public class InvoiceItemRequest {
 
     @NotNull
     private Long materialTypeId;
 
-    @NotNull
     private BigDecimal quantityBrass;
 
-    @NotNull
     private BigDecimal rate;
 
-     @NotNull
     private BigDecimal amount;
 
     

@@ -10,28 +10,39 @@ import java.time.LocalDateTime;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 
 public class InvoiceRequest {
-
 
     @NotNull
     private Long customerId;
 
-    @NotNull
-    private BigDecimal amountPaid;
-
-    @NotNull
-    private BigDecimal balance;
-
-    private String status;
-
+    @NotBlank
     private String invoiceNumber;
 
+    @NotNull
     private LocalDate invoiceDate;
 
-    private BigDecimal totalAmount; 
-    
+     
+    private BigDecimal totalAmount;
+
+    @DecimalMin(value = "0.01")
+    private BigDecimal paymentAmount;
+
     private String remarks;
+
+    @NotEmpty
+    @Valid
+    private List<InvoiceItemRequest> invoiceItems;
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
+    }
 
     public LocalDate getInvoiceDate() {
         return invoiceDate;
@@ -49,7 +60,6 @@ public class InvoiceRequest {
         this.invoiceNumber = invoiceNumber;
     }
 
-   
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }
@@ -58,33 +68,12 @@ public class InvoiceRequest {
         this.totalAmount = totalAmount;
     }
 
-    public BigDecimal getBalance() {
-        return balance;
+    public BigDecimal getPaymentAmount() {
+        return paymentAmount;
     }
 
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
-    }
-
-    @NotEmpty
-    private List<InvoiceItemRequest> invoiceItems;
-
-    
-
-    public Long getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(Long customerId) {
-        this.customerId = customerId;
-    }
-
-    public BigDecimal getAmountPaid() {
-        return amountPaid;
-    }
-
-    public void setAmountPaid(BigDecimal amountPaid) {
-        this.amountPaid = amountPaid;
+    public void setPaymentAmount(BigDecimal paymentAmount) {
+        this.paymentAmount = paymentAmount;
     }
 
     public List<InvoiceItemRequest> getInvoiceItems() {
@@ -102,14 +91,4 @@ public class InvoiceRequest {
     public void setRemarks(String remarks) {
         this.remarks = remarks;
     }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    
 }

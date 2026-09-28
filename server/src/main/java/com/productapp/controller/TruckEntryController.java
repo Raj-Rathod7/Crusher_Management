@@ -10,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/truck-entries")
@@ -32,6 +34,11 @@ public class TruckEntryController {
     @GetMapping
     public ResponseEntity<List<TruckEntryResponse>> getAllTruckEntries() {
         return ResponseEntity.ok(truckEntryService.getAllTruckEntries());
+    }
+
+    @GetMapping("/page")
+    public Page<TruckEntryResponse> getPage(Pageable pageable) {
+        return truckEntryService.getPage(pageable);
     }
 
     @GetMapping("/{id}")

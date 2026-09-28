@@ -1,69 +1,86 @@
--- Rerunnable seed data for MySQL.
--- Run this after schema exists.
+-- Rerunnable demo data for MySQL. Run after the schema exists.
+-- Demo user password: password
+
 
 START TRANSACTION;
 
--- 1) Seed roles required by application and system operations.
-INSERT INTO roles (role_name, description, is_active)
+-- Roles
+INSERT INTO roles (role_name, description, is_active, created_at, updated_at)
 VALUES
-  ('SYSTEM', 'System role for internal data operations', TRUE),
-  ('ADMIN', 'Administrator role', TRUE),
-  ('MANAGER', 'Manager role', TRUE)
+    ('SYSTEM', 'System role', TRUE, NOW(), NOW()),
+    ('ADMIN', 'Administrator role', TRUE, NOW(), NOW()),
+    ('MANAGER', 'Manager role', TRUE, NOW(), NOW()),
+    ('USER', 'Standard user role', TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
-  description = VALUES(description),
-  is_active = VALUES(is_active);
+    description = VALUES(description),
+    is_active = TRUE,
+    updated_at = NOW();
 
--- 2) Seed system user linked to SYSTEM role.
--- Password hash below is placeholder BCrypt hash.
--- Replace with BCrypt hash for password you want before first login use.
-INSERT INTO users (username, password, role_id, is_active, created_at)
-SELECT
-  'system',
-  '$2a$10$E9N0d4W2V8xNw5w9zJf7XeuQ7n9S7P8YkY2j9r0M6hW6b2B4cD9qK',
-  r.id,
-  TRUE,
-  NOW()
-FROM roles r
-WHERE r.role_name = 'SYSTEM'
-ON DUPLICATE KEY UPDATE
-  password = VALUES(password),
-  role_id = VALUES(role_id),
-  is_active = VALUES(is_active);
 
--- 3) Seed material types.
-INSERT INTO material_types (name, is_active, created_at)
+-- Assign ADMIN role to existing admin user
+UPDATE users u
+JOIN roles r ON r.role_name = 'ADMIN'
+SET
+    u.role_id = r.id,
+    u.updated_at = NOW()
+WHERE u.username = 'admin';
+
+
+-- Assign MANAGER role to existing manager user
+UPDATE users u
+JOIN roles r ON r.role_name = 'MANAGER'
+SET
+    u.role_id = r.id,
+    u.updated_at = NOW()
+WHERE u.username = 'manager';
+
+
+-- Sale material types
+INSERT INTO material_types (name, type, is_active, created_at, updated_at)
 VALUES
-  ('10mm', TRUE, NOW()),
-  ('20mm', TRUE, NOW()),
-  ('40mm', TRUE, NOW()),
-  ('Stone Dust', TRUE, NOW()),
-  ('Crusher Run', TRUE, NOW()),
-  ('M-Sand', TRUE, NOW())
+    ('80mm', 'SALE', TRUE, NOW(), NOW()),
+    ('40mm', 'SALE', TRUE, NOW(), NOW()),
+    ('20mm', 'SALE', TRUE, NOW(), NOW()),
+    ('12mm', 'SALE', TRUE, NOW(), NOW()),
+    ('10mm', 'SALE', TRUE, NOW(), NOW()),
+    ('6mm', 'SALE', TRUE, NOW(), NOW()),
+    ('Dust', 'SALE', TRUE, NOW(), NOW()),
+    ('Crushed Sand', 'SALE', TRUE, NOW(), NOW()),
+    ('Waste', 'SALE', TRUE, NOW(), NOW()),
+    ('D/C', 'SALE', TRUE, NOW(), NOW()),
+    ('C/12mm', 'SALE', TRUE, NOW(), NOW()),
+    ('D/12mm', 'SALE', TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
-  is_active = VALUES(is_active);
-
-INSERT INTO categories (name, is_active, created_at) VALUES
-('Fuel', true, NOW()),
-('Diesel', true, NOW()),
-('Truck Repair', true, NOW()),
-('Motor Repair', true, NOW()),
-('Machine Maintenance', true, NOW()),
-('Electricity Bill', true, NOW()),
-('Salary', true, NOW()),
-('Labour Charges', true, NOW()),
-('Crusher Maintenance', true, NOW()),
-('Tyre Replacement', true, NOW()),
-('Spare Parts', true, NOW()),
-('Oil & Lubricants', true, NOW()),
-('Transport Charges', true, NOW()),
-('Office Expense', true, NOW()),
-('Rent', true, NOW()),
-('Internet & Phone', true, NOW()),
-('Water Charges', true, NOW()),
-('Security Expense', true, NOW()),
-('Loading Charges', true, NOW()),
-('Unloading Charges', true, NOW()),
-('Other', true, NOW());
+    type = VALUES(type),
+    is_active = TRUE,
+    updated_at = NOW();
 
 
+-- Purchase material types
+INSERT INTO material_types (name, type, is_active, created_at, updated_at)
+VALUES
+    ('Raw Stone', 'PURCHASE', TRUE, NOW(), NOW()),
+    ('Boulders', 'PURCHASE', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    type = VALUES(type),
+    is_active = TRUE,
+    updated_at = NOW();
+
+
+-- Expense categories
+INSERT INTO categories (name, is_active, created_at, updated_at)
+VALUES
+    ('Diesel', TRUE, NOW(), NOW()),
+    ('Machine Maintenance', TRUE, NOW(), NOW()),
+    ('Truck/Feet Maintenance', TRUE, NOW(), NOW()),
+    ('Tyres', TRUE, NOW(), NOW()),
+    ('Labour', TRUE, NOW(), NOW()),
+    ('Other', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    is_active = TRUE,
+    updated_at = NOW();
+
+INSERT INTO business_settings (id,business_name,address,phone,is_active,created_at,updated_at)
+VALUES (1,'Vaibhav Stone Crusher','Nimbi, Pusad','+91 8805012303 / +91 9518533548',TRUE,NOW(),NOW())
+ON DUPLICATE KEY UPDATE business_name=VALUES(business_name),address=VALUES(address),phone=VALUES(phone),is_active=TRUE,updated_at=NOW();
 COMMIT;

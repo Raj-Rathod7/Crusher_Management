@@ -1,6 +1,7 @@
 import { ConfigurableDataTable } from '#/components/data-table'
-import { StatsCard } from '#/components/stats-card'
+import { FilterChip, StatsCard } from '#/components/stats-card'
 import { Button } from '#/components/ui/button'
+import { Badge } from '#/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -11,11 +12,14 @@ import {
 } from '#/components/ui/dialog'
 import { deleteExpense } from '#/lib/mutation'
 import { getAllExpenses, expenseKeys } from '#/lib/query'
+import { matchesPeriod, matchesRange, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { DateRangePicker, type DateRangeValue } from '#/components/date-range-picker'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
+import { IconCalendarStats, IconCategory, IconCurrencyRupee, IconPencil, IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { isManager } from '#/lib/common/api'
 
 export const Route = createFileRoute('/_app/expenses/')({
   component: RouteComponent,
@@ -25,7 +29,9 @@ type ExpenseRow = {
   id: number
   expenseDate: string
   categoryName: string
+  identifier: string
   amount: string
+  amountValue: number
   notes: string
 }
 
@@ -42,21 +48,39 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseRow | null>(null)
+  const [selectedIdentifier, setSelectedIdentifier] = useState('all')
+  const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
+  const [dateRange, setDateRange] = useState<DateRangeValue>()
+  const [spentTotal, setSpentTotal] = useState(0)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: expenseKeys.all,
     queryFn: getAllExpenses,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
+  
+  const identifierExpenses = useMemo(() => {
+    if (selectedIdentifier === 'all') return data ?? []
+    if (selectedIdentifier === 'unassigned') return (data ?? []).filter((expense) => !expense.identifier)
+    return (data ?? []).filter((expense) => expense.identifier === selectedIdentifier)
+  }, [data, selectedIdentifier])
 
-  const expenseRows: ExpenseRow[] = (data ?? []).map((expense) => ({
+  const selectedExpenses = useMemo(
+    () => identifierExpenses.filter((expense) =>
+      matchesPeriod(expense.expenseDate, quickFilter) && matchesRange(expense.expenseDate, dateRange)),
+    [quickFilter, dateRange, identifierExpenses]
+  )
+
+  const expenseRows: ExpenseRow[] = selectedExpenses.map((expense) => ({
     id: expense.id,
     expenseDate: expense.expenseDate,
     categoryName: expense.categoryName ?? '-',
+    identifier: expense.identifier ?? '-',
     amount: formatCurrency(expense.amount),
+    amountValue: expense.amount,
     notes: expense.notes ?? '-',
   }))
 
@@ -76,22 +100,17 @@ function RouteComponent() {
     },
   })
 
-  const stats = useMemo(() => {
-    const expenses = data ?? []
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-      today.getDate()
-    ).padStart(2, '0')}`
-    const todayExpenses = expenses.filter((expense) => expense.expenseDate === todayKey)
-    const totalToday = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const totalOverall = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-
-    return {
-      expensesToday: todayExpenses.length,
-      totalToday,
-      totalOverall,
+  const periodStats = useMemo(() => {
+    const stats = {} as Record<QuickPeriod, { count: number; total: number }>
+    for (const period of QUICK_PERIODS) {
+      const matched = identifierExpenses.filter((expense) => matchesPeriod(expense.expenseDate, period))
+      stats[period] = {
+        count: matched.length,
+        total: matched.reduce((sum, expense) => sum + expense.amount, 0),
+      }
     }
-  }, [data])
+    return stats
+  }, [identifierExpenses])
 
   useEffect(() => {
     if (isError) {
@@ -111,55 +130,83 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatsCard
-          icon={<IconCurrencyRupee className="size-4" />}
-          title="Expenses today"
-          value={stats.expensesToday}
-          footer="Expenses recorded for today."
-        />
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
         <StatsCard
           icon={<IconCurrencyRupee className="size-4" />}
-          title="Amount today"
-          value={formatCurrency(stats.totalToday)}
-          footer="Total expense amount today."
+          title="Spent"
+          value={formatCurrency(spentTotal)}
         />
+      </div>
 
-        <StatsCard
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FilterChip
           icon={<IconCurrencyRupee className="size-4" />}
-          title="Total expenses"
-          value={formatCurrency(stats.totalOverall)}
-          footer="All expenses combined."
+          title="All expenses"
+          value={periodStats.all.count}
+          active={quickFilter === 'all' && !dateRange}
+          onClick={() => { setQuickFilter('all'); setDateRange(undefined) }}
         />
+        <FilterChip
+          icon={<IconCalendarStats className="size-4" />}
+          title="Today"
+          value={periodStats.today.count}
+          active={quickFilter === 'today'}
+          onClick={() => { setQuickFilter('today'); setDateRange(undefined) }}
+        />
+        {!isManager() && (
+          <DateRangePicker
+            className="ml-auto"
+            showPresets={false}
+            value={dateRange}
+            onChange={(range) => { setDateRange(range); setQuickFilter('all') }}
+            onClear={() => setDateRange(undefined)}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
         data={expenseRows}
+        onFilteredDataChange={(rows) => setSpentTotal(rows.reduce((sum, row) => sum + row.amountValue, 0))}
         columns={[
           {
             accessorKey: 'expenseDate',
             header: 'Date',
-            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'categoryName',
             header: 'Category',
             meta: { filterable: true, filterPlaceholder: 'Filter category' },
+            cell: ({ row }) => (
+              <Badge variant="outline" className="gap-1.5">
+                <IconCategory />
+                {row.original.categoryName}
+              </Badge>
+            ),
           },
           {
             accessorKey: 'amount',
             header: 'Amount',
+            cell: ({ row }) => (
+              <span className="font-medium tabular-nums text-destructive">
+                {row.original.amount}
+              </span>
+            ),
+          },
+          {
+            accessorKey: 'identifier',
+            header: 'Identifier',
+            meta: { filterable: true, filterPlaceholder: 'Filter identifier' },
           },
           {
             accessorKey: 'notes',
             header: 'Notes',
           },
-          {
+          ...(isManager() ? [] : [{
             id: 'actions',
             header: 'Actions',
             meta: { sortable: false, searchable: false },
-            cell: ({ row }) => (
+            cell: ({ row }: { row: { original: ExpenseRow } }) => (
               <div className="flex items-center gap-2">
                 <Button asChild size="icon-sm" variant="outline">
                   <Link
@@ -180,7 +227,7 @@ function RouteComponent() {
                 </Button>
               </div>
             ),
-          },
+          }]),
         ]}
         getRowId={(row) => row.id.toString()}
         enableColumnVisibility
@@ -194,6 +241,8 @@ function RouteComponent() {
         enableAddButton
         addButtonLink="/expenses/new"
         addButtonText="Add Expense"
+        exportFileName="expenses-report"
+        exportTitle="Expenses report"
       />
 
       <Dialog open={Boolean(expenseToDelete)} onOpenChange={(open) => !open && setExpenseToDelete(null)}>

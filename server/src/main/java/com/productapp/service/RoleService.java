@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.productapp.dto.RoleResponse;
 import com.productapp.entity.Role;
@@ -19,36 +22,47 @@ public class RoleService {
         this.roleRepository = roleRepository;
     }
 
+    @Transactional
     public RoleResponse save(Role role) {
         return RoleResponse.fromEntity(roleRepository.save(role));
     }
 
     public List<RoleResponse> getAll() {
-        return roleRepository.findAll().stream()
+        return roleRepository.findAllByIsActiveTrueOrderByCreatedAtDesc().stream()
                 .map(RoleResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
+    public Page<RoleResponse> getPage(Pageable pageable) {
+        return roleRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable).map(RoleResponse::fromEntity);
+    }
+
     public RoleResponse getById(Long id) {
         Role role = roleRepository.findById(id)
+            .filter(foundRole -> Boolean.TRUE.equals(foundRole.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
         return RoleResponse.fromEntity(role);
     }
 
+    @Transactional
     public RoleResponse update(Long id, Role role) {
         Role existing = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
 
         existing.setRoleName(role.getRoleName());
         existing.setDescription(role.getDescription());
-        existing.setIsActive(role.getIsActive());
+        if (role.getIsActive() != null) {
+            existing.setIsActive(role.getIsActive());
+        }
 
         return RoleResponse.fromEntity(roleRepository.save(existing));
     }
 
+    @Transactional
     public void delete(Long id) {
         Role existing = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found with id : " + id));
-        roleRepository.delete(existing);
+        existing.setIsActive(false);
+        roleRepository.save(existing);
     }
 }

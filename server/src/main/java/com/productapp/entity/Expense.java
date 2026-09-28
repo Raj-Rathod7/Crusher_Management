@@ -2,22 +2,27 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "expenses")
+@Table(name = "expenses", indexes = {
+    @Index(name = "idx_expenses_date", columnList = "expense_date"),
+    @Index(name = "idx_expenses_category", columnList = "category_id"),
+    @Index(name = "idx_expenses_identifier", columnList = "identifier")
+})
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE expenses SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Expense {
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+public class Expense extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,6 +38,9 @@ public class Expense {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "identifier", length = 20)
+    private String identifier;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -40,16 +48,4 @@ public class Expense {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

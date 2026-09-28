@@ -9,6 +9,7 @@ import {
   FieldLabel,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -17,15 +18,19 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import type { CreateExpensePayload } from '#/lib/models'
+import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
 import { getAllExpenseCategories, expenseCategoryKeys } from '#/lib/query'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { PlusIcon, SaveIcon } from 'lucide-react'
 import * as React from 'react'
 
 export type ExpenseFormValues = {
   expenseDate: string
   categoryId: string
   amount: string
+  identifier: string
   notes: string
 }
 
@@ -42,9 +47,10 @@ type ExpenseFormProps = {
 }
 
 const defaultFormValues: ExpenseFormValues = {
-  expenseDate: new Date().toISOString().slice(0, 10),
+  expenseDate: dateKey(),
   categoryId: '',
   amount: '',
+  identifier: '',
   notes: '',
 }
 
@@ -61,6 +67,10 @@ function validateForm(form: ExpenseFormValues) {
 
   if (!form.amount.trim() || Number(form.amount) <= 0) {
     errors.amount = 'Amount must be greater than 0.'
+  }
+
+  if (form.identifier.trim().length > 20) {
+    errors.identifier = 'Identifier must be 20 characters or fewer.'
   }
 
   return errors
@@ -86,7 +96,7 @@ export function ExpenseForm({
     queryKey: expenseCategoryKeys.all,
     queryFn: getAllExpenseCategories,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -115,6 +125,7 @@ export function ExpenseForm({
       expenseDate: form.expenseDate,
       categoryId: Number(form.categoryId),
       amount: Number(form.amount),
+      identifier: form.identifier.trim() || undefined,
       notes: form.notes.trim() || undefined,
     })
   }
@@ -129,6 +140,7 @@ export function ExpenseForm({
               id="expenseDate"
               type="date"
               value={form.expenseDate}
+              readOnly={isManager()}
               onChange={(event) => handleChange('expenseDate', event.target.value)}
             />
             <FieldError>{errors.expenseDate}</FieldError>
@@ -175,14 +187,28 @@ export function ExpenseForm({
         </Field>
 
         <Field>
+          <FieldLabel htmlFor="identifier">Identifier</FieldLabel>
+          <FieldContent>
+            <Input
+              id="identifier"
+              value={form.identifier}
+              onChange={(event) => handleChange('identifier', event.target.value)}
+              placeholder="Optional identifier"
+              maxLength={20}
+            />
+            <FieldError>{errors.identifier}</FieldError>
+          </FieldContent>
+        </Field>
+
+        <Field>
           <FieldLabel htmlFor="notes">Notes</FieldLabel>
           <FieldContent>
-            <textarea
+            <Textarea
               id="notes"
               value={form.notes}
               onChange={(event) => handleChange('notes', event.target.value)}
               placeholder="Optional notes"
-              className="min-h-20 rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="min-h-20"
             />
           </FieldContent>
         </Field>
@@ -193,6 +219,7 @@ export function ExpenseForm({
           Back
         </Button>
         <Button disabled={isSubmitting} type="submit">
+          <SaveIcon />
           {isSubmitting ? 'Saving...' : submitLabel}
         </Button>
       </div>

@@ -13,6 +13,7 @@ import {
   IconSearch,
   IconTable,
   IconFilter,
+  IconDownload,
   IconX
 } from "@tabler/icons-react"
 import {
@@ -36,6 +37,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -58,6 +60,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Link } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { exportTableToExcel, exportTableToPdf, type TableExportColumn } from "@/lib/table-export"
+import { businessSettingsKeys, getBusinessSettings } from "@/lib/query"
 
 export const schema = z.object({
   id: z.number(),
@@ -76,17 +82,20 @@ type FilterOption = {
   value: string
 }
 
-type ColumnMetaConfig = {
+type ColumnMetaConfig<TData = unknown> = {
   sortable?: boolean
   filterable?: boolean
   filterType?: FilterType
   filterPlaceholder?: string
   filterOptions?: FilterOption[]
   searchable?: boolean
+  exportable?: boolean
+  exportLabel?: string
+  exportValue?: (row: TData) => unknown
 }
 
 type DataTableColumnDef<TData> = ColumnDef<TData, unknown> & {
-  meta?: ColumnMetaConfig
+  meta?: ColumnMetaConfig<TData>
 }
 
 type DataTableProps<TData> = {
@@ -110,6 +119,11 @@ type DataTableProps<TData> = {
   addButtonLink?: string
   addButtonText?: string
   onRowClick?: (row: TData) => void
+  onFilteredDataChange?: (rows: TData[]) => void
+  renderExpandedRow?: (row: TData) => React.ReactNode
+  enableExport?: boolean
+  exportFileName?: string
+  exportTitle?: string
 }
 
 function getColumnValue<TData>(row: TData, column: DataTableColumnDef<TData>) {
@@ -203,8 +217,15 @@ function applyTableFilters<TData>(
             ? value === filterValue
             : numericValue === numericFilter
         }
-        case "date":
-          return value === filterValue
+        case "date": {
+          // stored as "from|to" (YYYY-MM-DD), either side may be empty
+          const [from = "", to = ""] = filterValue.split("|")
+          const day = value.slice(0, 10)
+          if (!day) {
+            return !from && !to
+          }
+          return (!from || day >= from) && (!to || day <= to)
+        }
         case "boolean":
           return value === filterValue
         case "select":
@@ -241,7 +262,13 @@ export function ConfigurableDataTable<TData>({
   addButtonText = "Add Entry",
   enableAddButton = false,
   onRowClick,
+  onFilteredDataChange,
+  renderExpandedRow,
+  enableExport = true,
+  exportFileName = "table-export",
+  exportTitle,
 }: DataTableProps<TData>) {
+  const queryClient = useQueryClient()
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -251,6 +278,7 @@ export function ConfigurableDataTable<TData>({
     pageIndex: 0,
     pageSize: defaultPageSize,
   })
+  const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null)
 
   const tableColumns = React.useMemo(() => {
     return columns.map((column) => ({
@@ -263,6 +291,12 @@ export function ConfigurableDataTable<TData>({
     () => applyTableFilters(data, tableColumns, columnFilters, globalSearch),
     [data, tableColumns, columnFilters, globalSearch]
   )
+
+  const onFilteredDataChangeRef = React.useRef(onFilteredDataChange)
+  onFilteredDataChangeRef.current = onFilteredDataChange
+  React.useEffect(() => {
+    onFilteredDataChangeRef.current?.(filteredData)
+  }, [filteredData])
 
   const table = useReactTable<TData>({
     data: filteredData,
@@ -287,8 +321,55 @@ export function ConfigurableDataTable<TData>({
   })
 
   const filterableColumns = table.getAllLeafColumns().filter(
-    (column) => (column.columnDef.meta as ColumnMetaConfig | undefined)?.filterable
+    (column) => (column.columnDef.meta as ColumnMetaConfig<TData> | undefined)?.filterable
   )
+
+  const exportColumns = table.getVisibleLeafColumns().filter((column) => {
+    const meta = column.columnDef.meta as ColumnMetaConfig<TData> | undefined
+
+    return meta?.exportable !== false &&
+      (typeof meta?.exportValue === "function" ||
+        typeof column.accessorFn === "function" ||
+        (typeof (column.columnDef as DataTableColumnDef<TData>) as any).accessorKey === "string")
+  })
+
+  const exportHeaders = exportColumns.map((column) => {
+    const meta = column.columnDef.meta as ColumnMetaConfig<TData> | undefined
+    const header = column.columnDef.header
+
+    return meta?.exportLabel ?? (typeof header === "string" ? header : column.id)
+  })
+
+  const exportRows = table.getSortedRowModel().rows.map((row) =>
+    exportColumns.map((column): TableExportColumn => {
+      const meta = column.columnDef.meta as ColumnMetaConfig<TData> | undefined
+      const value = meta?.exportValue
+        ? meta.exportValue(row.original)
+        : getColumnValue(row.original, column.columnDef as DataTableColumnDef<TData>)
+
+      return { header: column.id, value }
+    })
+  )
+
+  const canExport = enableExport && !isLoading && exportRows.length > 0 && exportColumns.length > 0
+
+  const handleExport = async (format: "excel" | "pdf") => {
+    try {
+      const businessSettings = await queryClient.fetchQuery({
+        queryKey: businessSettingsKeys.detail,
+        queryFn: getBusinessSettings,
+        staleTime: 5 * 60 * 1000,
+      })
+
+      if (format === "excel") {
+        await exportTableToExcel(exportHeaders, exportRows, exportFileName, exportTitle, businessSettings)
+      } else {
+        await exportTableToPdf(exportHeaders, exportRows, exportFileName, exportTitle, businessSettings)
+      }
+    } catch {
+      toast.error("Export failed. Business details could not be loaded or the report could not be generated.")
+    }
+  }
 
   return (
     <div className={['flex min-h-0 flex-col', className].filter(Boolean).join(' ')}>
@@ -359,7 +440,7 @@ export function ConfigurableDataTable<TData>({
                   <IconChevronDown />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" >
+              <DropdownMenuContent className="w-[240px]" align="end" >
                 {table
                   .getAllColumns()
                   .filter(
@@ -387,6 +468,27 @@ export function ConfigurableDataTable<TData>({
               </Link>
             </Button>
           )}
+          {enableExport ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5" disabled={!canExport}>
+                  <IconDownload />
+                  <span className="hidden lg:inline">Export</span>
+                  <IconChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => handleExport("excel")}>
+                  <IconDownload />
+                  Export to Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport("pdf")}>
+                  <IconDownload />
+                  Export to PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
 
@@ -438,15 +540,24 @@ export function ConfigurableDataTable<TData>({
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
+                <React.Fragment key={row.id}>
                 <TableRow
                   key={row.id}
-                  className={onRowClick ? "cursor-pointer hover:bg-primary/4.5" : "hover:bg-muted/35"}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  onClick={() => onRowClick?.(row.original)}
+                  className={onRowClick || renderExpandedRow ? "cursor-pointer hover:bg-primary/4.5" : "hover:bg-muted/35"}
+                  tabIndex={onRowClick || renderExpandedRow ? 0 : undefined}
+                  onClick={() => {
+                    if (renderExpandedRow) {
+                      setExpandedRowId(expandedRowId === row.id ? null : row.id)
+                    }
+                    onRowClick?.(row.original)
+                  }}
                   onKeyDown={(event) => {
-                    if (onRowClick && (event.key === "Enter" || event.key === " ")) {
+                    if ((onRowClick || renderExpandedRow) && (event.key === "Enter" || event.key === " ")) {
                       event.preventDefault()
-                      onRowClick(row.original)
+                      if (renderExpandedRow) {
+                        setExpandedRowId(expandedRowId === row.id ? null : row.id)
+                      }
+                      onRowClick?.(row.original)
                     }
                   }}
                 >
@@ -456,6 +567,14 @@ export function ConfigurableDataTable<TData>({
                     </TableCell>
                   ))}
                 </TableRow>
+                {renderExpandedRow && expandedRowId === row.id ? (
+                  <TableRow>
+                    <TableCell colSpan={row.getVisibleCells().length} className="bg-muted/20 p-4">
+                      {renderExpandedRow(row.original)}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                </React.Fragment>
               ))
             ) : (
               <TableRow>

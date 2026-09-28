@@ -9,10 +9,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { IconDashboard, IconListDetails, IconChartBar, IconFolder, IconUsers, IconInnerShadowTop, IconMoneybagMinus } from "@tabler/icons-react"
+import { IconDashboard, IconListDetails, IconChartBar, IconFolder, IconUsers, IconInnerShadowTop, IconMoneybagMinus, IconNotification } from "@tabler/icons-react"
 import { useLocation } from "@tanstack/react-router"
+import { isManager } from "#/lib/common/api"
 
-const data = {
+const data: { navMain: { title: string; url: string; icon: React.ReactNode; managerAllowed?: boolean }[] } = {
   navMain: [
     {
       title: "Dashboard",
@@ -23,8 +24,9 @@ const data = {
       ),
     },
     {
-      title: "Truck Entries",
+      title: "Purchase",
       url: "/truck-entry",
+      managerAllowed: true,
       icon: (
         <IconListDetails
         />
@@ -33,10 +35,19 @@ const data = {
     {
       title: "Sales",
       url: "/sales",
+      managerAllowed: true,
       icon: (
         <IconFolder
         />
       ),
+    },
+    {
+      title: "Receipt",
+      url: "/receipt",
+      managerAllowed: true,
+      icon: (
+        <IconChartBar />
+      )
     },
     {
       title: "Customers",
@@ -45,28 +56,29 @@ const data = {
         <IconUsers />
       )
     },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: (
-        <IconChartBar
-        />
-      ),
-    },
     
     {
-      title: "Expenses",
+      title: "Expenses/Payments",
       url: "/expenses",
+      managerAllowed: true,
       icon: (
         <IconMoneybagMinus
         />
       ),
     },
+    {
+      title: "Notifications",
+      url: "/notification",
+      icon: (
+        <IconNotification />
+      )
+    }
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
+  const [logoFailed, setLogoFailed] = React.useState(false)
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -74,18 +86,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="h-[120px]"
             >
               <a href="/">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Vaibhav Stone Crusher</span>
+                {logoFailed ? (
+                  <IconInnerShadowTop className="size-5!" />
+                ) : (
+                  <img
+                    src="/business-logo.png"
+                    alt=""
+                    className="object-contain dark:invert-100"
+                    onError={() => setLogoFailed(true)}
+                  />
+                )}
+                {/* <span className="text-base font-semibold">Vaibhav Stone Crusher</span> */}
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} activeRoute={location.pathname} />
+        <NavMain
+          items={isManager() ? data.navMain.filter((item) => item.managerAllowed) : data.navMain}
+          activeRoute={location.pathname}
+        />
       </SidebarContent>
     </Sidebar>
   )

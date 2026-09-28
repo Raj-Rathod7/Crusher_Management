@@ -1,0 +1,24 @@
+package com.productapp.security;
+
+import java.time.LocalDate;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+public final class SecurityUtils {
+
+    private SecurityUtils() {
+    }
+
+    public static boolean isManager() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_MANAGER".equals(authority.getAuthority()));
+    }
+
+    public static void requireTodayForManager(LocalDate date) {
+        if (isManager() && !LocalDate.now().equals(date)) {
+            throw new IllegalArgumentException("Managers can only add entries for today");
+        }
+    }
+}

@@ -1,5 +1,13 @@
 import { apiClient } from "../common/api"
-import type { Customer, Expense, ExpenseCategory, Invoice, Material, TruckEntry } from "../models"
+import type { BusinessSettings, Customer, CustomerSummaryResponse, DashboardChartsResponse, Expense, ExpenseCategory, ExpenseIdentifierSummary, Invoice, Material, Payment, TruckEntry } from "../models"
+
+export const businessSettingsKeys = {
+  detail: ['business-settings'] as const,
+}
+
+export const getBusinessSettings = async () => {
+  return apiClient.get<BusinessSettings>('/business-settings')
+}
 
 export const truckEntryKeys = {
   all: ['truck-entries'] as const,
@@ -8,11 +16,13 @@ export const truckEntryKeys = {
 
 export const materialKeys = {
   all: ['materials'] as const,
+  list: (filters: { type?: 'PURCHASE' | 'SALE' } = {}) => ['materials', filters] as const,
 }
 
 export const salesKeys = {
   all: ['sales'] as const,
   detail: (id: number | string) => ['sales', String(id)] as const,
+  pending: ['sales', 'pending'] as const,
 }
 
 export const customerKeys = {
@@ -28,8 +38,11 @@ export const getTruckEntryById = async (id: number | string) => {
   return apiClient.get<TruckEntry>(`/truck-entries/${id}`)
 }
 
-export const getAllMaterials = async () => {
-  return apiClient.get<Material[]>('/materials')
+export const getAllMaterials = async (filters: { type?: 'PURCHASE' | 'SALE' } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.type) params.set('type', filters.type)
+  const query = params.toString()
+  return apiClient.get<Material[]>(`/materials${query ? `?${query}` : ''}`)
 }
 
 export const getAllSales = async () => {
@@ -38,6 +51,15 @@ export const getAllSales = async () => {
 
 export const getSaleById = async (id: number | string) => {
   return apiClient.get<Invoice>(`/invoices/${id}`)
+}
+
+export const getPendingTotalSales = async () => {
+  return apiClient.get<Invoice[]>('/invoices/pending')
+}
+
+export const getNextInvoiceNumber = async () => {
+  const { invoiceNumber } = await apiClient.get<{ invoiceNumber: string }>('/invoices/next-number')
+  return invoiceNumber
 }
 
 export const getAllCustomers = async () => {
@@ -67,4 +89,60 @@ export const getExpenseById = async (id: number | string) => {
 
 export const getAllExpenseCategories = async () => {
   return apiClient.get<ExpenseCategory[]>('/expenses/categories')
+}
+
+export const getExpenseIdentifierSummary = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get<ExpenseIdentifierSummary[]>(`/expenses/vehicle-summary${query ? `?${query}` : ''}`)
+}
+
+export const receiptKeys = {
+  all: ['receipts'] as const,
+  list: (filters: { customerId?: number | string; dateFrom?: string; dateTo?: string }) =>
+    ['receipts', filters] as const,
+}
+
+export const getAllReceipts = async (filters: { customerId?: number | string; dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.customerId) params.set('customerId', String(filters.customerId))
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get<Payment[]>(`/payments${query ? `?${query}` : ''}`)
+}
+
+export const getPaymentById = async (id: number | string) => {
+  return apiClient.get<Payment>(`/payments/${id}`)
+}
+
+export const getCustomerSummary = async (id: number | string) => {
+  return apiClient.get<CustomerSummaryResponse>(`/customers/${id}/summary`)
+}
+
+export const customerSummaryKeys = {
+  detail: (id: number | string) => ['customer-summary', String(id)] as const,
+}
+
+export const dashboardKeys = {
+  summary: (filters: { dateFrom?: string; dateTo?: string } = {}) => ['dashboard', filters] as const,
+  charts: (filters: { dateFrom?: string; dateTo?: string } = {}) => ['dashboard', 'charts', filters] as const,
+}
+
+export const getDashboardSummary = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get(`/dashboard${query ? `?${query}` : ''}`)
+}
+
+export const getDashboardCharts = async (filters: { dateFrom?: string; dateTo?: string } = {}) => {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
+  const query = params.toString()
+  return apiClient.get<DashboardChartsResponse>(`/dashboard/charts${query ? `?${query}` : ''}`)
 }

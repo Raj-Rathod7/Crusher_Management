@@ -20,7 +20,7 @@ function RouteComponent() {
     queryKey: expenseKeys.detail(expenseId),
     queryFn: () => getExpenseById(expenseId),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -58,6 +58,7 @@ function RouteComponent() {
         expenseDate: expense.expenseDate,
         categoryId: String(expense.categoryId),
         amount: String(expense.amount),
+        identifier: expense.identifier ?? '',
         notes: expense.notes ?? '',
       }}
       onSubmit={(payload: CreateExpensePayload) => updateMutation.mutate(payload)}

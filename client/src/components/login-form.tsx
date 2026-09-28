@@ -66,7 +66,7 @@ export function LoginForm({
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Password</FieldLabel>
           </div>
-          <Input id="password" type="password" value={loginInfo.password} onChange={(e) => setLoginInfo({...loginInfo, password: e.target.value})} required />
+          <Input id="password" placeholder="Enter password" type="password" value={loginInfo.password} onChange={(e) => setLoginInfo({...loginInfo, password: e.target.value})} required />
         </Field>
         <Field>
           <Button type="submit" disabled={isPending}>

@@ -13,6 +13,7 @@ import type { CreateCustomerPayload } from '#/lib/models'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { useForm } from '@tanstack/react-form'
 import { useNavigate } from '@tanstack/react-router'
+import { SaveIcon } from 'lucide-react'
 import { z } from 'zod'
 
 const customerFormSchema = z.object({
@@ -222,6 +223,7 @@ export function CustomerForm({
                 </Button>
               )}
               <Button type="submit" disabled={isSubmitting}>
+                <SaveIcon />
                 {isSubmitting ? 'Saving...' : submitLabel}
               </Button>
             </div>

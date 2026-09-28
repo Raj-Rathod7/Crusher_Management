@@ -1,27 +1,31 @@
 import { Badge } from '#/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#/components/ui/dialog'
+import { deleteSale } from '#/lib/mutation'
 import { ConfigurableDataTable } from '@/components/data-table'
-import { StatsCard } from '@/components/stats-card'
-import { getAllSales, getSaleById, salesKeys } from '#/lib/query'
-import type { Invoice } from '#/lib/models'
-import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { FilterChip, StatsCard } from '@/components/stats-card'
+import { getAllSales, salesKeys } from '#/lib/query'
+import { matchesPeriod, matchesRange, QUICK_PERIODS, type QuickPeriod } from '#/lib/date-filters'
+import { DateRangePicker, type DateRangeValue } from '@/components/date-range-picker'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import {
+  IconAlertTriangle,
   IconCalendarStats,
+  IconCube,
   IconCurrencyRupee,
+  IconPencil,
   IconReceipt,
-  IconWallet,
+  IconTrash,
 } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { Button } from '#/components/ui/button'
+import { FileText } from 'lucide-react'
+import { isManager } from '#/lib/common/api'
+import { downloadInvoicePdf } from '#/lib/common/invoice-export'
 
 export const Route = createFileRoute('/_app/sales/')({
+  validateSearch: (search: Record<string, unknown>): { pending?: boolean } =>
+    search.pending === true || search.pending === 'true' ? { pending: true } : {},
   component: RouteComponent,
 })
 
@@ -30,10 +34,17 @@ type SalesRow = {
   invoiceNumber: string
   invoiceDate: string
   customerName: string
-  totalAmount: string
-  amountPaid: string
-  balance: string
-  status: string
+  customerId: number | null
+  materialName: string
+  quantityBrass: string
+  rate: string
+  totalAmount: string,
+  totalValue: number
+  receivedValue: number
+  totalPending: boolean
+  payment? : {
+    amount: number
+  }
 }
 
 function formatCurrency(value: number) {
@@ -43,64 +54,94 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function getStatusVariant(status: string) {
-  const normalizedStatus = status.toUpperCase()
-
-  if (normalizedStatus === 'PAID') {
-    return 'default' as const
-  }
-
-  if (normalizedStatus === 'PARTIAL') {
-    return 'secondary' as const
-  }
-
-  return 'outline' as const
-}
-
 function RouteComponent() {
-  const [selectedSaleId, setSelectedSaleId] = useState<number | null>(null)
+  const navigate = useNavigate()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const manager = isManager()
+  const { pending: pendingOnly = false } = Route.useSearch()
+  // primitives so setState bails out when the table re-reports the same totals
+  const [billedTotal, setBilledTotal] = useState(0)
+  const [pendingAmount, setPendingAmount] = useState(0)
+  const handleFilteredRows = (rows: SalesRow[]) => {
+    setBilledTotal(rows.reduce((sum, row) => sum + row.totalValue, 0))
+    setPendingAmount(rows.reduce((sum, row) => sum + Math.max(row.totalValue - row.receivedValue, 0), 0))
+  }
+  const [quickFilter, setQuickFilter] = useState<QuickPeriod>('all')
+  const [dateRange, setDateRange] = useState<DateRangeValue>()
+  const [saleToDelete, setSaleToDelete] = useState<SalesRow | null>(null)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: salesKeys.all,
     queryFn: getAllSales,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
 
-  const selectedSale = useQuery({
-    queryKey: salesKeys.detail(selectedSaleId ?? ''),
-    queryFn: () => getSaleById(selectedSaleId as number),
-    enabled: selectedSaleId !== null,
-    retry: false,
+  const createInvoicePdf = async (invoiceId: number) => {
+    const invoice = data?.find((sale) => sale.id === invoiceId)
+    if (!invoice) return
+
+    try {
+      await downloadInvoicePdf(invoice, queryClient)
+    } catch {
+      toast.error('Could not create invoice PDF. Check the business settings and customer details, then try again.')
+    }
+  }
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteSale,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: salesKeys.all })
+      await router.invalidate()
+      setSaleToDelete(null)
+      toast.success('Sale deleted and removed from the ledger.')
+    },
+    onError: () => toast.error('Failed to delete sale.'),
   })
 
-  const salesRows: SalesRow[] = (data ?? []).map((invoice) => ({
+  const quickFilterCounts = useMemo(() => {
+    const invoices = data ?? []
+    const stats = {} as Record<QuickPeriod, { count: number; total: number }>
+    for (const period of QUICK_PERIODS) {
+      const matched = invoices.filter((invoice) => matchesPeriod(invoice.invoiceDate, period))
+      stats[period] = {
+        count: matched.length,
+        total: matched.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
+      }
+    }
+    return stats
+  }, [data])
+
+  const filteredInvoices = useMemo(
+    () => (data ?? []).filter((invoice) =>
+      matchesPeriod(invoice.invoiceDate, quickFilter) && matchesRange(invoice.invoiceDate, dateRange)
+        && (!pendingOnly || invoice.totalPending)),
+    [data, quickFilter, dateRange, pendingOnly]
+  )
+
+  const pendingCount = useMemo(() => (data ?? []).filter((invoice) => invoice.totalPending).length, [data])
+
+  const salesRows: SalesRow[] = filteredInvoices.map((invoice) => ({
     id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
     invoiceDate: invoice.invoiceDate,
     customerName: invoice.customerName ?? '-',
+    customerId: invoice.customerId,
+    materialName: invoice.invoiceItems[0]?.materialName ?? '-',
+    quantityBrass: invoice.invoiceItems[0]
+      ? `${invoice.invoiceItems[0].quantityBrass} brass`
+      : '-',
+    rate: invoice.invoiceItems[0]?.rate != null
+      ? formatCurrency(invoice.invoiceItems[0].rate)
+      : '-',
     totalAmount: formatCurrency(invoice.totalAmount),
-    amountPaid: formatCurrency(invoice.amountPaid),
-    balance: formatCurrency(invoice.balance),
-    status: invoice.status,
-  }))
-
-  const stats = useMemo(() => {
-    const invoices = data ?? []
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-      today.getDate()
-    ).padStart(2, '0')}`
-    const todayInvoices = invoices.filter((invoice) => invoice.invoiceDate === todayKey)
-
-    return {
-      invoicesToday: todayInvoices.length,
-      billedToday: todayInvoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
-      collectedToday: todayInvoices.reduce((sum, invoice) => sum + invoice.amountPaid, 0),
-      outstanding: invoices.reduce((sum, invoice) => sum + invoice.balance, 0),
-    }
-  }, [data])
+    totalValue: invoice.totalAmount,
+    receivedValue: invoice.payment?.amount ?? 0,
+    totalPending: invoice.totalPending,
+    payment: invoice.payment ? { amount: invoice.payment.amount } : undefined,
+  }));
 
   useEffect(() => {
     if (isError) {
@@ -120,34 +161,54 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatsCard
+      {!manager && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+          <StatsCard
+            icon={<IconCurrencyRupee className="size-4" />}
+            title="Billed total"
+            value={formatCurrency(billedTotal)}
+          />
+          <StatsCard
+            icon={<IconAlertTriangle className="size-4" />}
+            title="Pending amount"
+            value={formatCurrency(pendingAmount)}
+          />
+        </div>
+      )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FilterChip
           icon={<IconReceipt className="size-4" />}
-          title="Sales today"
-          value={stats.invoicesToday}
-          footer="Invoices created for today."
+          title="All sales"
+          value={quickFilterCounts.all.count}
+          active={quickFilter === 'all' && !dateRange}
+          onClick={() => { setQuickFilter('all'); setDateRange(undefined) }}
         />
-
-        <StatsCard
-          icon={<IconCurrencyRupee className="size-4" />}
-          title="Billed today"
-          value={formatCurrency(stats.billedToday)}
-          footer="Total amount from today&apos;s sales."
-        />
-
-        <StatsCard
-          icon={<IconWallet className="size-4" />}
-          title="Collected today"
-          value={formatCurrency(stats.collectedToday)}
-          footer="Amount paid on today&apos;s invoices."
-        />
-
-        <StatsCard
+        <FilterChip
           icon={<IconCalendarStats className="size-4" />}
-          title="Outstanding balance"
-          value={formatCurrency(stats.outstanding)}
-          footer="Open balance across all invoices."
+          title="Today"
+          value={quickFilterCounts.today.count}
+          active={quickFilter === 'today'}
+          onClick={() => { setQuickFilter('today'); setDateRange(undefined) }}
         />
+        {!manager && (
+          <FilterChip
+            icon={<IconAlertTriangle className="size-4" />}
+            title="Pending total"
+            value={pendingCount}
+            active={pendingOnly}
+            onClick={() => navigate({ to: '/sales', search: pendingOnly ? {} : { pending: true } })}
+          />
+        )}
+        {!manager && (
+          <DateRangePicker
+            className="ml-auto"
+            showPresets={false}
+            value={dateRange}
+            onChange={(range) => { setDateRange(range); setQuickFilter('all') }}
+            onClear={() => setDateRange(undefined)}
+          />
+        )}
       </div>
 
       <ConfigurableDataTable
@@ -157,43 +218,118 @@ function RouteComponent() {
             accessorKey: 'invoiceNumber',
             header: 'Invoice no',
             meta: { filterable: true, filterPlaceholder: 'Filter invoice' },
+            cell: ({ row }) => (
+              <Button variant={'link'} className='curosor-pointer'>
+                {row.original.invoiceNumber}
+              </Button>
+            ),
           },
           {
             accessorKey: 'invoiceDate',
             header: 'Date',
-            meta: { filterable: true, filterType: 'date' },
           },
           {
             accessorKey: 'customerName',
             header: 'Customer',
             meta: { filterable: true, filterPlaceholder: 'Filter customer' },
+            cell: ({ row }) =>
+              row.original.customerId && !manager ? (
+                <Link
+                  to="/customer/$customerId"
+                  params={{ customerId: String(row.original.customerId) }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Badge variant="secondary" className={`capitalize p-3 font-bold hover:underline`}>
+                    {row.original.customerName}
+                  </Badge>
+                </Link>
+              ) : (
+                <Badge variant="secondary" className={`capitalize p-3 font-bold`}>
+                  {row.original.customerName}
+                </Badge>
+              ),
           },
           {
+            accessorKey: 'materialName',
+            header: 'Item',
+            meta: { filterable: true, filterPlaceholder: 'Filter item' },
+            cell: ({ row }) => (
+              <Badge variant="outline" className="gap-1.5 whitespace-nowrap">
+                <IconCube />
+                {row.original.materialName}
+              </Badge>
+            ),
+          },
+          {
+            accessorKey: 'quantityBrass',
+            header: 'Quantity',
+            cell: ({ row }) => (
+              <span className="tabular-nums text-muted-foreground">
+                {row.original.quantityBrass}
+              </span>
+            ),
+          },
+          {
+            accessorKey: 'payment.amount',
+            header: 'Recieved',
+            accessorFn: (row) => row.payment?.amount ? formatCurrency(row.payment.amount) : '0.0',
+            cell: ({ row }) => (
+              <span className="font-medium tabular-nums text-green-700 dark:text-green-300">
+                {row.original.payment?.amount ? formatCurrency(row.original.payment.amount) : '0.00'}
+              </span>
+            ),
+          },
+          ...(manager ? [] : [{
             accessorKey: 'totalAmount',
             header: 'Total',
-          },
+            cell: ({ row }: { row: { original: SalesRow } }) => row.original.totalPending ? (
+              <Badge variant="destructive">Pending total</Badge>
+            ) : (
+              <span className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
+                {row.original.totalAmount}
+              </span>
+            ),
+          }]),
           {
-            accessorKey: 'amountPaid',
-            header: 'Paid',
-          },
-          {
-            accessorKey: 'balance',
-            header: 'Balance',
-          },
-          {
-            accessorKey: 'status',
-            header: 'Status',
-            meta: {
-              filterable: true,
-              filterType: 'select',
-              filterOptions: [
-                { label: 'Paid', value: 'PAID' },
-                { label: 'Partial', value: 'PARTIAL' },
-                { label: 'Pending', value: 'PENDING' },
-              ],
-            },
-            cell: ({ row }) => (
-              <Badge variant={getStatusVariant(row.original.status)}>{row.original.status}</Badge>
+            id: 'actions',
+            header: 'Actions',
+            meta: { sortable: false, searchable: false },
+            cell: ({ row }: { row: { original: SalesRow } }) => (
+              <div className="flex items-center gap-2">
+                {!manager ? (
+                  <Button asChild size="icon-sm" variant="outline" onClick={(event) => event.stopPropagation()}>
+                    <Link to="/sales/$saleId/edit" params={{ saleId: String(row.original.id) }}>
+                      <IconPencil />
+                      <span className="sr-only">Edit sale</span>
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  title="Create invoice PDF"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void createInvoicePdf(row.original.id)
+                  }}
+                >
+                  <FileText />
+                  <span className="sr-only">Create invoice PDF</span>
+                </Button>
+                {!manager ? (
+                  <Button
+                    size="icon-sm"
+                    variant="destructive"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSaleToDelete(row.original)
+                    }}
+                  >
+                    <IconTrash />
+                    <span className="sr-only">Delete sale</span>
+                  </Button>
+                ) : null}
+              </div>
             ),
           },
         ]}
@@ -209,124 +345,29 @@ function RouteComponent() {
         enableAddButton
         addButtonLink="/sales/new"
         addButtonText="Add Sale"
-        onRowClick={(row) => setSelectedSaleId(row.id)}
+        exportFileName="sales-report"
+        exportTitle="Sales report"
+        onRowClick={(row) => navigate({ to: '/sales/$saleId', params: { saleId: String(row.id) } })}
+        onFilteredDataChange={handleFilteredRows}
       />
 
-      <SaleDetailsDialog
-        sale={selectedSale.data}
-        isLoading={selectedSale.isLoading}
-        isError={selectedSale.isError}
-        open={selectedSaleId !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedSaleId(null)
-        }}
-      />
-    </div>
-  )
-}
-
-function SaleDetailsDialog({
-  sale,
-  isLoading,
-  isError,
-  open,
-  onOpenChange,
-}: {
-  sale?: Invoice
-  isLoading: boolean
-  isError: boolean
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] max-w-4xl overflow-hidden">
-        <DialogHeader className="border-b px-6 py-5">
-          <DialogTitle>{sale ? `Invoice ${sale.invoiceNumber}` : 'Invoice details'}</DialogTitle>
-          <DialogDescription>
-            Complete invoice record and the materials included in this sale.
-          </DialogDescription>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="px-6 py-10 text-center text-sm text-muted-foreground">Loading invoice details...</div>
-        ) : isError || !sale ? (
-          <div className="px-6 py-10 text-center text-sm text-destructive">Unable to load this invoice.</div>
-        ) : (
-          <div className="space-y-6 overflow-y-auto px-6 py-5">
-            <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-              <DetailField label="Invoice date" value={sale.invoiceDate} />
-              <DetailField label="Customer" value={sale.customerName ?? '-'} />
-              <DetailField label="Status" value={sale.status} />
-              <DetailField label="Created by" value={sale.createdByUsername ?? '-'} />
-              <DetailField label="Total" value={formatCurrency(sale.totalAmount)} />
-              <DetailField label="Paid" value={formatCurrency(sale.amountPaid)} />
-              <DetailField label="Balance" value={formatCurrency(sale.balance)} />
-              <DetailField label="Remarks" value={sale.remarks || '-'} />
-            </dl>
-
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-sm font-medium">Invoice items</h3>
-                <p className="text-sm text-muted-foreground">Materials billed on this invoice.</p>
-              </div>
-              {sale.invoiceItems.length === 0 ? (
-                <div className="rounded-md border px-4 py-8 text-center text-sm text-muted-foreground">
-                  No invoice items recorded.
-                </div>
-              ) : (
-                <ConfigurableDataTable
-                  data={sale.invoiceItems}
-                  columns={[
-                    {
-                      accessorKey: 'materialName',
-                      header: 'Material',
-                    },
-                    {
-                      accessorKey: 'quantity',
-                      header: 'Quantity',
-                      cell: ({ row }) => row.original.quantity,
-                    },
-                    {
-                      accessorKey: 'rate',
-                      header: 'Rate',
-                      cell: ({ row }) => formatCurrency(row.original.rate),
-                    },
-                    {
-                      accessorKey: 'truckNumber',
-                      header: 'Truck',
-                      cell: ({ row }) => row.original.truckNumber || '-',
-                    },
-                    {
-                      accessorKey: 'amount',
-                      header: 'Amount',
-                      cell: ({ row }) => formatCurrency(row.original.amount),
-                    },
-                  ]}
-                  getRowId={(row) => row.id.toString()}
-                  enableColumnVisibility={false}
-                  enablePagination
-                  enableSorting={false}
-                  enableGlobalSearch
-                  defaultPageSize={5}
-                  pageSizeOptions={[5, 10, 20]}
-                  emptyMessage="No invoice items recorded."
-                  className="w-full"
-                />
-              )}
-            </div>
+      {saleToDelete ? (
+        <div className="mt-3 flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+          <span>Delete {saleToDelete.invoiceNumber}? It will be removed from the ledger.</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSaleToDelete(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(saleToDelete.id)}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function DetailField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-foreground">{value}</dd>
+        </div>
+      ) : null}
     </div>
   )
 }
+

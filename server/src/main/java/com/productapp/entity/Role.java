@@ -2,16 +2,20 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 
 @Entity
 @Table(name = "roles")
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE roles SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Role {
+public class Role extends AuditableEntity {
 
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,7 +27,6 @@ public class Role {
     private String description;
 	
     @Column(nullable = false)
-	private Boolean isActive = true;
 
 
     public Long getId() {
@@ -44,11 +47,4 @@ public class Role {
 	public void setDescription(String description) {
 		this.description = description;
 	}
-	public Boolean getIsActive() {
-		return isActive;
-	}
-	public void setIsActive(Boolean isActive) {
-		this.isActive = isActive;
-	}
-	
    }

@@ -23,20 +23,20 @@ function RouteComponent() {
         queryClient.refetchQueries({ queryKey: truckEntryKeys.all, type: 'all' }),
         router.invalidate(),
       ])
-      toast.success('Truck entry created.')
+      toast.success('Purchase created.')
       navigate({ to: '/truck-entry' })
     },
-    onError: () => {
-      toast.error('Failed to create truck entry.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create purchase.')
     },
   })
 
   return (
     <TruckEntryForm
-      title="New Truck Entry"
+      title="New Purchase"
       description="Add truck number, date, material, quantity, supplier, remarks."
       backLabel="Back to entries"
-      submitLabel="Create truck entry"
+      submitLabel="Save purchase"
       isSubmitting={createMutation.isPending}
       onSubmit={(payload: CreateTruckEntryPayload) => createMutation.mutate(payload)}
     />

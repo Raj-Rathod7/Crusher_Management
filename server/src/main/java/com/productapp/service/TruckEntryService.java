@@ -9,8 +9,13 @@ import com.productapp.exceptions.ResourceNotFoundException;
 import com.productapp.repository.MaterialRepository;
 import com.productapp.repository.TruckEntryRepository;
 import com.productapp.repository.UserRepository;
+import com.productapp.security.SecurityUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,11 +34,13 @@ public class TruckEntryService {
         this.userRepository = userRepository;
     }
 
-    public TruckEntryResponse createTruckEntry(TruckEntryRequest request, String username) {
-        User user = userRepository.findByUsername(username)
+        @Transactional
+        public TruckEntryResponse createTruckEntry(TruckEntryRequest request, String username) {
+        SecurityUtils.requireTodayForManager(request.getEntryDate());
+        User user = userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
-        MaterialType materialType = materialRepository.findById(request.getMaterialTypeId())
+        MaterialType materialType = materialRepository.findByIdAndIsActiveTrue(request.getMaterialTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Material type not found: " + request.getMaterialTypeId()));
 
 		/*
@@ -56,25 +63,39 @@ public class TruckEntryService {
     }
 
     public List<TruckEntryResponse> getAllTruckEntries() {
-        return truckEntryRepository.findAll().stream()
+        List<TruckEntry> entries = SecurityUtils.isManager()
+                ? truckEntryRepository.findAllByIsActiveTrueAndEntryDateOrderByCreatedAtDesc(LocalDate.now())
+                : truckEntryRepository.findAllByIsActiveTrueOrderByCreatedAtDesc();
+        return entries.stream()
                 .map(TruckEntryResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
+        public Page<TruckEntryResponse> getPage(Pageable pageable) {
+                Page<TruckEntry> page = SecurityUtils.isManager()
+                        ? truckEntryRepository.findAllByIsActiveTrueAndEntryDateOrderByCreatedAtDesc(LocalDate.now(), pageable)
+                        : truckEntryRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable);
+                return page.map(TruckEntryResponse::fromEntity);
+        }
+
     public TruckEntryResponse getTruckEntryById(Long id) {
         TruckEntry truckEntry = truckEntryRepository.findById(id)
+                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
+                .filter(entry -> !SecurityUtils.isManager() || LocalDate.now().equals(entry.getEntryDate()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
         return TruckEntryResponse.fromEntity(truckEntry);
     }
 
-    public TruckEntryResponse updateTruckEntry(Long id, TruckEntryRequest request, String username) {
+        @Transactional
+        public TruckEntryResponse updateTruckEntry(Long id, TruckEntryRequest request, String username) {
         TruckEntry existing = truckEntryRepository.findById(id)
+                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
 
-        MaterialType materialType = materialRepository.findById(request.getMaterialTypeId())
+        MaterialType materialType = materialRepository.findByIdAndIsActiveTrue(request.getMaterialTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Material type not found: " + request.getMaterialTypeId()));
 
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
         existing.setEntryDate(request.getEntryDate());
@@ -87,9 +108,12 @@ public class TruckEntryService {
         return TruckEntryResponse.fromEntity(truckEntryRepository.save(existing));
     }
 
-    public void deleteTruckEntry(Long id) {
+        @Transactional
+        public void deleteTruckEntry(Long id) {
         TruckEntry existing = truckEntryRepository.findById(id)
+                .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Truck entry not found: " + id));
-        truckEntryRepository.delete(existing);
+        existing.setIsActive(false);
+        truckEntryRepository.save(existing);
     }
 }

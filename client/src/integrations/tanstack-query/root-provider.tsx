@@ -1,8 +1,15 @@
-import { QueryClient } from '@tanstack/react-query'
+import { MutationCache, QueryClient } from '@tanstack/react-query'
 import { getDefaultToken } from '#/lib/common/api'
 
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSuccess: () => {
+      void queryClient.invalidateQueries()
+    },
+  }),
+})
+
 export function getContext() {
-  const queryClient = new QueryClient()
   const isClient = typeof window !== 'undefined'
   const isAuthenticated = isClient && Boolean(getDefaultToken())
 

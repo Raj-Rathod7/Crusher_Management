@@ -1,6 +1,4 @@
-import { SummaryRow } from '#/components/summary-row'
 import { FormPageLayout } from '#/components/form-page-layout'
-import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger } from '#/components/ui/combobox'
 import {
@@ -27,8 +25,10 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { createCustomer } from '#/lib/mutation'
-import type { CreateInvoicePayload, Customer, InvoiceItem } from '#/lib/models'
-import { customerKeys, getAllCustomers, getAllMaterials, materialKeys } from '#/lib/query'
+import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
+import type { CreateInvoicePayload, Customer } from '#/lib/models'
+import { customerKeys, getAllCustomers, getAllMaterials, getNextInvoiceNumber, materialKeys, salesKeys } from '#/lib/query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { IconArrowLeft, IconCurrencyRupee, IconPlus, IconReceipt, IconUser } from '@tabler/icons-react'
@@ -42,7 +42,7 @@ type FormState = {
   invoiceDate: string
   customerId: string
   totalAmount: string
-  amountPaid: string
+  paymentAmount: string
   remarks: string
 }
 
@@ -80,12 +80,14 @@ type SalesFormProps = {
   variant?: 'page' | 'dialog'
 }
 
+const todayLocal = () => dateKey()
+
 const initialFormState: FormState = {
   invoiceNumber: '',
-  invoiceDate: new Date().toISOString().slice(0, 10),
+  invoiceDate: todayLocal(),
   customerId: '',
   totalAmount: '',
-  amountPaid: '',
+  paymentAmount: '',
   remarks: '',
 }
 
@@ -96,7 +98,7 @@ const initialInvoiceItemForm: InvoiceItemFormState = {
   truckNumber: ''
 }
 
-function validateForm(form: FormState) {
+function validateForm(form: FormState, manager: boolean) {
   const errors: FormErrors = {}
 
   if (!form.invoiceNumber.trim()) {
@@ -111,80 +113,19 @@ function validateForm(form: FormState) {
     errors.customerId = 'Customer required.'
   }
 
+  if (manager) {
+    return errors
+  }
+
   if (!form.totalAmount.trim() || Number(form.totalAmount) <= 0) {
     errors.totalAmount = 'Total amount must be greater than 0.'
   }
 
-  if (form.amountPaid.trim() && Number(form.amountPaid) < 0) {
-    errors.amountPaid = 'Paid amount cannot be negative.'
-  }
-
-  if (form.totalAmount.trim() && form.amountPaid.trim() && Number(form.amountPaid) > Number(form.totalAmount)) {
-    errors.amountPaid = 'Paid amount cannot exceed total amount.'
+  if (form.paymentAmount.trim() && Number(form.paymentAmount) <= 0) {
+    errors.paymentAmount = 'Payment amount must be greater than 0.'
   }
 
   return errors
-}
-
-function deriveInvoiceStatus(totalAmount: number, amountPaid: number) {
-  if (totalAmount <= 0) {
-    return 'pending'
-  }
-
-  if (amountPaid === 0) {
-    return 'pending'
-  }
-
-  if (amountPaid >= totalAmount) {
-    return 'paid'
-  }
-
-  return 'partial'
-}
-
-function getPaymentStatusBadge(status: string) {
-  if (status === 'paid') {
-    return {
-      label: 'Paid',
-      className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-    }
-  }
-
-  if (status === 'partial') {
-    return {
-      label: 'Partial',
-      className: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-    }
-  }
-
-  return {
-    label: 'Pending',
-    className: 'border-border bg-muted text-muted-foreground',
-  }
-}
-
-function getBalanceTone(status: string) {
-  if (status === 'paid') {
-    return {
-      container: 'border-emerald-500/20 bg-emerald-500/5',
-      label: 'text-emerald-700/80 dark:text-emerald-300/80',
-      value: 'text-emerald-800 dark:text-emerald-200',
-    }
-  }
-
-  if (status === 'partial') {
-    return {
-      container: 'border-amber-500/20 bg-amber-500/5',
-      label: 'text-amber-700/80 dark:text-amber-300/80',
-      value: 'text-amber-800 dark:text-amber-200',
-    }
-  }
-
-  return {
-    container: 'border-border bg-muted/40',
-    label: 'text-muted-foreground',
-    value: 'text-foreground',
-  }
 }
 
 const inrConverter = new Intl.NumberFormat('en-IN', {
@@ -205,28 +146,52 @@ export function SalesForm({
   variant = 'page',
 }: SalesFormProps) {
   const queryClient = useQueryClient()
-  const [form, setForm] = React.useState<FormState>({ ...initialFormState, ...initialValues })
+  const manager = isManager()
+  const shouldAutoGenerateInvoiceNumber = !initialValues?.invoiceNumber;
+  const [form, setForm] = React.useState<FormState>({
+    ...initialFormState,
+    ...initialValues,
+    ...(manager ? { invoiceDate: todayLocal() } : {}),
+  })
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false)
-  const [invoiceItemForm, setInvoiceItemForm] = React.useState<InvoiceItemFormState>(initialInvoiceItemForm)
+  const [invoiceItemForm, setInvoiceItemForm] = React.useState<InvoiceItemFormState>(() => {
+    const initialItem = initialInvoiceItems?.[0]
+    return initialItem
+      ? {
+          materialTypeId: initialItem.materialTypeId,
+          quantityBrass: initialItem.quantityBrass,
+          rate: initialItem.rate,
+          truckNumber: initialItem.truckNumber,
+        }
+      : initialInvoiceItemForm
+  })
   const [invoiceItemErrors, setInvoiceItemErrors] = React.useState<InvoiceItemErrors>({})
-  const [invoiceItems, setInvoiceItems] = React.useState<InvoiceItemEntry[]>(initialInvoiceItems || [])
-  const [editingInvoiceItemId, setEditingInvoiceItemId] = React.useState<string | null>(null)
 
   const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
     queryKey: customerKeys.all,
     queryFn: getAllCustomers,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
 
   const { data: materials = [], isLoading: isLoadingMaterials } = useQuery({
-    queryKey: materialKeys.all,
-    queryFn: getAllMaterials,
+    queryKey: materialKeys.list({ type: 'SALE' }),
+    queryFn: () => getAllMaterials({ type: 'SALE' }),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+  })
+
+  const { data: nextInvoiceNumber } = useQuery({
+    queryKey: [...salesKeys.all, 'next-number'],
+    queryFn: getNextInvoiceNumber,
+    enabled: shouldAutoGenerateInvoiceNumber,
+    retry: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -251,47 +216,35 @@ export function SalesForm({
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
-  const computedTotalAmount = React.useMemo(
-    () =>
-      invoiceItems.reduce((sum, item) => {
-        const amount = Number(item.amount || 0)
-        return sum + amount
-      }, 0),
-    [invoiceItems]
-  )
-
-  const computedPaymentStatus = React.useMemo(
-    () => {
-      const amountPaidValue = Number(form.amountPaid || 0)
-      return deriveInvoiceStatus(computedTotalAmount, amountPaidValue)
-    },
-    [computedTotalAmount, form.amountPaid]
-  )
+  const totalAmount = Number(form.totalAmount || 0)
 
   const selectedCustomer = React.useMemo(
     () => customers.find((customer) => String(customer.id) === form.customerId) ?? null,
     [customers, form.customerId]
   )
 
-  React.useEffect(() => {
-    setForm((current) => ({
-      ...current,
-      totalAmount: invoiceItems.length > 0 ? computedTotalAmount.toFixed(2) : '0.00',
-    }))
-  }, [computedTotalAmount, invoiceItems.length])
+  const selectedCustomerPendingBalance = React.useMemo(() => {
+    if (!selectedCustomer) {
+      return 0
+    }
 
-  const totalAmount = Number(form.totalAmount || 0)
-  const amountPaid = Number(form.amountPaid || 0)
-  const balance = Math.max(totalAmount - amountPaid, 0)
-  const paymentStatusBadge = getPaymentStatusBadge(computedPaymentStatus)
-  const balanceTone = getBalanceTone(computedPaymentStatus)
+    return selectedCustomer.pendingBalance ?? 0
+  }, [selectedCustomer])
+
+  React.useEffect(() => {
+    if (!shouldAutoGenerateInvoiceNumber || !nextInvoiceNumber) {
+      return
+    }
+    setForm((current) =>
+      current.invoiceNumber === nextInvoiceNumber ? current : { ...current, invoiceNumber: nextInvoiceNumber })
+  }, [nextInvoiceNumber, shouldAutoGenerateInvoiceNumber])
 
   const handleInvoiceItemFieldChange = (field: keyof InvoiceItemFormState, value: string) => {
     setInvoiceItemForm((current) => ({ ...current, [field]: value }))
     setInvoiceItemErrors((current) => ({ ...current, [field]: undefined }))
   }
 
-  const handleSaveInvoiceItem = () => {
+  const validateInvoiceItem = () => {
     const nextErrors: InvoiceItemErrors = {}
 
     if (!invoiceItemForm.materialTypeId) {
@@ -302,84 +255,42 @@ export function SalesForm({
       nextErrors.quantityBrass = 'Quantity required.'
     } else if (Number(invoiceItemForm.quantityBrass) <= 0) {
       nextErrors.quantityBrass = 'Quantity must be greater than 0.'
-    }
+    } 
 
-    if (!invoiceItemForm.rate.trim()) {
-      nextErrors.rate = 'Rate required.'
-    } else if (Number(invoiceItemForm.rate) <= 0) {
-      nextErrors.rate = 'Rate must be greater than 0.'
-    }
-
-    if(!invoiceItemForm.truckNumber.trim()){
+    if (!invoiceItemForm.truckNumber.trim()) {
       nextErrors.truckNumber = 'Truck Number required.'
     }
 
-    if (Object.keys(nextErrors).length > 0) {
-      setInvoiceItemErrors(nextErrors)
-      return
-    }
+    return nextErrors
+  }
 
+  const buildInvoiceItem = (): InvoiceItemEntry => {
     const material = materials.find((entry) => String(entry.id) === invoiceItemForm.materialTypeId)
     const quantity = Number(invoiceItemForm.quantityBrass)
-    const rate = Number(invoiceItemForm.rate)
+    const rate = Number(invoiceItemForm.rate) ?? 1;
     const amount = quantity * rate
 
-    const row: InvoiceItemEntry = {
-      id: editingInvoiceItemId ?? crypto.randomUUID(),
+    return {
+      id: crypto.randomUUID(),
       materialTypeId: invoiceItemForm.materialTypeId,
       quantityBrass: String(quantity),
       rate: String(rate),
       amount: String(amount),
       materialName: material?.name ?? 'Unknown material',
-      truckNumber: invoiceItemForm.truckNumber
-    }
-
-    setInvoiceItems((current) => {
-      if (editingInvoiceItemId) {
-        return current.map((item) => (item.id === editingInvoiceItemId ? row : item))
-      }
-
-      return [...current, row]
-    })
-
-    setEditingInvoiceItemId(null)
-    setInvoiceItemForm(initialInvoiceItemForm)
-    setInvoiceItemErrors({})
-  }
-
-  const handleEditInvoiceItem = (item: InvoiceItemEntry) => {
-    setEditingInvoiceItemId(item.id)
-    setInvoiceItemForm({
-      materialTypeId: item.materialTypeId,
-      quantityBrass: item.quantityBrass,
-      rate: item.rate,
-      truckNumber: item.truckNumber
-    })
-    setInvoiceItemErrors({})
-  }
-
-  const handleDeleteInvoiceItem = (itemId: string) => {
-    setInvoiceItems((current) => current.filter((item) => item.id !== itemId))
-
-    if (editingInvoiceItemId === itemId) {
-      setEditingInvoiceItemId(null)
-      setInvoiceItemForm(initialInvoiceItemForm)
-      setInvoiceItemErrors({})
+      truckNumber: invoiceItemForm.truckNumber,
     }
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const nextErrors = validateForm(form)
+    const nextErrors = validateForm(form, manager)
+    const invoiceItemErrorsNext = validateInvoiceItem()
 
-    if (invoiceItems.length === 0) {
-      toast.error('Add at least one invoice item before creating the sale.')
+    if (Object.keys(invoiceItemErrorsNext).length > 0) {
+      setInvoiceItemErrors(invoiceItemErrorsNext)
+      setErrors(nextErrors)
       return
-    }
-
-    if (Number(form.amountPaid || 0) > computedTotalAmount) {
-      nextErrors.amountPaid = 'Paid amount cannot exceed total amount.'
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -387,27 +298,50 @@ export function SalesForm({
       return
     }
 
-    const invoiceStatus = deriveInvoiceStatus(computedTotalAmount, amountPaid)
+    const invoiceItem = buildInvoiceItem()
+
+    if (manager) {
+      onSubmit({
+        invoiceNumber: form.invoiceNumber.trim(),
+        invoiceDate: form.invoiceDate,
+        customerId: Number(form.customerId),
+        remarks: form.remarks.trim() || undefined,
+        ...(form.paymentAmount.trim()
+        ? { paymentAmount: Number(form.paymentAmount) }
+        : {}),
+        invoiceItems: [
+          {
+            ...invoiceItem,
+            id: 0,
+            materialTypeId: Number(invoiceItem.materialTypeId),
+            quantityBrass: Number(invoiceItem.quantityBrass),
+            rate: null,
+            amount: 0,
+          },
+        ],
+      })
+      return
+    }
 
     const payload: CreateInvoicePayload = {
       invoiceNumber: form.invoiceNumber.trim(),
       invoiceDate: form.invoiceDate,
       customerId: Number(form.customerId),
-      totalAmount: computedTotalAmount,
-      amountPaid,
-      balance,
-      status: invoiceStatus,
+      totalAmount,
+      ...(form.paymentAmount.trim()
+        ? { paymentAmount: Number(form.paymentAmount) }
+        : {}),
       remarks: form.remarks.trim() || undefined,
-      invoiceItems: invoiceItems.map(item => {
-        return {
-          ...item, 
-          quantity: Number(item.quantityBrass),
-          id: !isNaN(Number(item.id)) ? Number(item.id) : 0,
-          materialTypeId: Number(item.materialTypeId),
-          rate: Number(item.rate),
-          amount: Number(item.amount)
-        }
-      })
+      invoiceItems: [
+        {
+          ...invoiceItem,
+          id: !isNaN(Number(invoiceItem.id)) ? Number(invoiceItem.id) : 0,
+          materialTypeId: Number(invoiceItem.materialTypeId),
+          quantityBrass: Number(invoiceItem.quantityBrass),
+          rate: invoiceItemForm.rate.trim() ? Number(invoiceItem.rate) : null,
+          amount: invoiceItemForm.rate.trim() ? Number(invoiceItem.amount) : 0,
+        },
+      ],
     }
 
     onSubmit(payload)
@@ -417,16 +351,13 @@ export function SalesForm({
     handleChange('customerId', String(customer.id))
   }
 
-  const sidebarContent = isPage && showSummary ? (
+  const sidebarContent = isPage && showSummary && !manager ? (
     <>
       <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Invoice review</p>
           <h2 className="mt-1 text-lg font-semibold tracking-normal">Sales summary</h2>
         </div>
-        <Badge variant="outline" className={paymentStatusBadge.className}>
-          {paymentStatusBadge.label}
-        </Badge>
       </div>
 
       <div className="mt-4 border-l-2 border-primary bg-primary/5 py-3 pr-3 pl-4">
@@ -439,28 +370,16 @@ export function SalesForm({
             {inrConverter.format(totalAmount)}
           </span>
           <span className="mb-1 text-xs font-medium text-muted-foreground">
-            {invoiceItems.length} item{invoiceItems.length === 1 ? '' : 's'}
+            1 item
           </span>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 divide-x divide-border/80 border-y border-border/80 py-3">
-          <div className="pr-3">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
-              Paid
-            </div>
-            <div className="mt-1 text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">
-              {inrConverter.format(amountPaid)}
-            </div>
-          </div>
-          <div className="pl-3">
-            <div className={`text-[11px] font-medium uppercase tracking-wide ${balanceTone.label}`}>
-              Balance
-            </div>
-            <div className={`mt-1 text-sm font-semibold tabular-nums ${balanceTone.value}`}>
-              {inrConverter.format(balance)}
-            </div>
-          </div>
+      <div className="mt-4 flex items-center justify-between border-b border-border/80 pb-4 text-sm">
+        <span className="text-muted-foreground">Payment received</span>
+        <span className="font-semibold tabular-nums">
+          {form.paymentAmount.trim() ? inrConverter.format(Number(form.paymentAmount)) : 'Not received'}
+        </span>
       </div>
 
       <div className="mt-5 space-y-4">
@@ -482,8 +401,14 @@ export function SalesForm({
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Customer</p>
             <p className="mt-1 truncate text-sm font-semibold">{selectedCustomer?.name ?? 'Not set'}</p>
+            {selectedCustomer ? (
+                <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+                  Pending: {inrConverter.format(selectedCustomerPendingBalance)}
+                </p>
+            ) : null}
           </div>
         </div>
+
       </div>
     </>
   ) : undefined
@@ -499,8 +424,8 @@ export function SalesForm({
                   <Input
                     id="invoiceNumber"
                     value={form.invoiceNumber}
-                    onChange={(event) => handleChange('invoiceNumber', event.target.value)}
-                    placeholder="INV-001"
+                    readOnly
+                    placeholder="INV-YY/YY-0001"
                   />
                   <FieldError>{errors.invoiceNumber}</FieldError>
                 </FieldContent>
@@ -513,6 +438,7 @@ export function SalesForm({
                     id="invoiceDate"
                     type="date"
                     value={form.invoiceDate}
+                    readOnly={manager}
                     onChange={(event) => handleChange('invoiceDate', event.target.value)}
                   />
                   <FieldError>{errors.invoiceDate}</FieldError>
@@ -536,7 +462,9 @@ export function SalesForm({
                               className="w-full justify-between font-normal"
                               disabled={isLoadingCustomers}
                             >
-                              {selectedCustomer?.name || (isLoadingCustomers ? 'Loading customers...' : 'Select a customer')}
+                              {selectedCustomer
+                                ? `${selectedCustomer.name} (${inrConverter.format(selectedCustomerPendingBalance)} pending)`
+                                : (isLoadingCustomers ? 'Loading customers...' : 'Select a customer')}
                             </Button>
                           }
                         />
@@ -546,7 +474,14 @@ export function SalesForm({
                           <ComboboxList>
                             {(customer) => (
                               <ComboboxItem key={customer.id} value={customer}>
-                                {customer.name}
+                                <div className="flex w-full items-center justify-between gap-3">
+                                  <span>{customer.name}</span>
+                                  <span className="flex flex-col items-end text-xs font-medium">
+                                    <span className="text-amber-700 dark:text-amber-300">
+                                      {inrConverter.format(customer.pendingBalance ?? 0)} pending
+                                    </span>
+                                  </span>
+                                </div>
                               </ComboboxItem>
                             )}
                           </ComboboxList>
@@ -591,9 +526,10 @@ export function SalesForm({
           </div>
         </div>
 
+        
         <div className="border-b border-border/80 py-6">
           <div className="grid gap-4 md:grid-cols-2">
-              <Field>
+              {!manager && (<Field>
                 <FieldLabel htmlFor="totalAmount">Total amount</FieldLabel>
                 <FieldContent>
                   <Input
@@ -604,40 +540,35 @@ export function SalesForm({
                     value={form.totalAmount}
                     onChange={(event) => handleChange('totalAmount', event.target.value)}
                     placeholder="0.00"
-                    disabled
                     className="font-semibold tabular-nums"
                   />
                   <FieldError>{errors.totalAmount}</FieldError>
                 </FieldContent>
-              </Field>
+              </Field>)}
 
               <Field>
-                <FieldLabel htmlFor="amountPaid">Amount paid</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="amountPaid"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.amountPaid}
-                    onChange={(event) => handleChange('amountPaid', event.target.value)}
-                    placeholder="0.00"
-                    className="font-semibold tabular-nums"
-                  />
-                  <FieldError>{errors.amountPaid}</FieldError>
-                </FieldContent>
+                  <FieldLabel htmlFor="paymentAmount">Payment received (optional)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="paymentAmount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={form.paymentAmount}
+                      onChange={(event) => handleChange('paymentAmount', event.target.value)}
+                      placeholder="0.00"
+                      className="font-semibold tabular-nums"
+                    />
+                    <FieldError>{errors.paymentAmount}</FieldError>
+                  </FieldContent>
               </Field>
+
           </div>
         </div>
 
         <div className="py-6">
-          <div className="mb-4 flex justify-end">
-            <Badge variant="secondary" className="shrink-0 tabular-nums">
-              {invoiceItems.length} item{invoiceItems.length === 1 ? '' : 's'}
-            </Badge>
-          </div>
           <div className="border border-border/80 bg-muted/20 p-4">
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className={`grid gap-4 ${manager ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
                       <Field>
                         <FieldLabel htmlFor="item-material">Material</FieldLabel>
                         <FieldContent>
@@ -679,8 +610,9 @@ export function SalesForm({
                         </FieldContent>
                       </Field>
 
+                      {!manager && (
                       <Field>
-                        <FieldLabel htmlFor="item-rate">Rate</FieldLabel>
+                        <FieldLabel htmlFor="item-rate">Rate (optional)</FieldLabel>
                         <FieldContent>
                           <Input
                             id="item-rate"
@@ -694,6 +626,7 @@ export function SalesForm({
                           {invoiceItemErrors.rate && <FieldError>{invoiceItemErrors.rate}</FieldError>}
                         </FieldContent>
                       </Field>
+                      )}
                     </div> 
                     <div className="mt-2">
                       <Field>
@@ -710,52 +643,7 @@ export function SalesForm({
                         </FieldContent>
                       </Field>
                     </div>
-
-                    <div className="mt-4 flex justify-end border-t border-border/70 pt-4">
-                      <Button type="button" onClick={handleSaveInvoiceItem}>
-                        <SaveIcon />
-                        {editingInvoiceItemId ? 'Update item' : 'Save item'}
-                      </Button>
-                    </div>
           </div>
-
-          {invoiceItems.length > 0 && (
-                    <div className="mt-4 overflow-x-auto border border-border/80 bg-card">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
-                          <tr>
-                            <th className="px-3 py-2.5 font-semibold">Material</th>
-                            <th className="px-3 py-2.5 font-semibold">Truck Number</th>
-                            <th className="px-3 py-2.5 font-semibold">Qty</th>
-                            <th className="px-3 py-2.5 font-semibold">Rate</th>
-                            <th className="px-3 py-2.5 font-semibold">Amount</th>
-                            <th className="px-3 py-2.5 font-semibold text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoiceItems.map((item) => (
-                            <tr key={item.id} className="border-t hover:bg-muted/30">
-                              <td className="px-3 py-3 font-medium">{item.materialName}</td>
-                              <td className="px-3 py-3 font-medium">{item.truckNumber}</td>
-                              <td className="px-3 py-3 tabular-nums">{item.quantityBrass}</td>
-                              <td className="px-3 py-3 tabular-nums">{item.rate}</td>
-                              <td className="px-3 py-3 font-medium tabular-nums">{item.amount}</td>
-                              <td className="px-3 py-3">
-                                <div className="flex justify-end gap-2">
-                                  <Button type="button" variant="outline" size="sm" onClick={() => handleEditInvoiceItem(item)}>
-                                    Edit
-                                  </Button>
-                                  <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteInvoiceItem(item.id)}>
-                                    Delete
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-          )}
         </div>
 
         <div className="border-t border-border/80 pt-6">
@@ -792,7 +680,7 @@ export function SalesForm({
                   'Saving...'
                 ) : (
                   <>
-                    <IconPlus />
+                    <SaveIcon />
                     {submitLabel}
                   </>
                 )}
@@ -808,7 +696,7 @@ export function SalesForm({
   return (
     <FormPageLayout
       title={title || 'New Sale'}
-      description={description || 'Create invoice with customer, amount, payment, and status.'}
+      description={description || 'Record the customer, material, truck, quantity, and sale total.'}
       backLabel={backLabel || 'Back to sales'}
       backTo={backTo}
       badge="Sales entry"

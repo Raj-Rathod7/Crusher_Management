@@ -2,18 +2,24 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "invoice_items")
+@Table(name = "invoice_items", indexes = {
+    @Index(name = "idx_invoice_items_material", columnList = "material_type_id")
+})
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE invoice_items SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class InvoiceItem {
+public class InvoiceItem extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,16 +39,10 @@ public class InvoiceItem {
     @Column(name = "quantity_brass", nullable = false, precision = 10, scale = 2)
     private BigDecimal quantityBrass;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = true, precision = 10, scale = 2)
     private BigDecimal rate;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
 }

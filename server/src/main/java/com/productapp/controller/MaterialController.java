@@ -2,10 +2,13 @@ package com.productapp.controller;
 
 import com.productapp.dto.MaterialResponse;
 import com.productapp.entity.MaterialType;
+import com.productapp.entity.MaterialUsageType;
 import com.productapp.service.MaterialService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/materials")
@@ -23,8 +26,13 @@ public class MaterialController {
     }
 
     @GetMapping
-    public List<MaterialResponse> getAll() {
-        return materialService.getAll();
+    public List<MaterialResponse> getAll(@RequestParam(required = false) MaterialUsageType type) {
+        return materialService.getAll(type);
+    }
+
+    @GetMapping("/page")
+    public Page<MaterialResponse> getPage(Pageable pageable) {
+        return materialService.getPage(pageable);
     }
 
     @GetMapping("/{id}")

@@ -2,19 +2,27 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "truck_entries")
+@Table(name = "truck_entries", indexes = {
+	@Index(name = "idx_truck_entries_date", columnList = "entry_date"),
+	@Index(name = "idx_truck_entries_material", columnList = "material_type_id"),
+	@Index(name = "idx_truck_entries_number", columnList = "truck_number")
+})
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE truck_entries SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TruckEntry {
+public class TruckEntry extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,9 +52,6 @@ public class TruckEntry {
     @ManyToOne
     @JoinColumn(name = "created_by")
     private User createdBy;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
 	public Long getId() {
 		return id;
@@ -112,30 +117,4 @@ public class TruckEntry {
 		this.createdBy = createdBy;
 	}
 
-	public LocalDateTime getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(LocalDateTime createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public LocalDateTime getUpdatedAt() {
-		return updatedAt;
-	}
-
-	public void setUpdatedAt(LocalDateTime updatedAt) {
-		this.updatedAt = updatedAt;
-	}
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

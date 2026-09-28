@@ -1,8 +1,9 @@
 package com.productapp.controller;
 
 import com.productapp.dto.PaymentResponse;
-import com.productapp.entity.Payment;
+import com.productapp.entity.CustomerPaymentRequest;
 import com.productapp.service.PaymentService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +18,6 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    @PostMapping
-    public PaymentResponse create(@RequestBody Payment payment) {
-        return paymentService.save(payment);
-    }
-
     @GetMapping
     public List<PaymentResponse> getAll() {
         return paymentService.getAll();
@@ -30,5 +26,15 @@ public class PaymentController {
     @GetMapping("/{id}")
     public PaymentResponse getById(@PathVariable Long id) {
         return paymentService.getById(id);
+    }
+
+    @PutMapping("/{id}")
+    public PaymentResponse update(@PathVariable Long id, @Valid @RequestBody CustomerPaymentRequest request) {
+        return paymentService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        paymentService.delete(id);
     }
 }

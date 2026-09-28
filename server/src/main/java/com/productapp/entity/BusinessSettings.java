@@ -2,17 +2,21 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "business_settings")
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE business_settings SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BusinessSettings {
+public class BusinessSettings extends AuditableEntity {
 
     @Id
     private Long id;
@@ -23,14 +27,7 @@ public class BusinessSettings {
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(length = 20)
+    @Column(length = 100)
     private String phone;
 
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    @PreUpdate
-    public void updateTimestamp() {
-        updatedAt = LocalDateTime.now();
-    }
 }

@@ -1,5 +1,6 @@
 package com.productapp.dto;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -12,7 +13,10 @@ public class ExpenseRequest {
     private Long categoryId;
 
     @NotNull
+    @DecimalMin(value = "0.01")
     private BigDecimal amount;
+
+    private String identifier;
 
     private String notes;
 
@@ -30,6 +34,14 @@ public class ExpenseRequest {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
+
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
     public LocalDate getExpenseDate() {

@@ -11,13 +11,26 @@ import com.productapp.entity.InvoiceItem;
 import com.productapp.entity.InvoiceItemRequest;
 import com.productapp.entity.InvoiceRequest;
 import com.productapp.entity.MaterialType;
+import com.productapp.entity.User;
+import com.productapp.repository.UserRepository;
+import com.productapp.entity.CustomerLedger;
+import com.productapp.repository.CustomerLedgerRepository;
+import com.productapp.repository.PaymentRepository;
+import com.productapp.entity.Payment;
+import com.productapp.security.SecurityUtils;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
  
 @Service
@@ -26,36 +39,51 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final CustomerRepository customerRepository;
     private final MaterialRepository materialRepository;
+    private final UserRepository userRepository;
+    private final CustomerLedgerRepository customerLedgerRepository;
+    private final PaymentRepository paymentRepository;
 
-    public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository, MaterialRepository materialRepository) {
+    public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository,
+                          MaterialRepository materialRepository, UserRepository userRepository,
+                          CustomerLedgerRepository customerLedgerRepository, PaymentRepository paymentRepository) {
         this.invoiceRepository = invoiceRepository;
         this.customerRepository = customerRepository;
         this.materialRepository = materialRepository;
+        this.userRepository = userRepository;
+        this.customerLedgerRepository = customerLedgerRepository;
+        this.paymentRepository = paymentRepository;
     }
 
+    @Transactional
     public InvoiceResponse createInvoice(InvoiceRequest invoiceRequest) {
         Invoice invoice = new Invoice();
+        User createdBy = getCurrentUser();
+        boolean manager = SecurityUtils.isManager();
+        SecurityUtils.requireTodayForManager(invoiceRequest.getInvoiceDate());
+        // if ( invoiceRequest.getTotalAmount() == null || invoiceRequest.getTotalAmount().signum() <= 0) {
+        //     throw new IllegalArgumentException("Total amount must be greater than zero");
+        // }
         Customer customer =
-                customerRepository.findById(invoiceRequest.getCustomerId())
+                customerRepository.findByIdAndIsActiveTrue(invoiceRequest.getCustomerId())
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Customer not found"));
+        if (invoiceRequest.getPaymentAmount() != null
+            && invoiceRequest.getPaymentAmount().signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero");
+        }
         invoice.setCustomer(customer);
-        invoice.setAmountPaid(invoiceRequest.getAmountPaid());
         invoice.setInvoiceDate(invoiceRequest.getInvoiceDate());
         invoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
-        invoice.setTotalAmount(invoiceRequest.getTotalAmount());
-        invoice.setBalance(invoiceRequest.getBalance());
-        invoice.setStatus(invoiceRequest.getStatus());
         invoice.setRemarks(invoiceRequest.getRemarks());
 
                             
         
         List<InvoiceItem> invoiceItems = new ArrayList<>();
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal totalAmount = manager ? BigDecimal.ZERO : invoiceRequest.getTotalAmount();
         for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
 
-            MaterialType material = materialRepository.findById(
+            MaterialType material = materialRepository.findByIdAndIsActiveTrue(
                     itemRequest.getMaterialTypeId())
                     .orElseThrow(() ->
                             new ResourceNotFoundException("Material not found"));
@@ -65,31 +93,294 @@ public class InvoiceService {
             item.setInvoice(invoice);
             item.setMaterialType(material);
             item.setQuantityBrass(itemRequest.getQuantityBrass());
-            item.setRate(itemRequest.getRate());
-            item.setAmount(itemRequest.getAmount());
+            item.setRate(manager ? null : itemRequest.getRate());
+            BigDecimal itemAmount = manager || itemRequest.getRate() == null
+                    ? BigDecimal.ZERO
+                    : itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
+            item.setAmount(itemAmount);
             item.setTruckNumber(itemRequest.getTruckNumber());
-
-            totalAmount = totalAmount.add(itemRequest.getAmount());
 
             invoiceItems.add(item);
         }
+
+        invoice.setTotalAmount(totalAmount);
+        invoice.setTotalPending(manager);
         invoice.setInvoiceItems(invoiceItems);
-        //invoice.setCreatedBy(); 
+        invoice.setCreatedBy(createdBy);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
-        return InvoiceResponse.fromEntity(invoiceRepository.save(invoice));
+        postSaleLedgerEntry(savedInvoice, customer, savedInvoice.getTotalAmount(), BigDecimal.ZERO,
+            "SALE", saleDescription(savedInvoice));
+
+        if (invoiceRequest.getPaymentAmount() != null) {
+            postPayment(savedInvoice, customer, invoiceRequest.getPaymentAmount(), createdBy);
+        }
+
+        InvoiceResponse response = InvoiceResponse.fromEntity(savedInvoice);
+        return response;
     }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return userRepository.findByUsernameAndIsActiveTrue(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public InvoiceResponse updateInvoice(Long id, InvoiceRequest invoiceRequest) {
+        Invoice existingInvoice = invoiceRepository.findById(id)
+                .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
+
+        CustomerLedger existingLedger = customerLedgerRepository
+                .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", existingInvoice.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Ledger entry not found for invoice id : " + id));
+
+        Customer customer =
+                customerRepository.findByIdAndIsActiveTrue(invoiceRequest.getCustomerId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Customer not found"));
+        existingInvoice.setCustomer(customer);
+        existingInvoice.setInvoiceDate(invoiceRequest.getInvoiceDate());
+        existingInvoice.setInvoiceNumber(invoiceRequest.getInvoiceNumber());
+        existingInvoice.setRemarks(invoiceRequest.getRemarks());
+
+        if (invoiceRequest.getPaymentAmount() != null
+                && invoiceRequest.getPaymentAmount().signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero");
+        }
+
+        List<InvoiceItem> invoiceItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (InvoiceItemRequest itemRequest : invoiceRequest.getInvoiceItems()) {
+
+            MaterialType material = materialRepository.findByIdAndIsActiveTrue(
+                    itemRequest.getMaterialTypeId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Material not found"));
+
+            InvoiceItem item = new InvoiceItem();
+
+            item.setInvoice(existingInvoice);
+            item.setMaterialType(material);
+            item.setQuantityBrass(itemRequest.getQuantityBrass());
+            item.setRate(itemRequest.getRate());
+            BigDecimal itemAmount = itemRequest.getRate() == null
+                    ? BigDecimal.ZERO
+                    : itemRequest.getQuantityBrass().multiply(itemRequest.getRate());
+            item.setAmount(itemAmount);
+            item.setTruckNumber(itemRequest.getTruckNumber());
+
+            invoiceItems.add(item);
+            totalAmount = totalAmount.add(itemAmount);
+        }
+        if (invoiceRequest.getTotalAmount() != null && invoiceRequest.getTotalAmount().signum() > 0) {
+            totalAmount = invoiceRequest.getTotalAmount();
+        }
+        if (totalAmount.signum() <= 0) {
+            throw new IllegalArgumentException("Total amount must be greater than zero");
+        }
+        existingInvoice.setTotalAmount(totalAmount);
+        existingInvoice.setTotalPending(false);
+        // Keep Hibernate's existing managed collection.
+        // Do not replace it with a new ArrayList.
+        existingInvoice.getInvoiceItems().clear();
+
+        // Add the newly created items to the same Hibernate-managed collection.
+        for (InvoiceItem item : invoiceItems) {
+            item.setInvoice(existingInvoice); // Maintain the bidirectional relationship
+            existingInvoice.getInvoiceItems().add(item);
+        }
+
+        Invoice savedInvoice = invoiceRepository.save(existingInvoice);
+
+        updateSaleLedgerEntry(existingLedger, savedInvoice);
+
+        if (invoiceRequest.getPaymentAmount() != null) {
+            updatePayment(existingInvoice, invoiceRequest.getPaymentAmount());
+        }
+        return InvoiceResponse.fromEntity(savedInvoice);
+    }
+
+    private String saleDescription(Invoice invoice) {
+        if (invoice.getInvoiceItems() == null || invoice.getInvoiceItems().isEmpty()) {
+            return "Sale " + invoice.getInvoiceNumber();
+        }
+
+        InvoiceItem item = invoice.getInvoiceItems().get(0);
+        String materialName = item.getMaterialType() == null ? "Unknown material" : item.getMaterialType().getName();
+        return "Sale " + invoice.getInvoiceNumber() + " - " + materialName
+            + " - " + item.getQuantityBrass() + " brass @ " + item.getRate();
+    }
+
+    private void postPayment(Invoice invoice, Customer customer, BigDecimal amount, User createdBy) {
+        Payment payment = new Payment();
+        payment.setPaymentDate(invoice.getInvoiceDate());
+        payment.setCustomer(customer);
+        payment.setInvoice(invoice);
+        payment.setAmount(amount);
+        payment.setPaymentMode("cash");
+        payment.setEntryType("CUSTOMER_PAYMENT");
+        payment.setNotes("Payment for invoice " + invoice.getInvoiceNumber());
+        payment.setCreatedBy(createdBy);
+
+        Payment savedPayment = paymentRepository.save(payment);
+    invoice.setPayment(savedPayment);
+        customerLedgerRepository.save(CustomerLedger.builder()
+            .entryDate(savedPayment.getPaymentDate())
+            .customer(customer)
+            .entryType("CUSTOMER_PAYMENT")
+            .reference("PAYMENT-" + savedPayment.getId())
+            .description(savedPayment.getNotes())
+            .debit(BigDecimal.ZERO)
+            .credit(savedPayment.getAmount())
+            .sourceType("PAYMENT")
+            .sourceId(savedPayment.getId())
+            .build());
+    }
+
+    private void updatePayment(Invoice invoice, BigDecimal amount) {
+        Payment payment = paymentRepository.findByInvoiceIdAndIsActiveTrue(invoice.getId())
+                .orElse(null);
+        if (payment == null) {
+            postPayment(invoice, invoice.getCustomer(), amount, getCurrentUser());
+            return;
+        }
+        
+        payment.setAmount(amount);
+        payment.setPaymentDate(invoice.getInvoiceDate());
+        payment.setCustomer(invoice.getCustomer());
+        Payment savedPayment = paymentRepository.save(payment);
+        CustomerLedger paymentLedger = customerLedgerRepository
+            .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("PAYMENT", savedPayment.getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Ledger entry not found for payment id : " + savedPayment.getId()));
+        updatePaymentLedgerEntry(paymentLedger, savedPayment);
+    }
+
+    private void postPaymentLedgerEntry(Payment payment) {
+        customerLedgerRepository.save(CustomerLedger.builder()
+                .entryDate(payment.getPaymentDate())
+                .customer(payment.getCustomer())
+                .entryType("CUSTOMER_PAYMENT")
+                .reference("PAYMENT-" + payment.getId())
+                .description(payment.getNotes())
+                .debit(BigDecimal.ZERO)
+                .credit(payment.getAmount())
+                .sourceType("PAYMENT")
+                .sourceId(payment.getId())
+                .build());
+    }
+
+    private void updateSaleLedgerEntry(CustomerLedger ledger, Invoice invoice) {
+        ledger.setEntryDate(invoice.getInvoiceDate());
+        ledger.setCustomer(invoice.getCustomer());
+        ledger.setEntryType("SALE");
+        ledger.setReference(invoice.getInvoiceNumber() + "-SALE");
+        ledger.setDescription(saleDescription(invoice));
+        ledger.setDebit(invoice.getTotalAmount());
+        ledger.setCredit(BigDecimal.ZERO);
+        customerLedgerRepository.save(ledger);
+    }
+
+    private void updatePaymentLedgerEntry(CustomerLedger ledger, Payment payment) {
+        ledger.setEntryDate(payment.getPaymentDate());
+        ledger.setCustomer(payment.getCustomer());
+        ledger.setEntryType("CUSTOMER_PAYMENT");
+        ledger.setReference("PAYMENT-" + payment.getId());
+        ledger.setDescription(payment.getNotes());
+        ledger.setDebit(BigDecimal.ZERO);
+        ledger.setCredit(payment.getAmount());
+        customerLedgerRepository.save(ledger);
+    }
+
+        private void postSaleLedgerEntry(Invoice invoice, Customer customer, BigDecimal debit,
+                         BigDecimal credit, String entryType, String description) {
+        customerLedgerRepository.save(CustomerLedger.builder()
+            .entryDate(invoice.getInvoiceDate())
+            .customer(customer)
+            .entryType(entryType)
+            .reference(invoice.getInvoiceNumber() + "-" + entryType)
+            .description(description)
+            .debit(debit)
+            .credit(credit)
+            .sourceType("INVOICE")
+            .sourceId(invoice.getId())
+            .build());
+        }
 
 
     public List<InvoiceResponse> getAll() {
-        return invoiceRepository.findAll().stream()
+        List<Invoice> invoices = SecurityUtils.isManager()
+                ? invoiceRepository.findAllByIsActiveTrueAndInvoiceDateOrderByCreatedAtDesc(LocalDate.now())
+                : invoiceRepository.findAllByIsActiveTrueOrderByCreatedAtDesc();
+        return invoices.stream()
                 .map(InvoiceResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
+    public String getNextInvoiceNumber() {
+        LocalDate today = LocalDate.now();
+        // Indian financial year runs April to March
+        int startYear = today.getMonthValue() >= 4 ? today.getYear() : today.getYear() - 1;
+        String prefix = String.format("INV-%02d/%02d-", startYear % 100, (startYear + 1) % 100);
+        String max = invoiceRepository.findMaxInvoiceNumber(prefix + "%");
+        int next = 1;
+        if (max != null) {
+            try {
+                next = Integer.parseInt(max.substring(prefix.length())) + 1;
+            } catch (NumberFormatException ignored) {
+                next = 1;
+            }
+        }
+        return prefix + String.format("%04d", next);
+    }
+
+    public List<InvoiceResponse> getPendingTotal() {
+        return invoiceRepository.findAllByIsActiveTrueAndTotalPendingTrueOrderByCreatedAtDesc().stream()
+                .map(InvoiceResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public Page<InvoiceResponse> getPage(Pageable pageable) {
+        Page<Invoice> page = SecurityUtils.isManager()
+                ? invoiceRepository.findAllByIsActiveTrueAndInvoiceDateOrderByCreatedAtDesc(LocalDate.now(), pageable)
+                : invoiceRepository.findAllByIsActiveTrueOrderByCreatedAtDesc(pageable);
+        return page.map(InvoiceResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
     public InvoiceResponse getById(Long id) {
         Invoice invoice = invoiceRepository.findById(id)
+            .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+            .filter(foundInvoice -> !SecurityUtils.isManager() || LocalDate.now().equals(foundInvoice.getInvoiceDate()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
         return InvoiceResponse.fromEntity(invoice);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Invoice invoice = invoiceRepository.findById(id)
+                .filter(foundInvoice -> Boolean.TRUE.equals(foundInvoice.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id : " + id));
+            paymentRepository.findByInvoiceIdAndIsActiveTrue(invoice.getId()).ifPresent(payment -> {
+                CustomerLedger paymentLedger = customerLedgerRepository
+                        .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("PAYMENT", payment.getId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Ledger entry not found for payment id : " + payment.getId()));
+                paymentLedger.setIsActive(false);
+                customerLedgerRepository.save(paymentLedger);
+                payment.setIsActive(false);
+                paymentRepository.save(payment);
+            });
+        CustomerLedger saleLedger = customerLedgerRepository
+                .findFirstBySourceTypeAndSourceIdAndIsActiveTrueOrderByIdDesc("INVOICE", invoice.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ledger entry not found for invoice id : " + invoice.getId()));
+        saleLedger.setIsActive(false);
+        customerLedgerRepository.save(saleLedger);
+        invoice.setIsActive(false);
+        invoiceRepository.save(invoice);
     }
 }

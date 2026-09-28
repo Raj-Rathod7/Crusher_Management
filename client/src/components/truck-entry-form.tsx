@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import type { CreateTruckEntryPayload } from '#/lib/models'
+import { isManager } from '#/lib/common/api'
+import { dateKey } from '#/lib/date-filters'
 import { getAllMaterials, materialKeys } from '#/lib/query'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
@@ -26,6 +28,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { IconArrowLeft, IconCheck, IconCube, IconTruck, IconWeight } from '@tabler/icons-react'
 import * as React from 'react'
 import { z } from 'zod'
+import { SaveIcon } from 'lucide-react'
 
 const truckEntryFormSchema = z.object({
   entryDate: z.string().min(1, 'Entry date is required.'),
@@ -66,7 +69,7 @@ type TruckEntryFormProps = {
 }
 
 const defaultFormValues: TruckEntryFormValues = {
-  entryDate: new Date().toISOString().slice(0, 10),
+  entryDate: dateKey(),
   truckNumber: '',
   materialTypeId: '',
   quantityBrass: '',
@@ -115,10 +118,10 @@ export function TruckEntryForm({
     isLoading: isLoadingMaterials,
     refetch: refetchMaterials,
   } = useQuery({
-    queryKey: materialKeys.all,
-    queryFn: getAllMaterials,
+    queryKey: materialKeys.list({ type: 'PURCHASE' }),
+    queryFn: () => getAllMaterials({ type: 'PURCHASE' }),
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   })
@@ -234,7 +237,7 @@ export function TruckEntryForm({
                     <Field>
                       <FieldLabel htmlFor="entryDate">Entry date</FieldLabel>
                       <FieldContent>
-                        <Input id="entryDate" type="date" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)} aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0} />
+                        <Input id="entryDate" type="date" readOnly={isManager()} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)} aria-invalid={(field.state.meta.isTouched || form.state.isSubmitted) && field.state.meta.errors.length > 0} />
                         {(field.state.meta.isTouched || form.state.isSubmitted) && <FieldError>{getErrorMessage(field.state.meta.errors)}</FieldError>}
                       </FieldContent>
                     </Field>
@@ -330,6 +333,7 @@ export function TruckEntryForm({
                 Back to Truck Entry
               </Button>
               <Button disabled={isSubmitting} type="submit" className="w-full sm:w-auto">
+                <SaveIcon />
                 {isSubmitting ? 'Saving...' : submitLabel}
               </Button>
             </div>

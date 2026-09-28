@@ -4,13 +4,13 @@ import {
   SidebarInset, SidebarProvider
 } from "#/components/ui/sidebar";
 import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { ApiError, apiClient, getDefaultToken, setAuthToken } from "#/lib/common/api";
+import { ApiError, apiClient, getDefaultToken, isManager, setAuthToken } from "#/lib/common/api";
 import { authQueryKey, authQueryStaleTime } from "#/lib/auth-context";
 import { useShortcuts } from "#/hooks/use-shortcuts";
-import { quickLinks } from "#/lib/common";
+import { getQuickLinks, isManagerPath } from "#/lib/common";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     if (typeof window === "undefined") {
       return;
     }
@@ -38,6 +38,10 @@ export const Route = createFileRoute("/_app")({
       console.log(error);
       // throw error;
     }
+
+    if (isManager() && !isManagerPath(location.pathname)) {
+      throw redirect({ to: "/sales" });
+    }
   },
   component: RouteComponent,
 });
@@ -45,7 +49,7 @@ export const Route = createFileRoute("/_app")({
 
 function RouteComponent() {
   const navigate = useNavigate();
-  const keybinds = quickLinks.filter((x) => x.shortcut).map((f) => {return {keys: f.shortcut!, action: () => navigate({to: f.path})}})
+  const keybinds = getQuickLinks(isManager()).filter((x) => x.shortcut).map((f) => {return {keys: f.shortcut!, action: () => navigate({to: f.path})}})
   useShortcuts({keybinds});
 
   return (

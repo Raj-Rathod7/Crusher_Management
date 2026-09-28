@@ -3,11 +3,17 @@ import java.time.LocalDateTime;
 import java.util.*;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "categories")
-public class Categories {
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE categories SET is_active = false WHERE id = ?")
+public class Categories extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,17 +22,6 @@ public class Categories {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
-    @Column(nullable = false)
-	private Boolean isActive = true;
-
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
-
-    
     public Long getId() {
         return id;
     }
@@ -42,21 +37,5 @@ public class Categories {
     public void setName(String name) {
         this.name = name;
     }
-
-    public Boolean getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    
-    
-
 
 }

@@ -1,5 +1,7 @@
-target/
-.git/
+.git
+.env
+.env.*
+target
 .gitignore
 .DS_Store
 *.log

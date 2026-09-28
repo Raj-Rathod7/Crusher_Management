@@ -9,6 +9,7 @@ public class InvoiceItemResponse {
     private Long materialTypeId;
     private String materialName;
     private BigDecimal quantityBrass;
+    private BigDecimal quantity;
     private BigDecimal rate;
     private BigDecimal amount;
     private String truckNumber;
@@ -23,6 +24,7 @@ public class InvoiceItemResponse {
         r.setMaterialTypeId(item.getMaterialType() != null ? item.getMaterialType().getId() : null);
         r.setMaterialName(item.getMaterialType() != null ? item.getMaterialType().getName() : null);
         r.setQuantityBrass(item.getQuantityBrass());
+        r.setQuantity(item.getQuantityBrass());
         r.setRate(item.getRate());
         r.setAmount(item.getAmount());
         r.setTruckNumber(item.getTruckNumber());
@@ -59,6 +61,14 @@ public class InvoiceItemResponse {
 
     public void setQuantityBrass(BigDecimal quantityBrass) {
         this.quantityBrass = quantityBrass;
+    }
+
+    public BigDecimal getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(BigDecimal quantity) {
+        this.quantity = quantity;
     }
 
     public BigDecimal getRate() {

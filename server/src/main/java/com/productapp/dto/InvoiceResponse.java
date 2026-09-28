@@ -1,6 +1,7 @@
 package com.productapp.dto;
 
 import com.productapp.entity.Invoice;
+import com.productapp.entity.InvoiceItem;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,60 +15,55 @@ public class InvoiceResponse {
     private String customerName;
     private Long customerId;
     private BigDecimal totalAmount;
-    private BigDecimal amountPaid;
-    private BigDecimal balance;
-    private String status;
     private String remarks;
-    
+    private Boolean totalPending;
     private String createdByUsername;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<InvoiceItemResponse> invoiceItems;
+    private PaymentResponse payment;
 
     public InvoiceResponse() {
     }
 
     public InvoiceResponse(Long id, String invoiceNumber, LocalDate invoiceDate, String customerName,
-                           BigDecimal totalAmount, BigDecimal amountPaid, BigDecimal balance,
-                           String status, String remarks,Long customerId, List<InvoiceItemResponse> invoiceItems ) {
+                           BigDecimal totalAmount, String remarks, Long customerId,
+                           List<InvoiceItemResponse> invoiceItems) {
         this.id = id;
         this.invoiceNumber = invoiceNumber;
         this.invoiceDate = invoiceDate;
         this.customerName = customerName;
         this.totalAmount = totalAmount;
-        this.amountPaid = amountPaid;
-        this.balance = balance;
-        this.status = status;
         this.remarks = remarks;
         this.customerId = customerId;
         this.invoiceItems = invoiceItems;
 
-        // this.createdByUsername = createdByUsername;
-        // this.createdAt = createdAt;
-        // this.updatedAt = updatedAt;
     }
 
     public static InvoiceResponse fromEntity(Invoice invoice) {
-       List<InvoiceItemResponse> itemResponses =
-    invoice.getInvoiceItems()
+         List<InvoiceItemResponse> itemResponses =
+     (invoice.getInvoiceItems() == null ? List.<InvoiceItem>of() : invoice.getInvoiceItems())
            .stream()
            .map(InvoiceItemResponse::fromEntity)
            .toList();
 
 
-        return new InvoiceResponse(
+        InvoiceResponse response = new InvoiceResponse(
                 invoice.getId(),
                 invoice.getInvoiceNumber(),
                 invoice.getInvoiceDate(),
                 invoice.getCustomer() != null ? invoice.getCustomer().getName() : null,
                 invoice.getTotalAmount(),
-                invoice.getAmountPaid(),
-                invoice.getBalance(),
-                invoice.getStatus(),
                 invoice.getRemarks(),
                 invoice.getCustomer() != null ? invoice.getCustomer().getId() : null,
                 itemResponses
         );
+            response.totalPending = Boolean.TRUE.equals(invoice.getTotalPending());
+            response.createdByUsername = invoice.getCreatedBy() != null ? invoice.getCreatedBy().getUsername() : null;
+            response.createdAt = invoice.getCreatedAt();
+            response.updatedAt = invoice.getUpdatedAt();
+            response.payment = PaymentResponse.fromEntity(invoice.getPayment());
+            return response;
     }
 
     public Long getId() { return id; }
@@ -82,16 +78,16 @@ public class InvoiceResponse {
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    public BigDecimal getAmountPaid() { return amountPaid; }
-    public void setAmountPaid(BigDecimal amountPaid) { this.amountPaid = amountPaid; }
-    public BigDecimal getBalance() { return balance; }
-    public void setBalance(BigDecimal balance) { this.balance = balance; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
+    public Boolean getTotalPending() { return totalPending; }
+    public void setTotalPending(Boolean totalPending) { this.totalPending = totalPending; }
     public String getCreatedByUsername() { return createdByUsername; }
     public void setCreatedByUsername(String createdByUsername) { this.createdByUsername = createdByUsername; }
+    public List<InvoiceItemResponse> getInvoiceItems() { return invoiceItems; }
+    public void setInvoiceItems(List<InvoiceItemResponse> invoiceItems) { this.invoiceItems = invoiceItems; }
+    public PaymentResponse getPayment() { return payment; }
+    public void setPayment(PaymentResponse payment) { this.payment = payment; }
     // public LocalDateTime getCreatedAt() { return createdAt; }
     // public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     // public LocalDateTime getUpdatedAt() { return updatedAt; }

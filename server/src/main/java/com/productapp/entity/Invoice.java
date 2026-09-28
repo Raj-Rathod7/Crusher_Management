@@ -2,19 +2,27 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "invoices")
+@Table(name = "invoices", indexes = {
+    @Index(name = "idx_invoices_date", columnList = "invoice_date"),
+    @Index(name = "idx_invoices_customer", columnList = "customer_id")
+
+})
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE invoices SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Invoice {
+public class Invoice extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,17 +41,13 @@ public class Invoice {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal amountPaid = BigDecimal.ZERO;
-
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal balance;
-
-    @Column(nullable = false, length = 20)
-    private String status;
-
     @Column(columnDefinition = "TEXT")
     private String remarks;
+
+    // true when created by a manager without rates; admin must add the total
+    @Builder.Default
+    @Column(name = "total_pending", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean totalPending = false;
 
     
 
@@ -53,21 +57,12 @@ public class Invoice {
         orphanRemoval = true
     )
     private List<InvoiceItem> invoiceItems;
+
+    @OneToOne(mappedBy = "invoice")
+    private Payment payment;
+
     @ManyToOne
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

@@ -2,17 +2,24 @@ package com.productapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "customers")
+@Table(name = "customers", indexes = {
+    @Index(name = "idx_customers_name", columnList = "name"),
+    @Index(name = "idx_customers_phone", columnList = "phone")
+})
+@SQLRestriction("is_active = true")
+@SQLDelete(sql = "UPDATE customers SET is_active = false WHERE id = ?")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Customer {
+public class Customer extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,14 +37,4 @@ public class Customer {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-
-    @Column(nullable = false)
-    private Boolean isActive = true;
-
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
 }

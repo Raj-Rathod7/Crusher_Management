@@ -21,8 +21,8 @@ function RouteComponent() {
       toast.success('Sale created.')
       navigate({ to: '/sales' })
     },
-    onError: () => {
-      toast.error('Failed to create sale.')
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create sale.')
     },
   })
 
@@ -33,9 +33,9 @@ function RouteComponent() {
   return (
     <SalesForm
       title="New Sale"
-      description="Create invoice with customer, amount, payment, and status."
+      description="Record the customer, material, truck, quantity, and sale total."
       backLabel="Back to sales"
-      submitLabel="Create sale"
+      submitLabel="Save sale"
       isSubmitting={createMutation.isPending}
       onSubmit={handleSubmit}
       showSummary={true}
