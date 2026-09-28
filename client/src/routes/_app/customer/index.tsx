@@ -3,7 +3,9 @@ import { FilterChip } from "#/components/stats-card";
 import { Button } from "#/components/ui/button";
 import { Badge } from "#/components/ui/badge";
 import type { Customer } from "#/lib/models";
+import { deleteCustomer } from "#/lib/mutation";
 import { customerKeys, getAllCustomers } from "#/lib/query";
+import { getUserRole } from "#/lib/common/api";
 import {
   IconCash,
   IconPencil,
@@ -11,10 +13,11 @@ import {
   IconUsers,
   IconWallet,
 } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { User2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/customer/")({
   component: RouteComponent,
@@ -32,6 +35,9 @@ const currency = new Intl.NumberFormat("en-IN", {
 
 function RouteComponent() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const isAdmin = getUserRole() === "ADMIN";
+  const [customerToDelete, setCustomerToDelete] = useState<CustomerRow | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const { data, isLoading } = useQuery({
     queryKey: customerKeys.all,
@@ -71,9 +77,15 @@ function RouteComponent() {
     };
   });
 
-  const setEntryToDelete = (entry: CustomerRow | null) => {
-    void entry;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: deleteCustomer,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      setCustomerToDelete(null);
+      toast.success("Customer deleted.");
+    },
+    onError: () => toast.error("Customer could not be deleted. Clear any outstanding balance first."),
+  });
 
   return (
     <div className="flex h-[calc(100vh-5rem)] flex-col p-6">
@@ -173,17 +185,19 @@ function RouteComponent() {
                     <span className="sr-only">Edit customer</span>
                   </Link>
                 </Button>
-                <Button
-                  size="icon-sm"
-                  variant="destructive"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setEntryToDelete(row.original);
-                  }}
-                >
-                  <IconTrash />
-                  <span className="sr-only">Delete customer</span>
-                </Button>
+                {isAdmin ? (
+                  <Button
+                    size="icon-sm"
+                    variant="destructive"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setCustomerToDelete(row.original);
+                    }}
+                  >
+                    <IconTrash />
+                    <span className="sr-only">Delete customer</span>
+                  </Button>
+                ) : null}
               </div>
             ),
           },
@@ -204,6 +218,23 @@ function RouteComponent() {
           navigate({ to: "/customer/$customerId", params: { customerId: String(row.id) } });
         }}
       />
+
+      {customerToDelete ? (
+        <div className="mt-3 flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+          <span>Delete {customerToDelete.name}? This will remove the customer from active records.</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setCustomerToDelete(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(customerToDelete.id)}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

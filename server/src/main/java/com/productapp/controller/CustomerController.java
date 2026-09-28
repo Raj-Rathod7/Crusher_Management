@@ -64,4 +64,9 @@ public class CustomerController {
     public CustomerResponse update(@PathVariable Long id, @RequestBody Customer customer) {
         return customerService.update(id, customer);
     }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        customerService.delete(id);
+    }
 }
