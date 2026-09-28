@@ -258,14 +258,16 @@ export function SiteHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
               <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  Pending Totals
-                  <DropdownMenuShortcut>
-                    <Badge variant="destructive" className="ml-2 text-xs">
-                    {pendingCount}
-                    </Badge>
-                  </DropdownMenuShortcut>
-                </DropdownMenuItem>
+                <Link to="/sales" search={{ pending: true }}>
+                  <DropdownMenuItem>
+                    Pending Totals
+                    <DropdownMenuShortcut>
+                      <Badge variant="destructive" className="ml-2 text-xs">
+                        {pendingCount}
+                      </Badge>
+                    </DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </Link>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -86,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="h-[120px]"
             >
               <a href="/">
                 {logoFailed ? (
@@ -95,11 +95,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <img
                     src="/business-logo.png"
                     alt=""
-                    className="size-5 object-contain"
+                    className="object-contain dark:invert-100"
                     onError={() => setLogoFailed(true)}
                   />
                 )}
-                <span className="text-base font-semibold">Vaibhav Stone Crusher</span>
+                {/* <span className="text-base font-semibold">Vaibhav Stone Crusher</span> */}
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

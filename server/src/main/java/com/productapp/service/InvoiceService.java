@@ -60,9 +60,7 @@ public class InvoiceService {
         User createdBy = getCurrentUser();
         boolean manager = SecurityUtils.isManager();
         SecurityUtils.requireTodayForManager(invoiceRequest.getInvoiceDate());
-        if (manager) {
-            invoiceRequest.setPaymentAmount(null);
-        } else if (invoiceRequest.getTotalAmount() == null || invoiceRequest.getTotalAmount().signum() <= 0) {
+        if (invoiceRequest.getTotalAmount() == null || invoiceRequest.getTotalAmount().signum() <= 0) {
             throw new IllegalArgumentException("Total amount must be greater than zero");
         }
         Customer customer =
@@ -187,9 +185,18 @@ public class InvoiceService {
         }
         existingInvoice.setTotalAmount(totalAmount);
         existingInvoice.setTotalPending(false);
-        existingInvoice.setInvoiceItems(invoiceItems);
+        // Keep Hibernate's existing managed collection.
+        // Do not replace it with a new ArrayList.
+        existingInvoice.getInvoiceItems().clear();
+
+        // Add the newly created items to the same Hibernate-managed collection.
+        for (InvoiceItem item : invoiceItems) {
+            item.setInvoice(existingInvoice); // Maintain the bidirectional relationship
+            existingInvoice.getInvoiceItems().add(item);
+        }
 
         Invoice savedInvoice = invoiceRepository.save(existingInvoice);
+
         if (existingLedger.isPresent()) {
             postSaleLedgerEntry(savedInvoice, previousCustomer, BigDecimal.ZERO, previousTotalAmount,
                 "SALE_REVERSAL", "Reversal of " + previousSaleDescription);
@@ -247,7 +254,7 @@ public class InvoiceService {
             postPayment(invoice, invoice.getCustomer(), amount, getCurrentUser());
             return;
         }
-
+        
         postPaymentLedgerReversal(payment);
         payment.setAmount(amount);
         payment.setPaymentDate(invoice.getInvoiceDate());

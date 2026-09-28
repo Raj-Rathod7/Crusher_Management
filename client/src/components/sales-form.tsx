@@ -306,6 +306,9 @@ export function SalesForm({
         invoiceDate: form.invoiceDate,
         customerId: Number(form.customerId),
         remarks: form.remarks.trim() || undefined,
+        ...(form.paymentAmount.trim()
+        ? { paymentAmount: Number(form.paymentAmount) }
+        : {}),
         invoiceItems: [
           {
             ...invoiceItem,
@@ -523,10 +526,10 @@ export function SalesForm({
           </div>
         </div>
 
-        {!manager && (
+        
         <div className="border-b border-border/80 py-6">
           <div className="grid gap-4 md:grid-cols-2">
-              <Field>
+              {!manager && (<Field>
                 <FieldLabel htmlFor="totalAmount">Total amount</FieldLabel>
                 <FieldContent>
                   <Input
@@ -541,7 +544,7 @@ export function SalesForm({
                   />
                   <FieldError>{errors.totalAmount}</FieldError>
                 </FieldContent>
-              </Field>
+              </Field>)}
 
               <Field>
                   <FieldLabel htmlFor="paymentAmount">Payment received (optional)</FieldLabel>
@@ -562,7 +565,6 @@ export function SalesForm({
 
           </div>
         </div>
-        )}
 
         <div className="py-6">
           <div className="border border-border/80 bg-muted/20 p-4">

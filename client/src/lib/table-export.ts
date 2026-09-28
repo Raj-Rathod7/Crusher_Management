@@ -208,7 +208,7 @@ export async function exportTableToExcel(
   const logo = await loadBusinessLogo()
 
   addBusinessHeader(sheet, businessSettings, headers.length)
-  addExcelLogo(workbook, sheet, logo)
+  // addExcelLogo(workbook, sheet, logo)
   addHeading(sheet, title, headers.length)
   addSubtitle(sheet, generatedSubtitle(rows.length), headers.length)
   const tableHeader = addTableHeader(sheet, headers)
@@ -350,7 +350,7 @@ function addPdfDocumentHeader(
     .join("  |  ")
 
   const logoOffset = logo ? 24 : 0
-  if (logo) document.addImage(logo.dataUrl, logo.extension.toUpperCase(), 8, 8, 14, 14)
+  if (logo) document.addImage(logo.dataUrl, logo.extension.toUpperCase(), 8, 8, 48, 14)
   const nameLines = businessName ? document.splitTextToSize(businessName, pageWidth * 0.55 - logoOffset) : []
   if (nameLines.length > 0) {
     document.setFont("helvetica", "bold")
@@ -451,7 +451,7 @@ export async function exportCustomerReportToExcel(
   const totalReceived = data.payments.reduce((sum, payment) => sum + payment.amount, 0)
 
   addBusinessHeader(sheet, businessSettings, 7)
-  addExcelLogo(workbook, sheet, logo)
+  // addExcelLogo(workbook, sheet, logo)
   addHeading(sheet, `Customer report \u2014 ${data.customer.name}`, 7)
   addSubtitle(sheet, generatedSubtitle(data.ledger.length + data.invoices.length + data.payments.length), 7)
   sheet.addRow([])

@@ -44,9 +44,11 @@ public class CustomerLedger extends AuditableEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal credit = BigDecimal.ZERO;
 
+    // INVOICE OR PAYMENT 
     @Column(name = "source_type", nullable = false, length = 30)
     private String sourceType;
-
+    
+    // Source ids
     @Column(name = "source_id", nullable = false)
     private Long sourceId;
 }
