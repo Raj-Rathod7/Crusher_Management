@@ -80,5 +80,7 @@ ON DUPLICATE KEY UPDATE
     is_active = TRUE,
     updated_at = NOW();
 
-
+INSERT INTO business_settings (id,business_name,address,phone,is_active,created_at,updated_at)
+VALUES (1,'Vaibhav Stone Crusher','Nimbi, Pusad','+91 8805012303 / +91 9518533548',TRUE,NOW(),NOW())
+ON DUPLICATE KEY UPDATE business_name=VALUES(business_name),address=VALUES(address),phone=VALUES(phone),is_active=TRUE,updated_at=NOW();
 COMMIT;

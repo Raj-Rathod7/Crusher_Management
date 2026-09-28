@@ -27,7 +27,7 @@ public class BusinessSettings extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(length = 20)
+    @Column(length = 100)
     private String phone;
 
 }
